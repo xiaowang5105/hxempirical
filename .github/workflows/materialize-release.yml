@@ -3,7 +3,7 @@ name: Materialize Stata release
 on:
   push:
     paths:
-      - '.release_b64/READY'
+      - '.release_bin/READY'
 
 permissions:
   contents: write
@@ -20,15 +20,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f .release_b64/READY
-          cat .release_b64/chunk_*.txt > /tmp/hx_release.b64
-          base64 --decode /tmp/hx_release.b64 > /tmp/hx_release.zip
+          test -f .release_bin/READY
+          cat .release_bin/part_*.bin > /tmp/hx_release.zip
+          echo '8bf0d78dea88b1a98f91106e929054008ccf9bdeb129e91f0acf2f3a63ed03be  /tmp/hx_release.zip' | sha256sum -c -
           unzip -t /tmp/hx_release.zip
           unzip -o /tmp/hx_release.zip -d .
           test -f stata.toc
           test -f hxempirical.pkg
           test -f hxworkbench.jar
-          rm -rf .release_b64
+          rm -rf .release_bin
       - name: Commit release files
         shell: bash
         run: |
