@@ -1,0 +1,1 @@
+Release payload parts are staged as Git blobs before materialization.
