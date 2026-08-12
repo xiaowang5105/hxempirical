@@ -14,117 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download Vineflower
-        run: curl -L --fail --retry 3 -o vineflower.jar https://repo1.maven.org/maven2/org/vineflower/vineflower/1.11.1/vineflower-1.11.1.jar
-
-      - name: Recover current Java source
-        run: |
-          rm -rf recovered
-          mkdir -p recovered
-          java -jar vineflower.jar hxworkbench.jar recovered
-          test -f recovered/com/hexie/stata/HxWorkbench.java
-
-      - name: Repair recovered source and apply common-first regress UI
+      - name: Recover source, build JAR, and smoke-test UI
         shell: bash
         run: |
-          cat > /tmp/ui.patch.gz.b64 <<'EOF'
-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
-EOF
-          base64 -d /tmp/ui.patch.gz.b64 | gunzip > /tmp/ui.patch
-          cd recovered/com/hexie/stata
-          patch -p0 < /tmp/ui.patch
-
-      - name: Create compile-only Stata SFI stubs
-        run: |
-          mkdir -p build-stubs/com/stata/sfi
-          cat > build-stubs/com/stata/sfi/Characteristic.java <<'EOF'
-package com.stata.sfi;
-public final class Characteristic { public static String getDtaChar(String s){return "";} }
-EOF
-          cat > build-stubs/com/stata/sfi/Data.java <<'EOF'
-package com.stata.sfi;
-public final class Data {
- public static String getFormattedValue(int v,long o,boolean b){return "";}
- public static double getNum(int v,long o){return 0;}
- public static long getObsTotal(){return 0;}
- public static String getStr(int v,long o){return "";}
- public static int getVarCount(){return 0;}
- public static String getVarFormat(int v){return "";}
- public static int getVarIndex(String s){return 0;}
- public static String getVarLabel(int v){return "";}
- public static String getVarName(int v){return "";}
- public static boolean isVarTypeString(int v){return false;}
-}
-EOF
-          cat > build-stubs/com/stata/sfi/Frame.java <<'EOF'
-package com.stata.sfi;
-public class Frame {
- public static Frame connect(String s){return new Frame();}
- public static Frame create(String s){return new Frame();}
- public void drop(){}
- public String getFormattedValue(int v,long o,boolean b){return "";}
- public double getNum(int v,long o){return 0;}
- public long getObsTotal(){return 0;}
- public String getStr(int v,long o){return "";}
- public int getVarCount(){return 0;}
- public int getVarIndex(String s){return 0;}
- public String getVarName(int v){return "";}
- public boolean isVarTypeString(int v){return false;}
-}
-EOF
-          cat > build-stubs/com/stata/sfi/Macro.java <<'EOF'
-package com.stata.sfi;
-public final class Macro { public static String getGlobal(String s){return "";} }
-EOF
-          cat > build-stubs/com/stata/sfi/Missing.java <<'EOF'
-package com.stata.sfi;
-public final class Missing { public static boolean isMissing(double d){return false;} }
-EOF
-          cat > build-stubs/com/stata/sfi/SFIToolkit.java <<'EOF'
-package com.stata.sfi;
-public final class SFIToolkit {
- public static void displayln(String s){}
- public static void errorln(String s){}
- public static int executeCommand(String s,boolean b){return 0;}
- public static String stackTraceToString(Throwable t){return t.toString();}
-}
-EOF
-          cat > build-stubs/com/stata/sfi/Scalar.java <<'EOF'
-package com.stata.sfi;
-public final class Scalar { public static double getValue(String s){return 0;} }
-EOF
-
-      - name: Compile Java 11 compatible workbench
-        run: |
-          rm -rf build/classes
-          mkdir -p build/classes
-          javac --release 11 -encoding UTF-8 -d build/classes \
-            $(find build-stubs -name '*.java') \
-            recovered/com/hexie/stata/HxWorkbench.java
-          javap -classpath build/classes -verbose com.hexie.stata.HxWorkbench | grep 'major version: 55'
-
-      - name: Build workbench JAR
-        run: |
-          printf 'Manifest-Version: 1.0\nCreated-By: HX Empirical Workbench\n\n' > build/MANIFEST.MF
-          (cd build/classes && jar cfm "$GITHUB_WORKSPACE/hxworkbench.jar" "$GITHUB_WORKSPACE/build/MANIFEST.MF" com/hexie/stata)
-          test "$(jar tf hxworkbench.jar | grep '^com/hexie/stata/.*\\.class$' | wc -l)" -eq 44
-
-      - name: Offline UI smoke tests
-        run: |
-          for mode in render-home-preview render-method-preview render-workflow-preview render-regress-preview; do
-            xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --$mode /tmp/$mode.png | grep HX_UI_PREVIEW_OK
-          done
-
-      - name: Save recovered source
-        run: |
-          mkdir -p src/main/java/com/hexie/stata
-          cp recovered/com/hexie/stata/HxWorkbench.java src/main/java/com/hexie/stata/HxWorkbench.java
-
-      - name: Commit generated source and JAR
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add hxworkbench.jar src/main/java/com/hexie/stata/HxWorkbench.java
-          git commit -m "[generated-ui] Recover current Java source and simplify regress page"
-          git push
+          printf '%s' \
+            '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' \
+            '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' \
+            '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' \
+            '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' \
+            'W+v2TKmRzNFKSJR28mCRfOoAe5Y7wRKMRluZ3luq6aaFZ4PNjTpy2ykHuxJnYwsYDGc9JPuKOfhMiKz7IF6BzqvPvg231jLpzsg7oxUy9yFY7OuYK2mPGMpjSWa/7fLiww8iWtRYGtg73sk5yUsGwvh5etp6f93Pmd4qd5FR3+fEINJ275d3ATFEJzcBITT81T7oRVHlvmikXTxWjjzoWoVBjvSYARg0fRCz7s5KUuaoaK+puuWd2ZYcGddIotjYRDcuGWJ41tjeCkpBia7Hge0QMoK8ooY4H4j4qsWt0Jh9pQyqCSdC5UFo2KwzZyQ1p+g8n4m8xa2koVK857YZfi8pivrv334YxrKbs8u3/2369vLN7/60qvHN5X9/3npJcfTyMTmf86U78/Plf1zAuR3Apfw0hHNcfPguTv7yKsjl7/7u8oXs8nGALv/8U9bff/hhI+VHSytfZHxdJJmy8mcrLHE4nxr8RWqQKcIxjOd0PMfIMv6yfXL553/+1rId+nzRMK7DPL2cLJ++sHw6Wf7pw7BETRlfsrILm8uXiy4/FXP598v3NJ+5zg9rPk2WX/J0ZufwM+13359Mv//3MZ3P0nz55pt/+o/Lf3z4fPF/qjT7WZW/VdXPzJd///AXNbz3YxvOc5q4YbOk352uvqz/0PTnj/0/RH3fpGF3iX6i9s9lJWfQN+lnWdrS/kTAn9igX3J9oTh59Giy+zlsvvtrxD+oez79+Sv+nGafCU8eNxyZfunmX3nFSf7VKF8v+pU3iF2S7r/08392kxJGafMrLvoJkxa26a/g+aP7yunkOVvn9KuQn3FmYTOlJ/OvBON9PC//TWj8isMvfL8E4tfjuO+6NJ5/ab4u3b6SfPf7X77f97xjGs7pr2Vd+zK5JGM/nGD44fT/STj8xjj4dQHwW5H/qyD/m1D7m5D3/wVyahiP/d+cAL9w/5UU/XnV57T+/1WGVstpOrn/dh2/8v9Cyx/M+T3Fd9+DLPm5LX+tptZdtE+hdTn/zcr+IOKX4fw1vMppaMKj6X5k1F8E7xfKdBz78a/TfUZOuqfxMqdM37Zhl/yJ+s8E5F9Ot+e3uLbPqp3a/fegtIux38LP5pz/JGD+NP/x59//eoRacdiE499u0S/sv/D+DwnlazL6c2H6R79/2dSNv+wXnyaZ0gsMXz6mXdwnn1kc+/6R+Nym/aRbuvzuu1OLn24Ef+w+59Rv//7Lu3z7+9+yxfv5r+Hy8Yvws4ErfnbZx1NM1E9f7fFF0PdW+ZGgz23kmA6Xb9uw6sfLyTGVffePFwz7oQ1Vw67M0mn+6P7xV/gT9K8d86UMJB/p4x8vgn/h2qEcy9Oulz8J/9fuX7tv/+hGUKU08c5Z9if1/qVH/amyZ1/6eas5ztqz5eVFW3DoP3i6KVsPiuHAny0/f/PnaH5xyzeXn1nw919Xpb/53Xefrzpf7ec71X80xv/6uek//f2/fvqi6e++PYm20+3N77853f26oOiHD9lpubZP0jN0TvedCX78WPRt+nEY07U8i+L3Z206F33y89PPGnxe8/75+ZieukzTH4//6QTnh8tlX7Po47h0l4/h5euqeDz8zJJ/zdsfP/7ui6Jf2v4vj5+GE63fv7fg/8ER//AwOVfkvD/o8oek79IfzQTTGINtWHbg55t/Ds8P8fAbsPvXZf2ZhfX8TH5n05KV+WWZ0vHT16g5T4sl+nhOBicup3+J+vnfvv0Fadp+/o8A36IwQRIIgQB/hul/fiacPnX9aYbm+PSV4tOp1VdpYZL8Aiu/8QW+KtW258fH9vLtv+Rpl45f4mcp/+1ifjXcJV7G0/3zRfpion4Z4/RyJuDLVLZDU2bH5XtUnDNcnn7VbVim4sP/AQWalQEcMQAA' \
+            | base64 -d | gunzip > /tmp/rebuild-common-first.sh
+          chmod +x /tmp/rebuild-common-first.sh
+          /tmp/rebuild-common-first.sh
