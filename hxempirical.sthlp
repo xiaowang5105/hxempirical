@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.3  12aug2026}{...}
+{* *! version 1.1.0  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -26,23 +26,23 @@ in Stata memory. Commands run in Stata itself. The complete command is added to
 Stata's History window before execution.
 
 {pstd}
-The start page is a launcher rather than a full function wall. A large task
-search sits at the top, six common jobs stay visible, current-data status and up
-to three recent commands appear on the right, and the full function catalog is
-collapsed until the user explicitly expands it. Selecting a method opens a
-compact command-choice page. Selecting a command then enters a focused workspace
-and hides the broader navigation. Every command page shows its complete path and
-simplest example above the settings. Advanced free-text options stay collapsed
-until requested; cluster variables appear only when the Cluster standard-error
-choice is active.
+The start page keeps one stable layout. Search and six common research tasks stay
+at the top, current-data status and recent work appear on the right, and the full
+function catalog is shown directly below with natural scrolling. There is no
+expand/collapse state and no reserved blank area.
 
 {pstd}
-Each command-choice row explains the Chinese name, purpose, suitable data,
-simplest example, and the main difference from related commands. Methods with
-one to four commands use a compact single-column list. Breadcrumbs and the
-left-side back action return to the previous method level; the global
-{bf:回到开始} action remains available at the top right. Search covers Stata
-names, Chinese purposes, suitable-data descriptions, examples, and workflows.
+Research tasks can open a task workspace directly. The baseline-regression
+workspace defaults to {cmd:xtreg} and uses a compact estimator selector to switch
+between {cmd:xtreg}, {cmd:reghdfe}, {cmd:areg}, and {cmd:regress} without leaving
+the page. Y, the core X, controls, sample restrictions, and other common settings
+are preserved while estimator-specific fields and the real Stata command update.
+
+{pstd}
+When a method still needs a command chooser, the chooser is a compact directory:
+it shows only the command name, Chinese title, one-line purpose, and source tag.
+Detailed examples and limitations are kept in the command page. Breadcrumbs,
+{bf:上一级}, {bf:首页}, and command help use fixed positions.
 
 {pstd}
 The right side has three stable tabs: {bf:数据}, {bf:结果}, and {bf:运行}.
@@ -260,4 +260,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.0.3.
+HX empirical workbench, package version 1.1.0.
