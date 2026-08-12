@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-python3 -m py_compile tools/pixel_match_121.py tools/pixel_match_121_fix.py tools/pixel_match_121_refine.py tools/pixel_match_121_refine2.py tools/pixel_match_121_refine3.py
+python3 -m py_compile tools/pixel_match_121.py tools/pixel_match_121_fix.py tools/pixel_match_121_refine.py tools/pixel_match_121_refine2.py tools/pixel_match_121_refine3.py tools/pixel_match_121_refine4.py
 python3 tools/pixel_match_121.py
 python3 tools/pixel_match_121_fix.py
 python3 tools/pixel_match_121_refine.py
 python3 tools/pixel_match_121_refine2.py
 python3 tools/pixel_match_121_refine3.py
+python3 tools/pixel_match_121_refine4.py
 
 grep -Fq 'public static final String VERSION = "1.2.1";' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq 'private JComponent buildExactOneClickContainer()' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq 'private JComponent buildExactLinearContainer()' src/main/java/com/hexie/stata/HxWorkbench.java
+grep -Fq 'private JComponent exactNumberBadge' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq '开始分析' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq '更多线性模型' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq '控制变量组合筛选 · 外部 OneClick' src/main/java/com/hexie/stata/HxWorkbench.java
