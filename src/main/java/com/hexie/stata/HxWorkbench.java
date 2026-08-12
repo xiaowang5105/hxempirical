@@ -121,7 +121,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.0.1";
+   public static final String VERSION = "1.0.2";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -342,7 +342,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.0.1");
+      SFIToolkit.displayln("HxWorkbench 1.0.2");
       return 0;
    }
 
@@ -9177,7 +9177,10 @@ public final class HxWorkbench {
                      )
                      : ("graph_box".equals(this.currentCommand) ? "graph box" : ("did_trends".equals(this.currentCommand) ? "hxtrendplot" : this.currentCommand))
                );
-            HxWorkbench.StataBridge.execute("help " + var1, true);
+            int var2 = HxWorkbench.StataBridge.execute("help " + var1, true);
+            if (var2 == 0) {
+               HxWorkbench.StataBridge.execute("capture window manage forward viewer", false);
+            }
          }
       }
 
