@@ -22,15 +22,23 @@ jobs:
           java-version: '11'
       - name: Patch, compile and render reference pages
         run: bash tools/audit_pixel_match_121.sh
+      - name: Apply release metadata
+        run: python3 tools/release_pixel_match_121.py
+      - name: Verify public version strings
+        run: |
+          grep -Fq '**当前发布版本：1.2.1**' README.md
+          grep -Fq '*! hxempirical 1.2.1  12aug2026' hxempirical.ado
+          grep -Fq 'd Version 1.2.1' hxempirical.pkg
+          grep -Fq '{* *! version 1.2.1  12aug2026}{...}' hxempirical.sthlp
       - name: Upload reference-page renders
         uses: actions/upload-artifact@v4
         with:
           name: hx-pixel-match-1.2.1
           path: build/previews/*.png
-      - name: Commit pixel-match UI and JAR
+      - name: Commit 1.2.1 production files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
-          git commit -m "Match supplied UI references for 1.2.1"
+          git add README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
+          git commit -m "Release pixel-matched workbench 1.2.1"
           git push
