@@ -39,13 +39,6 @@ f hxworkbench.ado
 f hxtestdata.ado
 f hxthreads.ado
 f hxhistory.ado
-f hxrun.ado
-f hxtransform.ado
-f hxmerge.ado
-f hxselect.ado
-f hxselect.dlg
-f hxselect.sthlp
-f hxmulti.ado
 f hx_nlswork.dta
 f hx_grunfeld.dta
 f hx_union.dta
