@@ -31,7 +31,10 @@ old = "{* *! version 0.9.7  11aug2026}{...}"
 new = "{* *! version 1.0.0  12aug2026}{...}"
 if old not in text:
     raise SystemExit("missing help version header")
-helpf.write_text(text.replace(old, new, 1), encoding="utf-8")
+text = text.replace(old, new, 1)
+# Any other current-version references in the help page must agree with the package release.
+text = text.replace("0.9.7", "1.0.0")
+helpf.write_text(text, encoding="utf-8")
 
 # README: the entire 13:37–15:08 development series is one major release.
 readme = Path("README.md")
