@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.0  12aug2026
+*! hxsemantics 1.4.1  12aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -407,7 +407,7 @@ program define hxsemantics, rclass
     }
     else if inlist("`cmd'", "regress", "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg") | ///
         inlist("`cmd'", "newey", "prais", "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson") | ///
-        inlist("`cmd'", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe") {
+        inlist("`cmd'", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe", "didregress", "xtdidregress") {
         local template "estimation"
         local has_depvar 1
         local has_varlist 1
@@ -524,6 +524,44 @@ program define hxsemantics, rclass
             local explain1 "先声明时间变量。"
             local example2 "prais y x c"
             local explain2 "估计带 AR(1) 误差的 Prais–Winsten 回归。"
+        }
+        else if inlist("`cmd'", "didregress", "xtdidregress") {
+            local template "didregress"
+            local has_depvar 1
+            local has_varlist 1
+            local has_if 1
+            local has_in 1
+            local has_weight 1
+            local has_absorb 1
+            local has_vce 1
+            local has_cluster 1
+            local needs_panel 1
+            local models ""
+            local default_model ""
+            local vces "default robust cluster"
+            local dep_label "结果变量 Y"
+            local vars_label "协变量 / 控制变量（可多选）"
+            local panel_label "处理变量（通常为 0/1）"
+            local time_label "时间变量 time()"
+            local absorb_label "处理发生层级 group()（可多选）"
+            if "`cmd'" == "didregress" {
+                local title "didregress — Stata 官方双重差分（重复截面）"
+                local purpose1 "使用 Stata 官方 didregress 估计标准 DID / DDD 的 ATET。"
+                local purpose2 "适合重复截面数据；处理变量放在第二组括号，group() 指定处理发生层级，time() 指定时间。"
+                local example1 "didregress (y x1 x2) (treat), group(group) time(year)"
+                local explain1 "用官方 didregress 估计重复截面 DID，并加入 x1、x2 协变量。"
+                local example2 "estat trendplots"
+                local explain2 "估计后可继续使用 Stata 官方 DID 诊断工具。"
+            }
+            else {
+                local title "xtdidregress — Stata 官方面板双重差分"
+                local purpose1 "使用 Stata 官方 xtdidregress 在纵向 / 面板数据中估计标准 DID。"
+                local purpose2 "运行前先单独使用 xtset 声明面板结构；本页填写结果、协变量、处理变量、group() 和 time()。"
+                local example1 "xtdidregress (y x1 x2) (treat), group(group) time(year)"
+                local explain1 "在已 xtset 的面板数据上使用官方 xtdidregress。"
+                local example2 "estat ptrends"
+                local explain2 "估计后可继续使用 Stata 官方平行趋势检验。"
+            }
         }
         else if inlist("`cmd'", "xtreg", "xtlogit", "xtprobit") {
             /* xtset is a separate Stata command.  Keep these pages limited to

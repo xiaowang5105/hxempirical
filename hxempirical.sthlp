@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.0.2  12aug2026}{...}
+{* *! version 1.0.3  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -96,6 +96,8 @@ guarded runner and write those native commands to History. When the fitted
 statistics that Stata only provides with the default OLS VCE; fitted values and
 ordinary residuals remain available. For a no-constant model, the VIF action
 automatically uses {cmd:estat vif, uncentered}.
+
+Command settings use structured variables. The regression catalog also includes Stata 17+ official DID commands: {cmd:didregress} for repeated cross-sectional data and {cmd:xtdidregress} for panel/longitudinal data. The old custom DID section is no longer shown as a separate public workflow.
 
 {pstd}
 The built-in linear-regression catalog also exposes {cmd:areg}, {cmd:rreg},
@@ -229,22 +231,7 @@ preview updates with selected variables; the final graph is still produced by
 Stata's native graph system and the complete command is retained in History.
 
 {pstd}
-{bf:DID 专区 > DID分步构建} is designed for a common policy timing setup and keeps calendar time, treatment group,
-{cmd:post}, relative {cmd:event_time}, and the regression-safe {cmd:event_code}
-separate. The page shows only the fields required by the current step. It can
-generate {cmd:post}, {cmd:did}, and {cmd:event_time}; run
-{cmd:hxdidencode event_time, generate(event_code) base(-1)} to convert negative
-relative periods into a nonnegative factor-variable code while preserving the
-chosen base period; build {cmd:i.treat##i.post}; build an event-study interaction
-{cmd:i.treat##i.event_code}; and automatically build the pre-policy {cmd:testparm}
-joint test from the actual last event-study {cmd:e(b)} and {cmd:e(sample)}. The
-workbench records the event-study result after a successful run and refuses to
-test if another estimation result has replaced it. Before estimation, treat/post
-are checked as numeric 0/1 variables on the requested regression sample, including
-{cmd:if} restrictions and complete-case requirements, and the selected event-study
-base period must exist in the data. This avoids feeding negative relative-time
-values directly to Stata factor-variable notation. Staggered-treatment DID should
-use a method designed for varying treatment dates.
+Difference-in-differences is now exposed through Stata's official commands rather than a separate HX DID workflow. Use {cmd:didregress} for repeated cross-sectional data and {cmd:xtdidregress} for panel/longitudinal data. For panel data, declare the panel structure first with {cmd:xtset}. The workbench generates the native command, for example {cmd:didregress (y x1 x2) (treat), group(group) time(year)}. After estimation, Stata's official DID postestimation tools such as {cmd:estat trendplots}, {cmd:estat ptrends}, and {cmd:estat granger} remain available in Stata.
 
 {pstd}
 The {bf:OneClick 专区} calls the author's real external {cmd:oneclick} command;
@@ -273,4 +260,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.0.2.
+HX empirical workbench, package version 1.0.3.
