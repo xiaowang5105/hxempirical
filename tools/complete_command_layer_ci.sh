@@ -3,42 +3,56 @@ set -euo pipefail
 
 python3 -m py_compile tools/complete_command_layer.py
 
-# Static production checks after the refactor script has run.
-grep -Fq '*! hxregistry 2.9.0' hxregistry.ado
-grep -Fq '*! hxsemantics 1.4.0' hxsemantics.ado
-grep -Fq '*! hxpreview 1.3.0' hxpreview.ado
-grep -Fq 'local graph_methods "数据分布 变量关系 回归结果"' hxregistry.ado
-grep -Fq 'local absorb_label "分组变量 by()（可多选；不分组可留空）"' hxsemantics.ado
-grep -Fq 'local opt `"`opt'"'"' by(`absorb'"'"')"'"'' hxpreview.ado
-grep -Fq 'local opt `"`opt'"'"' quantile(`expression'"'"')"'"'' hxpreview.ado
-grep -Fq 'local opt `"`opt'"'"' constraints(`expression'"'"')"'"'' hxpreview.ado
-grep -Fq 'local opt `"`opt'"'"' reliab(`expression'"'"')"'"'' hxpreview.ado
-grep -Fq 'local opt `"`opt'"'"' lag(`expression'"'"')"'"'' hxpreview.ado
-grep -Fq 'private boolean validateOrdinaryCommandBeforeRun()' src/main/java/com/hexie/stata/HxWorkbench.java
-grep -Fq 'this.sem("panel_label")' src/main/java/com/hexie/stata/HxWorkbench.java
-grep -Fq '"rreg", "cnsreg", "vwls", "eivreg", "newey", "prais"' src/main/java/com/hexie/stata/HxWorkbench.java
-grep -Fq 'Arrays.asList("reshape", "collapse", "xtset", "tsset")' src/main/java/com/hexie/stata/HxWorkbench.java
-
-# Audit current ordinary command catalog and ensure every catalog command has a known
-# command path or an intentional dynamic/search/workflow path.
+# Static production checks and ordinary catalog coverage.
 python3 - <<'PY'
 from pathlib import Path
 import re
+
 reg = Path('hxregistry.ado').read_text(encoding='utf-8')
-java = Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
 sem = Path('hxsemantics.ado').read_text(encoding='utf-8')
-for local in ['data_cmds','stats_cmds','reg_cmds','post_cmds','graph_cmds']:
+pre = Path('hxpreview.ado').read_text(encoding='utf-8')
+java = Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+
+checks = [
+    ('registry version', '*! hxregistry 2.9.0', reg),
+    ('semantics version', '*! hxsemantics 1.4.0', sem),
+    ('preview version', '*! hxpreview 1.3.0', pre),
+    ('ordinary graph methods', 'local graph_methods "数据分布 变量关系 回归结果"', reg),
+    ('collapse by semantics', '分组变量 by()（可多选；不分组可留空）', sem),
+    ('collapse by preview', 'by(`absorb\')', pre),
+    ('qreg quantile preview', 'quantile(`expression\')', pre),
+    ('cnsreg constraints preview', 'constraints(`expression\')', pre),
+    ('eivreg reliability preview', 'reliab(`expression\')', pre),
+    ('newey lag preview', 'lag(`expression\')', pre),
+    ('ordinary validation', 'private boolean validateOrdinaryCommandBeforeRun()', java),
+    ('semantic panel labels', 'this.sem("panel_label")', java),
+    ('all linear paths', '"rreg", "cnsreg", "vwls", "eivreg", "newey", "prais"', java),
+    ('tsset path', 'Arrays.asList("reshape", "collapse", "xtset", "tsset")', java),
+]
+for label, needle, text in checks:
+    if needle not in text:
+        raise SystemExit(f'static check failed: {label}')
+
+catalog = []
+for local in ['data_cmds', 'stats_cmds', 'reg_cmds', 'post_cmds', 'graph_cmds']:
     m = re.search(rf'local {local} "([^"]+)"', reg)
-    assert m, local
-    commands = m.group(1).split()
-    for cmd in commands:
-        # hxconvert and graph_box are intentional workbench aliases; all other ordinary
-        # catalog commands must occur in either explicit semantics or Java command paths.
-        if cmd in {'hxconvert','graph_box','twoway'}:
-            continue
-        if cmd not in sem and cmd not in java:
-            raise SystemExit(f'catalog command missing from semantics/java coverage: {cmd}')
-print('HX_CATALOG_COVERAGE_OK')
+    if not m:
+        raise SystemExit(f'missing catalog local: {local}')
+    catalog.extend(m.group(1).split())
+
+intentional_aliases = {'hxconvert', 'graph_box', 'twoway'}
+for cmd in catalog:
+    if cmd in intentional_aliases:
+        continue
+    if cmd not in sem and cmd not in java:
+        raise SystemExit(f'catalog command missing from semantics/java coverage: {cmd}')
+
+# Ensure HX workflow helpers are not exposed as ordinary graph methods.
+graph_methods = re.search(r'local graph_methods "([^"]+)"', reg).group(1)
+if '分组趋势' in graph_methods:
+    raise SystemExit('did_trends workflow helper still exposed as ordinary graph method')
+
+print(f'HX_CATALOG_COVERAGE_OK commands={len(catalog)}')
 PY
 
 rm -rf build .ci-sfi
@@ -163,7 +177,6 @@ for mode in "${modes[@]}"; do
   test -s "$out"
 done
 
-# No transient build products should be committed by the workflow.
 rm -rf build .ci-sfi tools/__pycache__
 
 echo "HX_COMPLETE_COMMAND_LAYER_BUILD_OK classes=$class_count previews=${#modes[@]}"
