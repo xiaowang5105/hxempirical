@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.0  12aug2026}{...}
+{* *! version 1.2.1  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -26,10 +26,11 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The start page keeps one stable layout. Search and six common research tasks stay
-at the top, current-data status and recent work appear on the right, and the full
-function catalog is shown directly below with natural scrolling. There is no
-expand/collapse state and no reserved blank area.
+The 1.2.1 interface follows the supplied 1672x941 reference layouts directly.
+The start page uses a fixed left navigation rail, a Start Analysis card, five
+quick actions, current-data status, a 2-by-3 common-task area, recent work, and a
+single row of additional functions. The linear-model directory and OneClick
+workspace use the same fixed card proportions and right-side guidance structure.
 
 {pstd}
 Research tasks can open a task workspace directly. The baseline-regression
