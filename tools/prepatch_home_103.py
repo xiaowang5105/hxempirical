@@ -1,4 +1,7 @@
 from pathlib import Path
+
+# Normalize small source-text differences so the release patch can stay strict
+# and fail loudly on any unexpected structural change.
 p = Path('src/main/java/com/hexie/stata/HxWorkbench.java')
 s = p.read_text(encoding='utf-8')
 old = '{"工具变量", "ivregress / ivreghdfe", "reg", "工具变量"}'
@@ -23,4 +26,13 @@ new_block = '''            "专题与图形",
 if old_block in s:
     s = s.replace(old_block, new_block, 1)
 p.write_text(s, encoding='utf-8')
+
+reg_path = Path('hxregistry.ado')
+reg = reg_path.read_text(encoding='utf-8')
+old_key = '    local key_ivregress "ivregress iv 工具变量 2sls liml gmm 内生性"'
+expected_key = '    local key_ivregress "ivregress iv 2sls gmm liml 工具变量 内生性"'
+if old_key in reg:
+    reg = reg.replace(old_key, expected_key, 1)
+reg_path.write_text(reg, encoding='utf-8')
+
 print('HX_PREPATCH_HOME_103_OK')
