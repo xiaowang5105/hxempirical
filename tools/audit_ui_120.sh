@@ -2,6 +2,8 @@
 set -euo pipefail
 python3 -m py_compile tools/redesign_ui_120.py
 python3 tools/redesign_ui_120.py
+# The redesign uses semantic Swing alignment constants; add the import to the patched source.
+sed -i '/import javax.swing.SwingUtilities;/a import javax.swing.SwingConstants;' src/main/java/com/hexie/stata/HxWorkbench.java
 
 grep -Fq 'public static final String VERSION = "1.2.0";' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -Fq 'private JComponent buildSidebar()' src/main/java/com/hexie/stata/HxWorkbench.java
