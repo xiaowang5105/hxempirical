@@ -19,8 +19,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '11'
+      - name: Repair refactor script quoting
+        run: python3 tools/repair_complete_command_layer_script.py
       - name: Apply command-layer completion patch
-        run: python3 tools/complete_command_layer.py
+        run: |
+          python3 -m py_compile tools/complete_command_layer.py
+          python3 tools/complete_command_layer.py
       - name: Build and run complete offline audit
         run: bash tools/complete_command_layer_ci.sh
       - name: Commit production changes
