@@ -1,4 +1,4 @@
-*! hxpreview 1.2.0  12aug2026
+*! hxpreview 1.2.1  12aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -173,7 +173,8 @@ program define hxpreview, rclass
     if "`has_vce'" == "1" {
         if `"`vce'"' == "robust" local opt `"`opt' vce(robust)"'
         else if `"`vce'"' == "cluster" & `"`cluster'"' != "" {
-            local opt `"`opt' vce(cluster `cluster')"'
+            if "`command'" == "ivreghdfe" local opt `"`opt' cluster(`cluster')"'
+            else local opt `"`opt' vce(cluster `cluster')"'
         }
     }
     if `"`options'"' != "" local opt `"`opt' `options'"'
