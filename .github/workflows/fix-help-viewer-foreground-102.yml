@@ -1,3 +1,4 @@
+# Build and release patch 1.0.2
 name: Fix help viewer foreground 1.0.2
 
 on:
