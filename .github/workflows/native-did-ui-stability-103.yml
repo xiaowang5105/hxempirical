@@ -22,7 +22,9 @@ jobs:
           java-version: '11'
 
       - name: Patch, build, and audit
-        run: bash tools/build_native_did_103.sh
+        run: |
+          python3 tools/prepatch_home_103.py
+          bash tools/build_native_did_103.sh
 
       - name: Commit production changes
         run: |
