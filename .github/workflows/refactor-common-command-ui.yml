@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   refactor-build-test:
-    if: ${{ !contains(github.event.head_commit.message, '[generated-ui]') }}
+    if: "${{ !contains(github.event.head_commit.message, '[generated-ui]') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,92 +98,75 @@ jobs:
               'move low-frequency fields into more settings'
           )
 
-          old_method = '''      private void addAdvancedSettings(int var1) {
-         this.advancedToggle.setSelected(false);
-         this.advancedToggle.setText("更多设置  +");
-         this.advancedContent.setVisible(false);
-         JPanel var2 = new JPanel();
-         var2.setOpaque(false);
-         var2.setLayout(new BoxLayout(var2, 1));
-         this.advancedToggle.setAlignmentX(0.0F);
-         this.advancedContent.setAlignmentX(0.0F);
-         var2.add(this.advancedToggle);
-         var2.add(Box.createVerticalStrut(7));
-         var2.add(this.advancedContent);
-         GridBagConstraints var3 = this.constraints(0, var1);
-         var3.gridwidth = 2;
-         var3.weightx = 1.0;
-         var3.fill = 2;
-         var3.insets = new Insets(0, 0, 13, 0);
-         this.formPanel.add(var2, var3);
-      }
-'''
-          new_method = '''      private void addAdvancedSettings(int var1, boolean var2, boolean var3, boolean var4) {
-         this.rebuildGenericAdvancedContent(var2, var3, var4);
-         this.advancedToggle.setSelected(false);
-         this.advancedToggle.setText("更多设置  +");
-         this.advancedContent.setVisible(false);
-         JPanel var5 = new JPanel();
-         var5.setOpaque(false);
-         var5.setLayout(new BoxLayout(var5, BoxLayout.Y_AXIS));
-         this.advancedToggle.setAlignmentX(0.0F);
-         this.advancedContent.setAlignmentX(0.0F);
-         var5.add(this.advancedToggle);
-         var5.add(Box.createVerticalStrut(7));
-         var5.add(this.advancedContent);
-         GridBagConstraints var6 = this.constraints(0, var1);
-         var6.gridwidth = 2;
-         var6.weightx = 1.0;
-         var6.fill = 2;
-         var6.insets = new Insets(0, 0, 13, 0);
-         this.formPanel.add(var5, var6);
-      }
-
-      private void rebuildGenericAdvancedContent(boolean var1, boolean var2, boolean var3) {
-         this.advancedContent.removeAll();
-         this.genericWeightVarFieldBlock = null;
-         if (var1) {
-            this.advancedContent.add(this.labeledInline("样本条件 if", this.ifCondition));
-            this.advancedContent.add(Box.createVerticalStrut(8));
-         }
-
-         if (var2) {
-            this.advancedContent.add(this.labeledInline("观测范围 in", this.inCondition));
-            this.advancedContent.add(Box.createVerticalStrut(8));
-         }
-
-         if (var3) {
-            JPanel var4 = new JPanel(new GridLayout(1, 2, 8, 0));
-            var4.setOpaque(false);
-            var4.add(this.miniLabeled("权重类型", this.genericWeightType));
-            var4.add(this.miniLabeled("权重变量", this.genericWeightVar));
-            this.genericWeightVarFieldBlock = this.labeledInline("权重", var4);
-            this.advancedContent.add(this.genericWeightVarFieldBlock);
-            this.advancedContent.add(Box.createVerticalStrut(8));
-         }
-
-         JLabel var5 = new JLabel("其他 Stata options（高级，可留空）");
-         var5.setForeground(MUTED);
-         var5.setFont(var5.getFont().deriveFont(10.5F));
-         var5.setAlignmentX(0.0F);
-         this.options.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
-         this.advancedContent.add(var5);
-         this.advancedContent.add(Box.createVerticalStrut(4));
-         this.advancedContent.add(this.options);
-         this.updateGenericWeightConditionalFields();
-         this.advancedContent.revalidate();
-         this.advancedContent.repaint();
-      }
-
-      private void updateGenericWeightConditionalFields() {
-         boolean var1 = !"无".equals(selected(this.genericWeightType));
-         this.genericWeightVar.setEnabled(var1);
-         if (!var1) {
-            this.genericWeightVar.setSelectedItem(null);
-         }
-      }
-'''
-          replace_once(old_method, new_method, 'advanced settings method')
+          start = text.index('      private void addAdvancedSettings(int var1) {')
+          end = text.index('\n\n      private void addTaskGroup', start)
+          new_lines = [
+              '      private void addAdvancedSettings(int var1, boolean var2, boolean var3, boolean var4) {',
+              '         this.rebuildGenericAdvancedContent(var2, var3, var4);',
+              '         this.advancedToggle.setSelected(false);',
+              '         this.advancedToggle.setText("更多设置  +");',
+              '         this.advancedContent.setVisible(false);',
+              '         JPanel var5 = new JPanel();',
+              '         var5.setOpaque(false);',
+              '         var5.setLayout(new BoxLayout(var5, BoxLayout.Y_AXIS));',
+              '         this.advancedToggle.setAlignmentX(0.0F);',
+              '         this.advancedContent.setAlignmentX(0.0F);',
+              '         var5.add(this.advancedToggle);',
+              '         var5.add(Box.createVerticalStrut(7));',
+              '         var5.add(this.advancedContent);',
+              '         GridBagConstraints var6 = this.constraints(0, var1);',
+              '         var6.gridwidth = 2;',
+              '         var6.weightx = 1.0;',
+              '         var6.fill = 2;',
+              '         var6.insets = new Insets(0, 0, 13, 0);',
+              '         this.formPanel.add(var5, var6);',
+              '      }',
+              '',
+              '      private void rebuildGenericAdvancedContent(boolean var1, boolean var2, boolean var3) {',
+              '         this.advancedContent.removeAll();',
+              '         this.genericWeightVarFieldBlock = null;',
+              '         if (var1) {',
+              '            this.advancedContent.add(this.labeledInline("样本条件 if", this.ifCondition));',
+              '            this.advancedContent.add(Box.createVerticalStrut(8));',
+              '         }',
+              '',
+              '         if (var2) {',
+              '            this.advancedContent.add(this.labeledInline("观测范围 in", this.inCondition));',
+              '            this.advancedContent.add(Box.createVerticalStrut(8));',
+              '         }',
+              '',
+              '         if (var3) {',
+              '            JPanel var4 = new JPanel(new GridLayout(1, 2, 8, 0));',
+              '            var4.setOpaque(false);',
+              '            var4.add(this.miniLabeled("权重类型", this.genericWeightType));',
+              '            var4.add(this.miniLabeled("权重变量", this.genericWeightVar));',
+              '            this.genericWeightVarFieldBlock = this.labeledInline("权重", var4);',
+              '            this.advancedContent.add(this.genericWeightVarFieldBlock);',
+              '            this.advancedContent.add(Box.createVerticalStrut(8));',
+              '         }',
+              '',
+              '         JLabel var5 = new JLabel("其他 Stata options（高级，可留空）");',
+              '         var5.setForeground(MUTED);',
+              '         var5.setFont(var5.getFont().deriveFont(10.5F));',
+              '         var5.setAlignmentX(0.0F);',
+              '         this.options.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));',
+              '         this.advancedContent.add(var5);',
+              '         this.advancedContent.add(Box.createVerticalStrut(4));',
+              '         this.advancedContent.add(this.options);',
+              '         this.updateGenericWeightConditionalFields();',
+              '         this.advancedContent.revalidate();',
+              '         this.advancedContent.repaint();',
+              '      }',
+              '',
+              '      private void updateGenericWeightConditionalFields() {',
+              '         boolean var1 = !"无".equals(selected(this.genericWeightType));',
+              '         this.genericWeightVar.setEnabled(var1);',
+              '         if (!var1) {',
+              '            this.genericWeightVar.setSelectedItem(null);',
+              '         }',
+              '      }'
+          ]
+          text = text[:start] + '\n'.join(new_lines) + text[end:]
 
           replace_once(
               '      private void updateConditionalFields() {\n         if (this.clusterFieldBlock != null) {\n            boolean var1 = "cluster".equalsIgnoreCase(selected(this.vce));\n            this.clusterFieldBlock.setVisible(var1);\n            this.formPanel.revalidate();\n            this.formPanel.repaint();\n         }\n      }',
