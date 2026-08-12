@@ -122,7 +122,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.2.1";
+   public static final String VERSION = "1.2.2";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -343,7 +343,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.2.1");
+      SFIToolkit.displayln("HxWorkbench 1.2.2");
       return 0;
    }
 
@@ -2300,7 +2300,7 @@ public final class HxWorkbench {
       private final CardLayout resultLayout = new CardLayout();
       private final JPanel resultCards = new JPanel(this.resultLayout);
       private final JTextArea resultSummaryArea = readonlyArea();
-      private final JLabel rightPaneTitle = new JLabel("数据与结果");
+      private final JLabel rightPaneTitle = new JLabel("当前数据");
       private final JTabbedPane oneClickResultTabs = new JTabbedPane();
       private final JTextArea oneClickOverview = readonlyArea();
       private final JLabel monitorStatus = new JLabel("等待执行");
@@ -2315,8 +2315,6 @@ public final class HxWorkbench {
       private final JTextArea monitorOutcome = readonlyArea();
       private final JTextArea monitorLog = readonlyArea();
       private final JProgressBar monitorProgress = new JProgressBar();
-      private final JToggleButton monitorDetailsToggle = new JToggleButton("详细运行信息  +");
-      private final JPanel monitorDetails = new JPanel(new BorderLayout(0, 7));
       private final DefaultTableModel runQueueModel = new DefaultTableModel(new String[]{"序号", "状态", "命令 / 任务", "耗时", "RC"}, 0) {
          @Override
          public boolean isCellEditable(int var1, int var2) {
@@ -2827,9 +2825,8 @@ public final class HxWorkbench {
       }
 
       private void populateMonitorDetailsPreviewState() {
-         this.monitorDetailsToggle.setSelected(true);
-         this.monitorDetailsToggle.setText("收起详细运行信息  −");
-         this.monitorDetails.setVisible(true);
+         this.dataTabs.setSelectedIndex(2);
+         this.rightPaneTitle.setText("当前数据");
       }
 
       private void populateGraphPreviewState() {
@@ -3316,7 +3313,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.1");
+         JLabel version = new JLabel("版本：1.2.2");
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
@@ -4205,8 +4202,6 @@ public final class HxWorkbench {
 
          JPanel search=this.refCard(); search.setLayout(null); search.setBounds(30,143,1115,58); JTextField find=new JTextField(); styleTextField(find); find.setToolTipText("搜索命令或分析目的，如 固定效应、分位数、工具变量"); find.setBounds(16,10,675,38); search.add(find); JButton all=this.refButton("全部",true); all.setBounds(715,10,78,38); search.add(all); JButton common=this.refButton("常用",false); common.setBounds(798,10,78,38); search.add(common); JButton advanced=this.refButton("进阶",false); advanced.setBounds(881,10,78,38); search.add(advanced); JButton filter=this.refButton("▽  筛选排序",false); filter.setBounds(980,10,115,38); search.add(filter); root.add(search);
 
-         JPanel recommend=this.refCard(); recommend.setLayout(new BoxLayout(recommend,BoxLayout.Y_AXIS)); recommend.setBounds(1165,146,240,640); JLabel rt=new JLabel("▥  推荐路径"); rt.setForeground(TEXT); rt.setFont(rt.getFont().deriveFont(Font.BOLD,14.0F)); rt.setAlignmentX(0.0F); recommend.add(rt); recommend.add(Box.createVerticalStrut(24)); recommend.add(this.exactLinearStep("1","先用常用命令","从常用命令入手，快速完成基础分析。",new Color(34,109,246))); recommend.add(Box.createVerticalStrut(28)); recommend.add(this.exactLinearStep("2","看示例与说明","查看示例与说明，理解命令用法与适用场景。",new Color(31,169,105))); recommend.add(Box.createVerticalStrut(28)); recommend.add(this.exactLinearStep("3","再进入进阶命令","根据需求选择进阶命令，满足更复杂的分析。",new Color(116,83,224))); recommend.add(Box.createVerticalGlue()); JPanel tip=new JPanel(new BorderLayout()); tip.setBackground(new Color(255,250,241)); tip.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(255,219,166),9),new EmptyBorder(13,13,13,13))); tip.add(new JLabel("<html><b><span style='color:#f59e0b'>☼ 小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法！</span></html>"),BorderLayout.CENTER); tip.setMaximumSize(new Dimension(Integer.MAX_VALUE,140)); recommend.add(tip); root.add(recommend);
-
          JPanel choose=this.refCard(); choose.setLayout(null); choose.setBackground(new Color(246,250,255)); choose.setBounds(30,217,1115,56); JLabel how=new JLabel("●  怎么选？"); how.setForeground(TEXT); how.setFont(how.getFont().deriveFont(Font.BOLD,14.0F)); how.setBounds(16,9,120,36); choose.add(how); JButton c1=this.refButton("↗  普通 OLS  → regress",false); c1.setBounds(140,9,198,36); c1.addActionListener(e->this.openCommandPage("regress")); choose.add(c1); JButton c2=this.refButton("♟  单组固定效应  → areg",false); c2.setBounds(350,9,202,36); c2.addActionListener(e->this.openCommandPage("areg")); choose.add(c2); JButton c3=this.refButton("▱  多维固定效应  → reghdfe",false); c3.setBounds(565,9,220,36); c3.addActionListener(e->this.openCommandPage("reghdfe")); choose.add(c3); JButton c4=this.refButton("⌁  关注分布位置  → qreg",false); c4.setBounds(800,9,210,36); c4.addActionListener(e->this.openCommandPage("qreg")); choose.add(c4); root.add(choose);
 
          JPanel commonCard=this.refCard(); commonCard.setLayout(null); commonCard.setBounds(30,282,1115,300); JLabel ct=new JLabel("常用命令"); ct.setForeground(TEXT); ct.setFont(ct.getFont().deriveFont(Font.BOLD,14.0F)); ct.setBounds(16,8,120,25); commonCard.add(ct); JComponent m1=this.exactLinearMainCard("↗","regress","普通线性回归","用 OLS 估计连续因变量与解释变量的线性关系。","regress y x c1 c2, vce(robust)",new Color(54,114,236)); m1.setBounds(16,42,525,112); commonCard.add(m1); JComponent m2=this.exactLinearMainCard("♟","areg","单组固定效应","在回归中吸收一组大量类别固定效应。","areg y x c, absorb(firm)",new Color(29,164,101)); m2.setBounds(557,42,525,112); commonCard.add(m2); JComponent m3=this.exactLinearMainCard("▱","reghdfe","高维固定效应回归","高效吸收多组固定效应并支持聚类标准误。","reghdfe y x c, absorb(firm year) vce(cluster firm)",new Color(245,125,30)); m3.setBounds(16,165,525,112); commonCard.add(m3); JComponent m4=this.exactLinearMainCard("⌁","qreg","分位数回归","估计解释变量对条件分布不同分位点的影响。","qreg y x c, quantile(.5)",new Color(134,84,225)); m4.setBounds(557,165,525,112); commonCard.add(m4); root.add(commonCard);
@@ -4987,7 +4982,7 @@ public final class HxWorkbench {
          this.resultCards.add(this.buildRegressPostPanel(), "regresspost");
          this.resultLayout.show(this.resultCards, "general");
          this.dataTabs.addTab("结果", this.resultCards);
-         this.dataTabs.addTab("运行", this.buildRunMonitorPanel());
+         this.dataTabs.addTab("日志", this.buildRunMonitorPanel());
          this.dataTabs.setBackground(SURFACE);
       }
 
@@ -5214,26 +5209,18 @@ public final class HxWorkbench {
          var10.setAlignmentX(0.0F);
          var2.add(var10);
          var2.add(Box.createVerticalStrut(10));
-         styleSecondaryButton(this.monitorDetailsToggle);
-         this.monitorDetailsToggle.setAlignmentX(0.0F);
-         var2.add(this.monitorDetailsToggle);
+         JLabel var8 = sectionCaption("执行记录");
+         var8.setAlignmentX(0.0F);
+         var2.add(var8);
          var2.add(Box.createVerticalStrut(7));
-         this.monitorLog.setRows(8);
+         this.monitorLog.setRows(10);
          this.monitorLog.setBackground(CODE_BG);
          this.monitorLog.setFont(new Font("Monospaced", 0, 11));
-         this.runQueueTable.setRowHeight(25);
-         this.runQueueTable.setFillsViewportHeight(true);
-         this.runQueueTable.setAutoResizeMode(3);
-         JTabbedPane var8 = new JTabbedPane();
-         var8.addTab("执行记录", softScroll(this.monitorLog));
-         var8.addTab("运行队列", softScroll(this.runQueueTable));
-         this.monitorDetails.setOpaque(false);
-         this.monitorDetails.add(var8, "Center");
-         this.monitorDetails.setPreferredSize(new Dimension(100, 230));
-         this.monitorDetails.setMaximumSize(new Dimension(Integer.MAX_VALUE, 250));
-         this.monitorDetails.setAlignmentX(0.0F);
-         this.monitorDetails.setVisible(false);
-         var2.add(this.monitorDetails);
+         JScrollPane var11 = softScroll(this.monitorLog);
+         var11.setAlignmentX(0.0F);
+         var11.setPreferredSize(new Dimension(100, 210));
+         var11.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
+         var2.add(var11);
          this.monitorCommand.setText("尚未执行命令");
          this.monitorOutcome.setText("运行后显示数据变化、回归样本和核心估计结果。\n普通 Stata 命令使用不确定进度，不显示虚假百分比。");
          var1.add(softScroll(var2), "Center");
@@ -5343,7 +5330,7 @@ public final class HxWorkbench {
 
       private void selectResultView(String var1, boolean var2) {
          this.resultLayout.show(this.resultCards, var1);
-         this.rightPaneTitle.setText("任务结果");
+         this.rightPaneTitle.setText("当前数据");
          if (var2) {
             this.dataTabs.setSelectedIndex(1);
          }
@@ -5351,7 +5338,7 @@ public final class HxWorkbench {
 
       private void selectRunView() {
          this.dataTabs.setSelectedIndex(2);
-         this.rightPaneTitle.setText("运行状态");
+         this.rightPaneTitle.setText("当前数据");
       }
 
       private JComponent buildStatusBar() {
@@ -5388,25 +5375,9 @@ public final class HxWorkbench {
             }
          });
          this.refreshButton.addActionListener(var1x -> this.refreshDataset(false));
-         this.dataTabs.addChangeListener(var1x -> {
-            int var2x = this.dataTabs.getSelectedIndex();
-            if (var2x == 0) {
-               this.rightPaneTitle.setText("当前数据");
-            } else if (var2x == 1) {
-               this.rightPaneTitle.setText("任务结果");
-            } else if (var2x == 2) {
-               this.rightPaneTitle.setText("运行状态");
-            }
-         });
+         this.dataTabs.addChangeListener(var1x -> this.rightPaneTitle.setText("当前数据"));
          this.runButton.addActionListener(var1x -> this.runCurrentCommand());
          this.copyCommandButton.addActionListener(var1x -> this.copyCurrentCommand());
-         this.monitorDetailsToggle.addActionListener(var1x -> {
-            boolean var2x = this.monitorDetailsToggle.isSelected();
-            this.monitorDetailsToggle.setText(var2x ? "收起详细信息  −" : "详细运行信息  +");
-            this.monitorDetails.setVisible(var2x);
-            this.monitorDetails.getParent().revalidate();
-            this.monitorDetails.getParent().repaint();
-         });
          this.dataTable.getSelectionModel().addListSelectionListener(var1x -> this.updateSelectedColumnSummary());
          this.dataTable.getColumnModel().getSelectionModel().addListSelectionListener(var1x -> this.updateSelectedColumnSummary());
          this.dataTable.getTableHeader().addMouseListener(new MouseAdapter() {
@@ -6653,7 +6624,7 @@ public final class HxWorkbench {
 
          JPanel command = this.refCard(); command.setLayout(null); command.setBounds(16,704,745,106); JLabel ctitle=new JLabel("即将执行的 Stata 命令"); ctitle.setForeground(TEXT); ctitle.setFont(ctitle.getFont().deriveFont(Font.BOLD,12.0F)); ctitle.setBounds(14,6,190,22); command.add(ctitle); this.exactOneClickCommand.setEditable(false); this.exactOneClickCommand.setLineWrap(true); this.exactOneClickCommand.setWrapStyleWord(true); this.exactOneClickCommand.setBackground(new Color(244,248,255)); this.exactOneClickCommand.setForeground(TEXT); this.exactOneClickCommand.setFont(new Font("Monospaced",Font.PLAIN,10)); this.exactOneClickCommand.setBorder(new EmptyBorder(9,10,9,10)); JScrollPane cs=softScroll(this.exactOneClickCommand); cs.setBounds(14,32,420,55); command.add(cs); JButton copy=this.refButton("▣  复制命令",false); copy.setBounds(450,39,110,38); copy.addActionListener(e->{ Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(this.exactOneClickCommand.getText()),null); }); command.add(copy); JButton run=this.refButton("▶  运行外部 OneClick",true); run.setBounds(570,39,155,38); run.addActionListener(e->this.runOneClick()); command.add(run); root.add(command);
 
-         JPanel data = this.refCard(); data.setLayout(null); data.setBounds(780,115,405,695); JLabel dt=new JLabel("▣  当前数据"); dt.setForeground(TEXT); dt.setFont(dt.getFont().deriveFont(Font.BOLD,13.0F)); dt.setBounds(16,10,160,25); data.add(dt); JButton refresh=this.refButton("↻ 刷新",false); refresh.setBounds(315,9,70,32); refresh.addActionListener(e->this.refreshDataset(false)); data.add(refresh); JLabel tabs=new JLabel("数据      |      结果      |      日志"); tabs.setForeground(new Color(54,108,220)); tabs.setBounds(20,52,260,24); data.add(tabs); JComponent ill=this.exactEmptyDataIllustration(); ill.setBounds(72,125,260,210); data.add(ill); this.exactOneClickDataStatus.setForeground(TEXT); this.exactOneClickDataStatus.setFont(this.exactOneClickDataStatus.getFont().deriveFont(Font.BOLD,14.0F)); this.exactOneClickDataStatus.setBounds(45,340,315,30); data.add(this.exactOneClickDataStatus); this.exactOneClickDataDetail.setForeground(MUTED); this.exactOneClickDataDetail.setFont(this.exactOneClickDataDetail.getFont().deriveFont(9.5F)); this.exactOneClickDataDetail.setBounds(30,372,345,25); data.add(this.exactOneClickDataDetail); JButton au=this.refButton("▣  载入 auto 示例数据",false); au.setBounds(62,415,280,40); au.addActionListener(e->this.runUtility("sysuse auto, clear",true)); data.add(au); JButton own=this.refButton("↥  载入自己的 DTA",false); own.setBounds(62,465,280,40); own.addActionListener(e->this.chooseAndLoadDta()); data.add(own); JButton cv=this.refButton("▤  Excel / CSV 转换为 DTA",false); cv.setBounds(62,515,280,40); cv.addActionListener(e->this.navigateTo("data","导入与转换","hxconvert")); data.add(cv); JLabel hint=new JLabel("☼  提示：左侧完成变量设置，右侧查看数据与结果。"); hint.setForeground(MUTED); hint.setBounds(45,618,320,30); data.add(hint); root.add(data);
+         JPanel data = this.refCard(); data.setLayout(null); data.setBounds(780,115,660,695); JLabel dt=new JLabel("▣  当前数据"); dt.setForeground(TEXT); dt.setFont(dt.getFont().deriveFont(Font.BOLD,13.0F)); dt.setBounds(16,10,160,25); data.add(dt); JButton refresh=this.refButton("↻ 刷新",false); refresh.setBounds(570,9,70,32); refresh.addActionListener(e->this.refreshDataset(false)); data.add(refresh); JLabel tabs=new JLabel("数据      |      结果      |      日志"); tabs.setForeground(new Color(54,108,220)); tabs.setBounds(24,52,330,24); data.add(tabs); JComponent ill=this.exactEmptyDataIllustration(); ill.setBounds(200,125,260,210); data.add(ill); this.exactOneClickDataStatus.setForeground(TEXT); this.exactOneClickDataStatus.setFont(this.exactOneClickDataStatus.getFont().deriveFont(Font.BOLD,14.0F)); this.exactOneClickDataStatus.setBounds(170,340,320,30); data.add(this.exactOneClickDataStatus); this.exactOneClickDataDetail.setForeground(MUTED); this.exactOneClickDataDetail.setFont(this.exactOneClickDataDetail.getFont().deriveFont(9.5F)); this.exactOneClickDataDetail.setBounds(145,372,370,25); data.add(this.exactOneClickDataDetail); JButton au=this.refButton("▣  载入 auto 示例数据",false); au.setBounds(190,415,280,40); au.addActionListener(e->this.runUtility("sysuse auto, clear",true)); data.add(au); JButton own=this.refButton("↥  载入自己的 DTA",false); own.setBounds(190,465,280,40); own.addActionListener(e->this.chooseAndLoadDta()); data.add(own); JButton cv=this.refButton("▤  Excel / CSV 转换为 DTA",false); cv.setBounds(190,515,280,40); cv.addActionListener(e->this.navigateTo("data","导入与转换","hxconvert")); data.add(cv); JLabel hint=new JLabel("☼  提示：左侧完成变量设置，右侧查看数据与结果。"); hint.setForeground(MUTED); hint.setBounds(160,618,350,30); data.add(hint); root.add(data);
 
          JPanel recommend=this.refCard(); recommend.setLayout(new BoxLayout(recommend,BoxLayout.Y_AXIS)); recommend.setBounds(1200,115,240,695); JLabel rt=new JLabel("▥  推荐流程"); rt.setForeground(TEXT); rt.setFont(rt.getFont().deriveFont(Font.BOLD,14.0F)); rt.setAlignmentX(0.0F); recommend.add(rt); recommend.add(Box.createVerticalStrut(22)); String[][] rs={{"1","先确定核心变量","明确因变量 Y 与核心解释变量 X。"},{"2","再放入候选控制变量","根据理论与数据特征，添加候选控制变量。"},{"3","最后选择模型并运行","选择模型方法与显著性水平，运行外部 OneClick。"}}; Color[] rc={new Color(34,109,246),new Color(31,169,105),new Color(116,83,224)}; for(int i=0;i<3;i++){ JPanel rr=new JPanel(new BorderLayout(10,0)); rr.setOpaque(false); JComponent n=this.exactNumberBadge(rs[i][0],rc[i]); JPanel tx=new JPanel(); tx.setOpaque(false); tx.setLayout(new BoxLayout(tx,BoxLayout.Y_AXIS)); JLabel a=new JLabel(rs[i][1]); a.setForeground(TEXT); a.setFont(a.getFont().deriveFont(Font.BOLD,11.0F)); JLabel d=new JLabel("<html><div style='width:155px;color:#718096'>"+html(rs[i][2])+"</div></html>"); tx.add(a); tx.add(Box.createVerticalStrut(6)); tx.add(d); rr.add(n,BorderLayout.WEST); rr.add(tx,BorderLayout.CENTER); rr.setMaximumSize(new Dimension(Integer.MAX_VALUE,120)); recommend.add(rr); recommend.add(Box.createVerticalStrut(14)); } recommend.add(Box.createVerticalGlue()); JPanel tip=new JPanel(new BorderLayout()); tip.setBackground(new Color(255,250,241)); tip.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(255,219,166),9),new EmptyBorder(13,13,13,13))); tip.add(new JLabel("<html><b><span style='color:#f59e0b'>☼ 小贴士</span></b><br><br><span style='color:#68758b'>OneClick 最适合比较不同控制变量组合的稳健性结果，而不是替代理论选择。</span></html>"),BorderLayout.CENTER); tip.setMaximumSize(new Dimension(Integer.MAX_VALUE,150)); recommend.add(tip); root.add(recommend);
          return root;
