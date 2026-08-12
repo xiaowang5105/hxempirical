@@ -5869,6 +5869,13 @@ public final class HxWorkbench {
          this.runButton.setText("绘制图形");
          this.runButton.setEnabled(true);
          this.breadcrumbLabel.setText(commandPath(var1));
+         this.depvar.setSelectedItem(null);
+         this.panel.setSelectedItem(null);
+         this.time.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.ifCondition.setText("");
+         this.options.setText("");
+         this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
          this.formPanel.removeAll();
          int var2 = 0;
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
@@ -5877,8 +5884,7 @@ public final class HxWorkbench {
             this.insightArea.setText("主要意图：观察单个数值变量的分布形状、偏态和尾部。\n\n推荐数据：包含连续或有序数值变量的数据。\n\n优点：回归前快速发现长尾、多峰和异常值。\n\n缺点与注意：分箱或带宽会影响视觉结果，图形主要用于描述与诊断。");
             this.syntaxArea.setText(var1 + " varname [if] [, options]");
             this.addField(var2++, "要观察的变量", this.depvar);
-            this.addField(var2++, "筛选条件 if（可选）", this.ifCondition);
-            this.addField(var2++, "其他图形选项（可选）", this.options);
+            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
          } else if (Arrays.asList("scatter", "lfit").contains(var1)) {
             this.commandTitle.setText(var1 + ("scatter".equals(var1) ? " - 散点图" : " - 线性拟合图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway " + var1 + " y x</html>");
@@ -5891,8 +5897,7 @@ public final class HxWorkbench {
             this.syntaxArea.setText("twoway " + var1 + " y x [if] [, options]");
             this.addField(var2++, "纵轴变量 Y", this.depvar);
             this.addField(var2++, "横轴变量 X（选择一个）", this.listPane(this.variables));
-            this.addField(var2++, "筛选条件 if（可选）", this.ifCondition);
-            this.addField(var2++, "其他图形选项（可选）", this.options);
+            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
          } else if ("graph_box".equals(var1)) {
             this.commandTitle.setText("graph box - 分布与异常值箱线图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph box y, over(group)</html>");
@@ -5900,8 +5905,7 @@ public final class HxWorkbench {
             this.syntaxArea.setText("graph box y [, over(group) options]");
             this.addField(var2++, "要观察的变量", this.depvar);
             this.addField(var2++, "分组变量（可选）", this.panel);
-            this.addField(var2++, "筛选条件 if（可选）", this.ifCondition);
-            this.addField(var2++, "其他图形选项（可选）", this.options);
+            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
          } else if ("did_trends".equals(var1)) {
             this.commandTitle.setText("处理组 / 对照组趋势图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> hxtrendplot y, group(treat) time(year)</html>");
@@ -5911,8 +5915,7 @@ public final class HxWorkbench {
             this.addField(var2++, "结果变量 Y", this.depvar);
             this.addField(var2++, "处理组变量（建议 0/1）", this.panel);
             this.addField(var2++, "时间变量", this.time);
-            this.addField(var2++, "筛选条件 if（可选）", this.ifCondition);
-            this.addField(var2++, "政策时点或图形选项（可选）", this.options);
+            this.addSpecialGraphAdvancedSettings(var2++, true, "政策时点或其他选项");
          } else {
             this.commandTitle.setText("twoway - 自定义叠加图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway (scatter y x) (lfit y x)</html>");
@@ -5923,7 +5926,7 @@ public final class HxWorkbench {
             }
 
             this.addField(var2++, "图层表达式", this.expression);
-            this.addField(var2++, "其他图形选项（可选）", this.options);
+            this.addSpecialGraphAdvancedSettings(var2++, false, "其他图形选项");
          }
 
          GridBagConstraints var3 = this.constraints(0, var2);
@@ -5934,6 +5937,37 @@ public final class HxWorkbench {
          this.formPanel.repaint();
          this.updateSpecialGraphPreview();
          this.statusLabel.setText("图形页面已就绪；右侧“图形预览”会随变量选择更新。");
+      }
+
+
+      private void addSpecialGraphAdvancedSettings(int row, boolean includeIf, String optionLabel) {
+         JPanel content = new JPanel();
+         content.setOpaque(false);
+         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+         if (includeIf) {
+            content.add(this.labeledInline("样本条件 if", this.ifCondition));
+            content.add(Box.createVerticalStrut(8));
+         }
+         content.add(this.labeledInline(optionLabel, this.options));
+         content.setVisible(false);
+         JToggleButton toggle = new JToggleButton("展开更多设置  +");
+         styleSecondaryButton(toggle);
+         toggle.addActionListener(event -> {
+            boolean expanded = toggle.isSelected();
+            toggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            content.setVisible(expanded);
+            this.formPanel.revalidate();
+            this.formPanel.repaint();
+         });
+         JPanel block = new JPanel();
+         block.setOpaque(false);
+         block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
+         toggle.setAlignmentX(0.0F);
+         content.setAlignmentX(0.0F);
+         block.add(toggle);
+         block.add(Box.createVerticalStrut(7));
+         block.add(content);
+         this.addField(row, "更多设置", block);
       }
 
       private void showOneClickPage(String var1) {
@@ -6248,8 +6282,28 @@ public final class HxWorkbench {
       private void rebuildForm() {
          this.rebuilding = true;
          this.formPanel.removeAll();
+         this.depvar.setSelectedItem(null);
+         this.panel.setSelectedItem(null);
+         this.time.setSelectedItem(null);
+         this.cluster.setSelectedItem(null);
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.absorb.clearSelection();
+         this.endog.clearSelection();
+         this.instruments.clearSelection();
+         this.newvar.setText("");
+         this.expression.setText("");
+         this.usingFile.setText("");
+         this.ifCondition.setText("");
+         this.inCondition.setText("");
          this.options.setText("");
          this.refreshVariableControls();
+         this.absorb.setSelectionMode("areg".equals(this.currentCommand) ? 0 : 2);
+         String defaultExpression = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_default_expression"));
+         if (!defaultExpression.isBlank()) {
+            this.expression.setText(defaultExpression);
+         }
          this.model.removeAllItems();
 
          for (String var2 : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_models"))) {
@@ -6306,8 +6360,8 @@ public final class HxWorkbench {
          }
 
          if (this.flag("needs_panel")) {
-            this.addField(var4++, "个体 / 面板变量", this.panel);
-            this.addField(var4++, "时间变量", this.time);
+            this.addField(var4++, this.sem("panel_label"), this.panel);
+            this.addField(var4++, this.sem("time_label"), this.time);
          }
 
          if (this.flag("has_absorb")) {
@@ -7996,7 +8050,8 @@ public final class HxWorkbench {
          } else if ("oneclick".equals(this.currentCommand) || "oneclick_robustness".equals(this.currentCommand)) {
             this.runOneClick();
          } else if (!"did_builder".equals(this.currentCommand) || this.validateDidBeforeRun()) {
-            if (this.validateFocusedEstimationBeforeRun()
+            if (this.validateOrdinaryCommandBeforeRun()
+               && this.validateFocusedEstimationBeforeRun()
                && (!"regress".equals(this.currentCommand) || !this.regressWorkspaceActive || this.validateRegressBeforeRun())) {
                String var1 = this.previewArea.getText().trim();
                if (var1.isEmpty()) {
@@ -8025,13 +8080,49 @@ public final class HxWorkbench {
       }
 
       private boolean validateFocusedEstimationBeforeRun() {
-         if (!Arrays.asList("reghdfe", "ppmlhdfe", "ivregress", "ivreghdfe", "xtreg").contains(this.currentCommand)) {
+         List<String> estimators = Arrays.asList(
+            "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
+            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe"
+         );
+         if (!estimators.contains(this.currentCommand)) {
             return true;
          }
 
          if (this.flag("has_depvar") && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择因变量。", "因变量缺失", 1);
             return false;
+         }
+
+         if ("areg".equals(this.currentCommand) && this.absorb.getSelectedValuesList().size() != 1) {
+            JOptionPane.showMessageDialog(this, "areg 需要且只能选择 1 个 absorb() 固定效应变量。", "固定效应设置尚未完整", 1);
+            return false;
+         }
+
+         String structured = this.expression.getText().trim();
+         if ("cnsreg".equals(this.currentCommand) && structured.isBlank()) {
+            JOptionPane.showMessageDialog(this, "cnsreg 需要填写已经定义好的 constraint 编号。", "约束设置尚未完整", 1);
+            return false;
+         }
+         if ("eivreg".equals(this.currentCommand) && structured.isBlank()) {
+            JOptionPane.showMessageDialog(this, "eivreg 需要填写 reliab() 中的变量及可靠度。", "可靠度设置尚未完整", 1);
+            return false;
+         }
+         if ("newey".equals(this.currentCommand)) {
+            if (structured.isBlank() || !structured.matches("\\d+")) {
+               JOptionPane.showMessageDialog(this, "newey 需要填写非负整数 lag 阶数，例如 4。", "lag 设置尚未完整", 1);
+               return false;
+            }
+         }
+         if ("qreg".equals(this.currentCommand) && !structured.isBlank()) {
+            try {
+               double q = Double.parseDouble(structured);
+               if (!(q > 0.0 && q < 1.0)) {
+                  throw new NumberFormatException();
+               }
+            } catch (NumberFormatException ex) {
+               JOptionPane.showMessageDialog(this, "quantile() 请填写 0 到 1 之间的数值，例如 0.25。", "分位点无效", 1);
+               return false;
+            }
          }
 
          if (this.flag("has_iv")) {
@@ -8082,6 +8173,118 @@ public final class HxWorkbench {
             return false;
          }
 
+         return true;
+      }
+
+      private boolean validateOrdinaryCommandBeforeRun() {
+         String command = this.currentCommand;
+         if (Arrays.asList("histogram", "kdensity", "graph_box").contains(command) && selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择要绘制的变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("scatter", "lfit").contains(command)) {
+            if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() != 1) {
+               JOptionPane.showMessageDialog(this, "请选择纵轴 Y，并且只选择 1 个横轴 X。", "图形设置尚未完整", 1);
+               return false;
+            }
+         }
+         if ("twoway".equals(command) && this.expression.getText().trim().isBlank()) {
+            JOptionPane.showMessageDialog(this, "请填写 twoway 图层表达式。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("did_trends".equals(command)
+            && (selected(this.depvar).isBlank() || selected(this.panel).isBlank() || selected(this.time).isBlank())) {
+            JOptionPane.showMessageDialog(this, "趋势图需要结果变量、处理组变量和时间变量。", "趋势图设置尚未完整", 1);
+            return false;
+         }
+         if ("generate".equals(command) && (this.newvar.getText().trim().isBlank() || this.expression.getText().trim().isBlank())) {
+            JOptionPane.showMessageDialog(this, "generate 需要新变量名和计算公式。", "变量生成设置尚未完整", 1);
+            return false;
+         }
+         if ("replace".equals(command) && (selected(this.depvar).isBlank() || this.expression.getText().trim().isBlank())) {
+            JOptionPane.showMessageDialog(this, "replace 需要选择原变量并填写新的计算表达式。", "变量修改设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("encode", "decode").contains(command)
+            && (selected(this.depvar).isBlank() || this.newvar.getText().trim().isBlank())) {
+            JOptionPane.showMessageDialog(this, command + " 需要原变量和新变量名。", "转换设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("destring", "tostring").contains(command)) {
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "请选择要转换的原变量。", "转换设置尚未完整", 1);
+               return false;
+            }
+            if (!"覆盖原变量".equals(selected(this.model)) && this.newvar.getText().trim().isBlank()) {
+               JOptionPane.showMessageDialog(this, "选择生成新变量时，请填写新变量名。", "转换设置尚未完整", 1);
+               return false;
+            }
+         }
+         if ("winsor2".equals(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请选择至少 1 个需要缩尾的变量。", "缩尾设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("keep", "drop").contains(command)) {
+            if ("处理变量".equals(selected(this.model)) && this.variables.getSelectedValuesList().isEmpty()) {
+               JOptionPane.showMessageDialog(this, command + " 选择“处理变量”时，需要选择至少 1 个变量。", "样本/变量处理设置尚未完整", 1);
+               return false;
+            }
+            if ("处理样本".equals(selected(this.model)) && this.ifCondition.getText().trim().isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 选择“处理样本”时，需要填写 if 条件。", "样本/变量处理设置尚未完整", 1);
+               return false;
+            }
+         }
+         if ("merge".equals(command)
+            && (this.variables.getSelectedValuesList().isEmpty() || this.usingFile.getText().trim().isBlank() || selected(this.model).isBlank())) {
+            JOptionPane.showMessageDialog(this, "merge 需要合并关系、关联变量和 using 文件。", "合并设置尚未完整", 1);
+            return false;
+         }
+         if ("append".equals(command) && this.usingFile.getText().trim().isBlank()) {
+            JOptionPane.showMessageDialog(this, "append 需要选择 using 文件。", "追加设置尚未完整", 1);
+            return false;
+         }
+         if ("reshape".equals(command)
+            && (this.expression.getText().trim().isBlank() || selected(this.panel).isBlank() || selected(this.time).isBlank())) {
+            JOptionPane.showMessageDialog(this, "reshape 需要 stub、i() 个体标识和 j() 维度变量。", "reshape 设置尚未完整", 1);
+            return false;
+         }
+         if ("collapse".equals(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "collapse 需要选择至少 1 个汇总变量。", "汇总设置尚未完整", 1);
+            return false;
+         }
+         if ("xtset".equals(command) && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "xtset 需要选择面板变量。", "面板设置尚未完整", 1);
+            return false;
+         }
+         if ("tsset".equals(command) && selected(this.time).isBlank()) {
+            JOptionPane.showMessageDialog(this, "tsset 需要选择时间变量；纯时间序列时面板变量可以留空。", "时间设置尚未完整", 1);
+            return false;
+         }
+         if ("tabstat".equals(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "tabstat 需要选择至少 1 个要汇总的变量。", "描述统计设置尚未完整", 1);
+            return false;
+         }
+         if ("ttest".equals(command)) {
+            if (this.variables.getSelectedValuesList().size() != 1 || this.expression.getText().trim().isBlank()) {
+               JOptionPane.showMessageDialog(this, "ttest 需要选择 1 个被检验变量，并按检验方式填写比较值、分组变量或第二变量。", "t 检验设置尚未完整", 1);
+               return false;
+            }
+         }
+         if ("tabulate".equals(command)) {
+            int nvars = this.variables.getSelectedValuesList().size();
+            if (nvars < 1 || nvars > 2) {
+               JOptionPane.showMessageDialog(this, "tabulate 请选择 1 个变量做频数表，或 2 个变量做列联表。", "频数列联设置尚未完整", 1);
+               return false;
+            }
+         }
+         if (Arrays.asList("test", "lincom").contains(command) && this.expression.getText().trim().isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要填写要检验或计算的系数表达式。", "后估计设置尚未完整", 1);
+            return false;
+         }
+         if ("predict".equals(command) && this.newvar.getText().trim().isBlank()) {
+            JOptionPane.showMessageDialog(this, "predict 需要填写新变量名。", "预测设置尚未完整", 1);
+            return false;
+         }
          return true;
       }
 
@@ -8914,7 +9117,7 @@ public final class HxWorkbench {
                            ? "import excel"
                            : "import delimited"
                      )
-                     : this.currentCommand
+                     : ("graph_box".equals(this.currentCommand) ? "graph box" : ("did_trends".equals(this.currentCommand) ? "hxtrendplot" : this.currentCommand))
                );
             HxWorkbench.StataBridge.execute("help " + var1, true);
          }
@@ -9132,7 +9335,7 @@ public final class HxWorkbench {
             return "数据处理|样本处理";
          } else if (Arrays.asList("merge", "append").contains(var0)) {
             return "数据处理|合并与追加";
-         } else if (Arrays.asList("reshape", "collapse", "xtset").contains(var0)) {
+         } else if (Arrays.asList("reshape", "collapse", "xtset", "tsset").contains(var0)) {
             return "数据处理|数据结构";
          } else if (Arrays.asList("summarize", "tabstat").contains(var0)) {
             return "统计与检验|描述统计";
@@ -9142,7 +9345,7 @@ public final class HxWorkbench {
             return "统计与检验|均值检验";
          } else if ("tabulate".equals(var0)) {
             return "统计与检验|频数列联";
-         } else if (Arrays.asList("regress", "areg", "reghdfe", "qreg").contains(var0)) {
+         } else if (Arrays.asList("regress", "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais").contains(var0)) {
             return "回归模型|线性模型";
          } else if (Arrays.asList("xtreg", "xtlogit", "xtprobit").contains(var0)) {
             return "回归模型|面板模型";

@@ -1,4 +1,4 @@
-*! hxregistry 2.8.1  12aug2026
+*! hxregistry 2.9.0  12aug2026
 *! Command-first catalog plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -19,7 +19,7 @@ program define hxregistry, rclass
     local stats_methods "描述统计 相关分析 均值检验 频数列联"
     local reg_methods "线性模型 面板模型 二元结果 计数模型 工具变量"
     local post_methods "系数检验 预测边际"
-    local graph_methods "数据分布 变量关系 分组趋势 回归结果"
+    local graph_methods "数据分布 变量关系 回归结果"
     local did_methods "DID分步构建 平行趋势与动态图"
     local oneclick_methods "控制变量组合筛选 控制变量组合稳健性"
 

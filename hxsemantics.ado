@@ -1,4 +1,4 @@
-*! hxsemantics 1.3.2  12aug2026
+*! hxsemantics 1.4.0  12aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -50,6 +50,8 @@ program define hxsemantics, rclass
     local endog_label "内生变量（需要处理）"
     local inst_label "工具变量"
     local using_label "副表 / using 文件"
+    local panel_label "个体 / 面板变量"
+    local time_label "时间变量"
     local if_label "样本条件 if（可选）"
     local example1 "`cmd' y x"
     local explain1 "示意：请结合页面字段和 Help 确认该命令的实际参数。"
@@ -182,7 +184,8 @@ program define hxsemantics, rclass
         local models "宽表转长表（long） 长表转宽表（wide）"
         local model_before 1
         local expr_label "变量前缀 stub（如 income）"
-        local dep_label "个体标识 i()"
+        local panel_label "个体标识 i()"
+        local time_label "维度变量 j()"
         local has_depvar 0
         local has_varlist 0
         local has_expression 1
@@ -201,10 +204,11 @@ program define hxsemantics, rclass
         local model_label "汇总统计量"
         local models "均值（mean） 总和（sum） 中位数（median） 样本数（count）"
         local vars_label "要汇总的数值变量"
-        local dep_label "分组变量 by()"
+        local absorb_label "分组变量 by()（可多选；不分组可留空）"
         local has_depvar 0
         local has_varlist 1
-        local needs_panel 1
+        local has_absorb 1
+        local needs_panel 0
         local example1 "collapse (mean) y x, by(firm)"
         local explain1 "按 firm 汇总 y、x 的均值，每个企业保留一行。"
         local example2 "collapse (sum) sales, by(firm year)"
@@ -221,6 +225,8 @@ program define hxsemantics, rclass
             local explain1 "firm 是企业，year 是年份。"
             local example2 "xtset firm"
             local explain2 "只有个体变量，没有规则的时间变量。"
+            local panel_label "面板变量（必填）"
+            local time_label "时间变量（可选）"
         }
         else {
             local title "tsset — 设置时间序列结构"
@@ -230,6 +236,8 @@ program define hxsemantics, rclass
             local explain1 "year 是时间变量。"
             local example2 "tsset firm year"
             local explain2 "firm 是面板变量，year 是时间变量。"
+            local panel_label "面板变量（可选；纯时间序列留空）"
+            local time_label "时间变量（必填）"
         }
         local has_depvar 0
         local has_varlist 0
@@ -308,6 +316,30 @@ program define hxsemantics, rclass
         local has_expression 1
         local show_advanced 1
     }
+    else if inlist("`cmd'", "duplicates", "misstable") {
+        local has_depvar 0
+        local has_varlist 1
+        local vars_label "检查变量（可选；留空按命令默认范围）"
+        local show_advanced 1
+        if "`cmd'" == "duplicates" {
+            local title "duplicates report — 检查重复记录"
+            local purpose1 "检查整行记录或指定变量组合是否重复。"
+            local purpose2 "页面最终执行 Stata 官方 duplicates report；选变量时按这些变量判断重复。"
+            local example1 "duplicates report firm year"
+            local explain1 "检查 firm-year 键是否出现重复。"
+            local example2 "duplicates report"
+            local explain2 "检查整行完全重复的记录。"
+        }
+        else {
+            local title "misstable summarize — 汇总缺失值"
+            local purpose1 "使用 Stata 官方 misstable summarize 查看变量缺失情况。"
+            local purpose2 "可选择变量；留空时按 Stata 默认范围汇总。"
+            local example1 "misstable summarize y x c1"
+            local explain1 "汇总 y、x、c1 的缺失情况。"
+            local example2 "misstable summarize"
+            local explain2 "按 Stata 默认范围汇总缺失情况。"
+        }
+    }
     else if inlist("`cmd'", "summarize", "tabstat", "correlate", "pwcorr", "ttest", "tabulate") {
         local has_depvar 0
         local has_varlist 1
@@ -356,7 +388,7 @@ program define hxsemantics, rclass
             local purpose2 "选择检验方式后，填写比较值、分组变量或第二个变量。"
             local model_label "检验方式"
             local models "单样本（=数值） 分组比较 配对比较"
-            local expr_label "比较数值（如 0）"
+            local expr_label "比较值 / 分组变量 / 第二变量（随检验方式填写）"
             local has_expression 1
             local example1 "ttest y == 0"
             local explain1 "检验 y 的均值是否等于 0。"
@@ -414,9 +446,12 @@ program define hxsemantics, rclass
             local explain2 "进一步把标准误按企业聚类。"
         }
         else if "`cmd'" == "qreg" {
+            local template "qreg"
+            local has_expression 1
+            local expr_label "分位点 quantile()（可选；默认 0.5）"
             local title "qreg — 分位数回归"
             local purpose1 "估计解释变量对因变量某个分位点的影响，而不仅是均值影响。"
-            local purpose2 "默认估计中位数；其他分位点在更多设置中填写 quantile()。"
+            local purpose2 "默认估计中位数；需要其他分位点时直接填写 0 到 1 之间的数值。"
             local example1 "qreg y x c1 c2"
             local explain1 "估计 y 的中位数回归。"
             local example2 "qreg y x c1 c2, quantile(.25)"
@@ -432,36 +467,48 @@ program define hxsemantics, rclass
             local explain2 "同时保存每个观测最终获得的稳健权重。"
         }
         else if "`cmd'" == "cnsreg" {
+            local template "cnsreg"
+            local has_expression 1
+            local expr_label "约束编号 constraints()（如 1 2）"
             local title "cnsreg — 约束线性回归"
             local purpose1 "在预先定义的线性参数约束下估计线性回归。"
-            local purpose2 "先用 constraint 定义限制，再在更多设置中填写 constraints(#)。"
+            local purpose2 "先用 constraint 定义限制，再在本页填写要使用的约束编号。"
             local example1 "constraint 1 x1 = x2"
             local explain1 "先定义第 1 条参数约束。"
             local example2 "cnsreg y x1 x2, constraints(1)"
             local explain2 "在第 1 条约束下估计模型。"
         }
         else if "`cmd'" == "vwls" {
+            local template "vwls"
+            local has_expression 1
+            local expr_label "条件标准差变量 sd()（可选）"
             local title "vwls — 方差加权最小二乘"
             local purpose1 "使用已知或预先估计的条件标准差进行方差加权线性回归。"
-            local purpose2 "常见设定是在更多设置填写 sd(sdvar)；只有方差信息有依据时才使用。"
+            local purpose2 "有条件标准差信息时直接填写对应变量；只有方差信息有依据时才使用。"
             local example1 "vwls y x c, sd(sdvar)"
             local explain1 "使用 sdvar 作为 y 条件标准差的估计。"
             local example2 "vwls y i.group"
             local explain2 "也可用于某些分组数据设定。"
         }
         else if "`cmd'" == "eivreg" {
+            local template "eivreg"
+            local has_expression 1
+            local expr_label "可靠度 reliab()（如 x .85）"
             local title "eivreg — 测量误差回归"
             local purpose1 "在已知解释变量测量可靠度时修正经典测量误差偏误。"
-            local purpose2 "在更多设置填写 reliab(x .85) 等可靠度信息。"
+            local purpose2 "直接填写变量及其可靠度，例如 x .85；最终仍执行 Stata 官方 eivreg。"
             local example1 "eivreg y x c, reliab(x .85)"
             local explain1 "假设 x 的测量可靠度为 0.85。"
             local example2 "eivreg y x1 x2, reliab(x1 .8 x2 .9)"
             local explain2 "同时指定多个解释变量的可靠度。"
         }
         else if "`cmd'" == "newey" {
+            local template "newey"
+            local has_expression 1
+            local expr_label "Newey–West 滞后阶数 lag()（非负整数）"
             local title "newey — Newey–West 线性回归"
             local purpose1 "用 HAC / Newey–West 标准误处理时间序列中的异方差与自相关。"
-            local purpose2 "运行前应先声明时间变量，并在更多设置填写 lag(#)。"
+            local purpose2 "运行前应先用 tsset 声明时间变量，并在本页填写 lag 阶数。"
             local needs_panel 0
             local example1 "tsset year"
             local explain1 "先声明时间变量。"
@@ -644,7 +691,7 @@ program define hxsemantics, rclass
             local title "margins — 计算预测值或边际效应"
             local purpose1 "在回归后计算平均边际效应、指定取值下的预测结果等。"
             local purpose2 "例如填写 dydx(x)；复杂设置可在更多设置中填写 at()。"
-            local expr_label "要计算的内容"
+            local expr_label "margins 选项（如 dydx(x) 或 at(x=(0 1 2))）"
             local example1 "margins, dydx(x)"
             local explain1 "计算 x 的平均边际效应。"
             local example2 "margins, at(x=(0 1 2))"
@@ -708,6 +755,24 @@ program define hxsemantics, rclass
             local explain2 "把散点和拟合线叠加。"
         }
     }
+    else if "`cmd'" == "event_plot" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local has_if 0
+        local has_in 0
+        local has_weight 0
+        local expr_label "event_plot 命令主体（按作者 help 填写）"
+        local show_advanced 1
+        local title "event_plot — 事件研究结果图"
+        local purpose1 "调用已安装的第三方 event_plot 命令绘制事件研究动态系数。"
+        local purpose2 "不同估计器的结果对象写法可能不同；本页保留原作者命令主体和 options，不用 HX 算法替代。"
+        local example1 "help event_plot"
+        local explain1 "先核对当前安装版本支持的结果对象语法。"
+        local example2 "event_plot ..."
+        local explain2 "在命令主体中填写作者 help 要求的结果对象，再补充图形 options。"
+    }
     else if inlist("`cmd'", "marginsplot", "coefplot") {
         local template "graph_postestimation"
         local has_depvar 0
@@ -726,6 +791,9 @@ program define hxsemantics, rclass
             local explain2 "增加系数为 0 的参考线。"
         }
         else {
+            local template "command_body"
+            local has_expression 1
+            local expr_label "模型 / 结果对象（可选，如 m1 m2）"
             local title "coefplot — 回归系数图"
             local purpose1 "把一个或多个已保存模型的系数和置信区间画在同一张图中。"
             local purpose2 "适合主结果、异质性或稳健性模型的视觉比较。"
@@ -745,7 +813,7 @@ program define hxsemantics, rclass
 
     foreach key in title purpose1 purpose2 dep_label vars_label newvar_label ///
         expr_label model_label absorb_label endog_label inst_label ///
-        using_label if_label example1 explain1 example2 explain2 ///
+        using_label panel_label time_label if_label example1 explain1 example2 explain2 ///
         template default_expression {
         char _dta[hxtoolbox_sem_`key'] `"``key''"'
     }

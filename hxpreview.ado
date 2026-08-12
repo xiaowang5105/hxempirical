@@ -1,4 +1,4 @@
-*! hxpreview 1.2.1  12aug2026
+*! hxpreview 1.3.0  12aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -71,7 +71,7 @@ program define hxpreview, rclass
     if `"`template'"' == "replace" & `"`expression'"' != "" {
         local preview `"`preview' = `expression'"'
     }
-    if `"`template'"' == "expression_body" & `"`expression'"' != "" {
+    if inlist(`"`template'"', "expression_body", "command_body") & `"`expression'"' != "" {
         local preview `"`preview' `expression'"'
     }
     if `"`template'"' == "reshape" & `"`expression'"' != "" {
@@ -128,7 +128,22 @@ program define hxpreview, rclass
     }
 
     if `"`template'"' == "margins" & `"`expression'"' != "" {
-        local preview `"`preview' `expression'"'
+        local opt `"`opt' `expression'"'
+    }
+    if `"`template'"' == "qreg" & `"`expression'"' != "" {
+        local opt `"`opt' quantile(`expression')"'
+    }
+    if `"`template'"' == "cnsreg" & `"`expression'"' != "" {
+        local opt `"`opt' constraints(`expression')"'
+    }
+    if `"`template'"' == "vwls" & `"`expression'"' != "" {
+        local opt `"`opt' sd(`expression')"'
+    }
+    if `"`template'"' == "eivreg" & `"`expression'"' != "" {
+        local opt `"`opt' reliab(`expression')"'
+    }
+    if `"`template'"' == "newey" & `"`expression'"' != "" {
+        local opt `"`opt' lag(`expression')"'
     }
     if `"`model'"' != "" & "`model_before'" == "0" & ///
         "`keepdrop_mode'`winsor_mode'`predict_mode'" == "000" & ///
@@ -153,8 +168,8 @@ program define hxpreview, rclass
         if `"`panel'"' != "" local opt `"`opt' i(`panel')"'
         if `"`time'"' != "" local opt `"`opt' j(`time')"'
     }
-    if `"`template'"' == "collapse" & `"`panel'"' != "" {
-        local opt `"`opt' by(`panel')"'
+    if `"`template'"' == "collapse" & `"`absorb'"' != "" {
+        local opt `"`opt' by(`absorb')"'
     }
     if `"`template'"' == "conversion" {
         if inlist("`command'", "encode", "decode") {
@@ -167,7 +182,7 @@ program define hxpreview, rclass
             local opt `"`opt' generate(`newvar')"'
         }
     }
-    if "`has_absorb'" == "1" & `"`absorb'"' != "" {
+    if "`has_absorb'" == "1" & `"`absorb'"' != "" & `"`template'"' != "collapse" {
         local opt `"`opt' absorb(`absorb')"'
     }
     if "`has_vce'" == "1" {
