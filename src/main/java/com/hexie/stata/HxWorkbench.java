@@ -3556,7 +3556,7 @@ public final class HxWorkbench {
                } else if (containsAny(var2, "相关", "pwcorr", "correlate", "相关系数")) {
                   this.browseMethod("stats", "相关分析");
                } else if (containsAny(var2, "异方差", "vif", "多重共线", "共线性", "遗漏变量", "reset", "cook", "杠杆", "残差诊断", "回归诊断")) {
-                  this.openRegressWorkspace();
+                  this.showCommand("regress");
                   this.selectResultView("regresspost", true);
                   this.statusLabel.setText("这些诊断属于普通线性回归的后估计工具；请先运行 regress，再点击右侧诊断。");
                } else if (containsAny(var2, "平行趋势", "事件研究", "eventstudy", "did", "双重差分")) {
@@ -3679,7 +3679,23 @@ public final class HxWorkbench {
          var1.method = this.activeMethodName;
          HxWorkbench.WorkbenchFrame.CommandGuide var2 = COMMAND_GUIDES.get(this.currentCommand);
          var1.label = var2 == null ? this.currentCommand : var2.title;
-         if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
+         if (this.baselineTaskActive) {
+            var1.label = "基准回归 · " + this.currentCommand;
+            var1.depvar = selected(this.depvar);
+            var1.x = selected(this.regressX);
+            var1.controls = String.join(" ", this.regressControls.getSelectedValuesList());
+            var1.extraTerms = this.joinSpecialTerms("|");
+            var1.vce = selected(this.vce);
+            var1.cluster = selected(this.cluster);
+            var1.ifcond = this.ifCondition.getText().trim();
+            var1.incond = this.inCondition.getText().trim();
+            var1.options = this.regressAdvancedOptions.getText().trim();
+            var1.weightType = selected(this.regressWeightType);
+            var1.weightVar = selected(this.regressWeightVar);
+            var1.flags = "baseline=1;xtmodel=" + selected(this.baselineXtModel) + ";absorb=" + String.join(",", this.absorb.getSelectedValuesList())
+               + ";" + (this.regressNoConstant.isSelected() ? "noconstant;" : "")
+               + (this.regressBeta.isSelected() ? "beta;" : "") + "level=" + this.regressLevel.getValue();
+         } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
             var1.depvar = selected(this.depvar);
             var1.x = selected(this.regressX);
             var1.controls = String.join(" ", this.regressControls.getSelectedValuesList());
@@ -3731,8 +3747,36 @@ public final class HxWorkbench {
 
       private void restoreWorkSnapshot(HxWorkbench.WorkbenchFrame.WorkSnapshot var1) {
          if (var1 != null && !var1.command.isBlank()) {
-            if ("regress".equals(var1.command)) {
-               this.openRegressWorkspace();
+            if ("基准回归".equals(var1.method) || var1.flags.contains("baseline=1")) {
+               this.openBaselineRegressionWorkspace();
+               this.rebuilding = true;
+               this.setComboValue(this.baselineEstimator, var1.command);
+               this.setComboValue(this.depvar, var1.depvar);
+               this.setComboValue(this.regressX, var1.x);
+               setListSelectedValues(this.regressControls, splitWords(var1.controls));
+               this.regressSpecialTermsModel.clear();
+               for (String term : splitPipeTerms(var1.extraTerms)) this.regressSpecialTermsModel.addElement(term);
+               this.setComboValue(this.vce, var1.vce);
+               this.setComboValue(this.cluster, var1.cluster);
+               this.ifCondition.setText(var1.ifcond);
+               this.inCondition.setText(var1.incond);
+               this.setComboValue(this.regressWeightType, var1.weightType);
+               this.setComboValue(this.regressWeightVar, var1.weightVar);
+               this.regressAdvancedOptions.setText(var1.options);
+               Matcher xtMatcher = Pattern.compile("xtmodel=([^;]+)").matcher(var1.flags);
+               if (xtMatcher.find()) this.setComboValue(this.baselineXtModel, xtMatcher.group(1));
+               Matcher absorbMatcher = Pattern.compile("absorb=([^;]*)").matcher(var1.flags);
+               if (absorbMatcher.find() && !absorbMatcher.group(1).isBlank()) {
+                  setListSelectedValues(this.absorb, Arrays.asList(absorbMatcher.group(1).split(",")));
+               }
+               this.regressNoConstant.setSelected(var1.flags.contains("noconstant"));
+               this.regressBeta.setSelected(var1.flags.contains("beta"));
+               Matcher levelMatcher = Pattern.compile("level=([0-9]+)").matcher(var1.flags);
+               if (levelMatcher.find()) this.regressLevel.setValue(Integer.parseInt(levelMatcher.group(1)));
+               this.rebuilding = false;
+               this.switchBaselineEstimator();
+            } else if ("regress".equals(var1.command)) {
+               this.showCommand("regress");
                this.rebuilding = true;
                this.setComboValue(this.depvar, var1.depvar);
                this.setComboValue(this.regressX, var1.x);
