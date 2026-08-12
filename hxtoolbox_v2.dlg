@@ -1,0 +1,1875 @@
+/* hxtoolbox_v2.dlg - schema-driven Stata command console */
+VERSION 16.0
+SYNCHRONOUS_ONLY
+
+INCLUDE _std_large
+POSITION . . 1050 600
+COPY copy1, label("复制命令") uaction(command)
+CANCEL can1, label("关闭")
+HELP hlp1, view("help hxtoolbox")
+
+SCRIPT PREINIT
+BEGIN
+    create STRING current_cmd
+    create STRING option_buffer
+    create STRING selected_vars
+    create STRING selected_absorb
+    create STRING selected_endog
+    create STRING selected_inst
+    create STRING schema_dep
+    create STRING schema_vars
+    create STRING schema_if
+    create STRING schema_in
+    create STRING schema_weight
+    create STRING schema_using
+    create STRING schema_newvar
+    create STRING schema_expression
+    create STRING schema_absorb
+    create STRING schema_vce
+    create STRING schema_cluster
+    create STRING schema_iv
+    create STRING schema_panel
+    create STRING schema_model_before
+    create STRING schema_models
+    create STRING schema_template
+    create STRING schema_show_advanced
+    create STRING schema_show_merge_check
+    create STRING schema_is_xtset
+    create STRING schema_keepdrop_mode
+    create STRING schema_winsor_mode
+    create STRING schema_predict_mode
+    create STRING dialog_ready
+    create STRING data_changed
+END
+
+SCRIPT POSTINIT
+BEGIN
+    program init_toolbox
+    program refresh_status_labels
+    program refresh_monitor_display
+    program show_home
+    program activate_dialog
+END
+
+DIALOG main, label("我的实证工具箱") tabtitle("Stata 命令控制台")
+BEGIN
+    /* 左侧固定导航 */
+    GROUPBOX gb_nav 8 8 130 512, label("命令导航")
+    EDIT ed_search 16 29 87 ., nomemory label("搜索命令或中文功能")
+    BUTTON bu_search 106 29 24 ., label("搜") onpush(program search_commands)
+    BUTTON bu_favorites 16 62 114 27, label("★ 常用") onpush(program nav_favorites)
+    BUTTON bu_recent 16 93 114 27, label("最近使用") onpush(program nav_recent)
+    BUTTON bu_data 16 130 114 27, label("数据") onpush(program nav_data)
+    BUTTON bu_stats 16 161 114 27, label("统计") onpush(program nav_stats)
+    BUTTON bu_reg 16 192 114 27, label("回归模型") onpush(program nav_reg)
+    BUTTON bu_post 16 223 114 27, label("后估计") onpush(program nav_post)
+    BUTTON bu_test 16 260 114 27, label("测试数据") onpush(program nav_test)
+    BUTTON bu_perf 16 291 114 27, label("性能设置") onpush(program nav_perf)
+    BUTTON bu_any 16 328 114 27, label("任意 Stata 命令") onpush(program nav_any)
+    TEXT tx_nav_note1 18 371 108 ., label("每个命令都读取：")
+    TEXT tx_nav_note2 18 394 108 ., label("ado / help / Options")
+    TEXT tx_nav_note3 18 417 108 ., label("Examples / 官方窗口")
+    BUTTON bu_refresh 16 477 114 27, label("刷新数据状态") onpush(program refresh_all)
+
+    /* 命令浏览页 */
+    GROUPBOX gb_browser 146 8 566 430, label("选择命令")
+    TEXT tx_browser_title 162 34 530 ., label("常用命令")
+    TEXT tx_browser_tip 162 58 530 35, label("先选择方法类别，再选择具体命令；每个命令进入自己的简化设置页面。")
+    TEXT tx_method_label 162 99 90 ., label("方法类别")
+    COMBOBOX cb_method 252 94 286 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_method_view]) label("选择方法类别")
+    BUTTON bu_open_method 548 94 143 ., label("查看这类命令") onpush(program open_method)
+    TEXT tx_command_label 162 142 90 ., label("具体命令")
+    LISTBOX cb_command 252 137 286 70, nomemory ///
+        contents(char _dta[hxtoolbox_command_view]) label("选择命令") ///
+        onselchange(program describe_selected)
+    BUTTON bu_open_command 548 137 143 ., label("进入命令页面") onpush(program open_selected)
+    GROUPBOX gb_pipeline 162 218 529 170, label("当前命令：意图、推荐数据、优点与缺点")
+    TEXT tx_pipeline1 179 238 495 28, label("主要意图：选择具体命令后，这里说明它解决什么问题。")
+    TEXT tx_pipeline_data 179 274 495 28, label("推荐数据：说明适合的数据结构、变量类型和必要条件。")
+    TEXT tx_pipeline2 179 310 495 28, label("优点：说明什么情况下值得使用。")
+    TEXT tx_pipeline3 179 346 495 34, label("缺点与注意：说明模型假设、数据要求和常见风险。")
+    BUTTON bu_remove_fav 162 397 170 29, label("从常用中移除所选") onpush(program remove_selected_favorite)
+
+    /* 任意命令入口 */
+    GROUPBOX gb_any 146 8 566 430, label("识别任意 Stata 命令")
+    TEXT tx_any_tip 162 39 530 48, label("输入一个已安装或准备安装的命令名。系统使用与所有其他命令完全相同的解析流程。")
+    TEXT tx_any_cmd 162 111 90 ., label("命令名")
+    EDIT ed_any_cmd 252 106 286 ., nomemory label("例如 winsor2")
+    BUTTON bu_any_resolve 548 106 143 ., label("识别并生成界面") onpush(program resolve_any)
+    TEXT tx_any_fallback1 162 168 510 ., label("系统先生成能够确认的结构化字段，少数不确定内容收进“更多设置”。")
+    TEXT tx_any_fallback2 162 201 510 ., label("页面仍会提供用途、字段含义、示例和最终命令预览。")
+
+    /* Schema 驱动的统一命令页 */
+    GROUPBOX gb_schema 146 8 566 430, label("命令参数")
+    TEXT tx_cmd_title 162 27 335 ., label("命令 — 中文用途")
+    TEXT tx_quality 502 27 189 ., label("界面解析：读取中")
+    TEXT tx_installed 162 50 529 ., label("这个命令具体做什么。")
+    TEXT tx_help 162 70 529 ., label("这里会说明最常见的使用场景。")
+    TEXT tx_source 162 89 529 ., label("参数名同时保留中文和 Stata 原词。")
+    BUTTON bu_example 162 108 90 23, label("查看示例") onpush(program show_examples)
+    BUTTON bu_help 258 108 82 23, label("查看 Help") onpush(program open_help)
+    BUTTON bu_official 346 108 92 23, label("官方窗口") onpush(program open_official)
+    BUTTON bu_schema_refresh 444 108 105 23, label("重新解析") onpush(program refresh_schema)
+    BUTTON bu_add_favorite 555 108 136 23, label("★ 加入常用") onpush(program add_current_favorite)
+
+    GROUPBOX gb_params 162 133 529 286, label("自动生成的参数")
+
+    /* 第一行：因变量 / 新变量 / 模型 */
+    TEXT tx_dep 176 157 128 ., label("因变量")
+    COMBOBOX cb_dep 306 152 187 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+    TEXT tx_newvar 176 157 128 ., label("新变量名")
+    EDIT ed_newvar 306 152 187 ., nomemory onchange(program preview_schema)
+    TEXT tx_model 501 157 77 ., label("模型")
+    COMBOBOX cb_model 580 152 94 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_schema_models]) onselchange(program model_changed)
+
+    /* 第二行：多变量点选 */
+    TEXT tx_vars 176 192 128 ., label("解释变量")
+    COMBOBOX cb_var_pick 306 187 150 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars])
+    BUTTON bu_var_add 461 187 36 ., label("＋") onpush(program add_var)
+    EDIT ed_vars 502 187 136 ., nomemory label("已选变量")
+    BUTTON bu_var_clear 642 187 32 ., label("清") onpush(program clear_vars)
+
+    /* 第三行：面板 / 固定效应 / 内生变量 / using 文件（彼此按 Schema 切换） */
+    TEXT tx_panel 176 227 128 ., label("个体 / 时间变量")
+    COMBOBOX cb_panel 306 222 115 ., dropdownlist nomemory contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+    COMBOBOX cb_time 426 222 115 ., dropdownlist nomemory contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+    BUTTON bu_xtset 546 222 128 ., label("设置面板数据") onpush(program set_panel)
+    TEXT tx_panel_status_main 306 257 368 ., label("当前数据尚未 xtset")
+
+    TEXT tx_absorb 176 297 128 ., label("固定效应 absorb()")
+    COMBOBOX cb_absorb_pick 306 292 150 ., dropdownlist nomemory contents(char _dta[hxtoolbox_all_vars])
+    BUTTON bu_absorb_add 461 292 36 ., label("＋") onpush(program add_absorb)
+    EDIT ed_absorb 502 292 136 ., nomemory label("已选固定效应")
+    BUTTON bu_absorb_clear 642 292 32 ., label("清") onpush(program clear_absorb)
+
+    TEXT tx_endog 176 227 128 ., label("内生变量")
+    COMBOBOX cb_endog_pick 306 222 150 ., dropdownlist nomemory contents(char _dta[hxtoolbox_all_vars])
+    BUTTON bu_endog_add 461 222 36 ., label("＋") onpush(program add_endog)
+    EDIT ed_endog 502 222 136 ., nomemory label("已选内生变量")
+    BUTTON bu_endog_clear 642 222 32 ., label("清") onpush(program clear_endog)
+
+    TEXT tx_using 176 227 128 ., label("using 文件")
+    FILE fi_using 306 222 368 ., defext(dta) label("浏览...") onchange(program preview_schema)
+
+    /* 第四行：工具变量 / 表达式 */
+    TEXT tx_inst 176 262 128 ., label("工具变量")
+    COMBOBOX cb_inst_pick 306 257 150 ., dropdownlist nomemory contents(char _dta[hxtoolbox_all_vars])
+    BUTTON bu_inst_add 461 257 36 ., label("＋") onpush(program add_inst)
+    EDIT ed_inst 502 257 136 ., nomemory label("已选工具变量")
+    BUTTON bu_inst_clear 642 257 32 ., label("清") onpush(program clear_inst)
+
+    TEXT tx_expression 176 227 128 ., label("计算表达式")
+    EDIT ed_expression 306 222 368 ., nomemory onchange(program preview_schema)
+
+    /* 第六行：标准误；Cluster 时显示聚类变量 */
+    TEXT tx_vce 176 332 128 ., label("标准误 vce()")
+    COMBOBOX cb_vce 306 327 145 ., dropdownlist nomemory ///
+        contents(vce_labels) values(vce_values) default("default") ///
+        onselchange(program vce_changed)
+    TEXT tx_cluster 458 332 82 ., label("聚类变量")
+    COMBOBOX cb_cluster 542 327 132 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+
+    /* 第七行：常用样本条件 */
+    TEXT tx_if 176 367 128 ., label("样本条件 if")
+    EDIT ed_if 306 362 368 ., nomemory label("例如 year >= 2020") onchange(program preview_schema)
+
+    /* replace：勾选后才显示变量、关系和数值 */
+    CHECKBOX ck_condition 176 362 118 ., label("添加条件 if") ///
+        onclickon(program condition_changed) onclickoff(program condition_changed)
+    COMBOBOX cb_cond_var 298 357 112 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+    COMBOBOX cb_cond_op 415 357 108 ., dropdownlist ///
+        contents(condition_labels) values(condition_values) default(">=") ///
+        onselchange(program preview_schema)
+    EDIT ed_cond_value 528 357 146 ., nomemory label("数值，例如 2020") ///
+        onchange(program preview_schema)
+
+    BUTTON bu_more 176 397 150 22, label("▶ 更多设置") onpush(program show_advanced)
+    BUTTON bu_merge_check 334 397 180 22, label("检查主表和副表关联键") onpush(program check_merge)
+
+    /* 更多设置：从主页面收起 */
+    GROUPBOX gb_advanced 162 133 529 286, label("更多设置")
+    TEXT tx_advanced_tip 176 158 490 ., label("这些参数使用频率较低；不确定时可以保持空白。")
+    TEXT tx_weight 176 193 105 ., label("权重 weight")
+    COMBOBOX cb_weight 282 188 130 ., dropdownlist contents(weight_labels) ///
+        values(weight_values) default("") onselchange(program preview_schema)
+    COMBOBOX cb_weight_var 418 188 180 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars]) onselchange(program preview_schema)
+    TEXT tx_in 176 228 105 ., label("观测范围 in")
+    EDIT ed_in 282 223 316 ., nomemory label("例如 1/100") onchange(program preview_schema)
+    TEXT tx_special 176 263 105 ., label("高级 / 自定义语法")
+    EDIT ed_special 282 258 316 ., nomemory label("放在逗号前的特殊主体语法") onchange(program preview_schema)
+    TEXT tx_options 176 298 105 ., label("更多 options")
+    EDIT ed_options 282 293 316 ., nomemory label("逗号后内容，不要输入逗号") onchange(program preview_schema)
+    TEXT tx_advanced_note 176 339 490 ., label("最终命令会在下方实时显示；运行前请先检查。")
+    BUTTON bu_advanced_back 176 378 150 25, label("返回常用设置") onpush(program back_to_params)
+
+    /* 示例页 */
+    GROUPBOX gb_examples 162 133 529 286, label("最简单的使用示例")
+    TEXT tx_example_code1 178 164 490 ., label("示例 1")
+    TEXT tx_example_explain1 178 192 490 34, label("示例 1 的中文解释")
+    TEXT tx_example_code2 178 244 490 ., label("示例 2")
+    TEXT tx_example_explain2 178 272 490 34, label("示例 2 的中文解释")
+    TEXT tx_example_note 178 329 490 ., label("示例使用 y、x、c1、c2、firm、year、z 等简单符号。")
+    BUTTON bu_example_back 178 378 150 25, label("返回命令设置") onpush(program back_to_params)
+
+    /* 测试数据页 */
+    GROUPBOX gb_test 146 8 566 430, label("测试数据")
+    TEXT tx_test_tip 162 39 530 42, label("点击即可载入 Stata 示例数据；变量列表与状态栏会自动刷新。")
+    BUTTON bu_auto 162 96 150 31, label("载入 auto") onpush(program test_auto)
+    BUTTON bu_nlsw88 322 96 150 31, label("载入 nlsw88") onpush(program test_nlsw88)
+    BUTTON bu_nlswork 482 96 150 31, label("载入 nlswork") onpush(program test_nlswork)
+    BUTTON bu_grunfeld 162 139 150 31, label("载入 grunfeld") onpush(program test_grunfeld)
+    BUTTON bu_union 322 139 150 31, label("载入 union") onpush(program test_union)
+    BUTTON bu_sysuse_dir 482 139 150 31, label("查看 sysuse 列表") onpush(program test_dir)
+    GROUPBOX gb_testfiles 162 203 510 145, label("临时 merge / append 环境")
+    TEXT tx_test_temp 178 231 475 40, label("文件写入系统临时目录，不会污染当前论文项目。")
+    BUTTON bu_make_merge 178 286 220 32, label("创建 merge 主表和副表") onpush(program test_merge)
+    BUTTON bu_make_append 414 286 220 32, label("创建 append 两张表") onpush(program test_append)
+    TEXT tx_test_paths 178 326 475 ., label("临时路径会显示在 Stata Results。")
+
+    /* 性能页 */
+    GROUPBOX gb_perf 146 8 566 430, label("性能设置")
+    TEXT tx_perf_intro 162 39 520 43, label("动态读取当前 Stata/MP 许可证允许的 processors 数，随时切换。")
+    GROUPBOX gb_perf_state 162 103 510 98, label("当前状态")
+    TEXT tx_perf_now 180 137 220 ., label("当前使用：读取中")
+    TEXT tx_perf_max 410 137 235 ., label("许可证上限：读取中")
+    TEXT tx_perf_panel 180 170 455 ., label("面板状态：读取中")
+    BUTTON bu_perf_on 180 233 145 35, label("开启最大线程") onpush(program perf_on)
+    BUTTON bu_perf_off 342 233 145 35, label("切换为 1 核") onpush(program perf_off)
+    BUTTON bu_perf_status 504 233 145 35, label("刷新状态") onpush(program perf_status)
+    TEXT tx_perf_history 180 301 460 45, label("set processors # 的最终命令会进入 Stata History。")
+
+    /* 全局实时命令预览 */
+    GROUPBOX gb_preview 146 447 566 73, label("将执行的 Stata 命令（可直接修改）")
+    EDIT ed_preview 160 474 366 ., nomemory label("最终命令")
+    BUTTON bu_preview 532 474 78 ., label("更新预览") onpush(program preview_schema)
+    BUTTON bu_run_monitor 614 474 84 ., label("运行并观察") onpush(program run_monitored)
+
+    /* 右侧工作台控制与辅助观察区 */
+    GROUPBOX gb_monitor 720 8 322 512, label("工作台控制与辅助观察")
+    TEXT tx_monitor_data 734 28 294 27, label("当前数据：读取中")
+
+    GROUPBOX gb_native_windows 734 57 294 104, label("Stata 原生窗口")
+    BUTTON bu_native_browser 746 77 82 25, label("浏览数据") onpush(program workbench_browser)
+    BUTTON bu_native_editor 834 77 82 25, label("编辑数据") onpush(program workbench_editor)
+    BUTTON bu_native_refresh 922 77 94 25, label("刷新/重开") onpush(program workbench_refresh_browser)
+    BUTTON bu_native_variables 746 106 82 25, label("变量窗口") onpush(program workbench_variables)
+    BUTTON bu_native_results 834 106 82 25, label("Results") onpush(program workbench_results)
+    BUTTON bu_native_graph 922 106 94 25, label("图形窗口") onpush(program workbench_graph)
+    CHECKBOX ck_auto_browser 746 135 260 ., label("数据处理后自动刷新原生数据表")
+
+    TEXT tx_monitor_var_label 734 174 64 ., label("观察变量")
+    COMBOBOX cb_monitor_var 800 169 132 ., dropdownlist nomemory ///
+        contents(char _dta[hxtoolbox_all_vars]) onselchange(program monitor_var_changed)
+    BUTTON bu_monitor_refresh 938 169 90 ., label("刷新摘要") onpush(program monitor_refresh)
+
+    GROUPBOX gb_monitor_stats 734 201 294 68, label("变量概况")
+    TEXT tx_monitor_stats1 746 221 270 20, label("请选择一个变量")
+    TEXT tx_monitor_stats2 746 243 270 20, label("均值、缺失与范围将在这里显示")
+
+    GROUPBOX gb_monitor_pre 734 276 294 93, label("运行前预判")
+    TEXT tx_monitor_sample 746 296 270 20, label("预计有效样本：读取中")
+    TEXT tx_monitor_operation 746 318 270 20, label("操作摘要：请选择命令")
+    TEXT tx_monitor_risk 746 340 270 21, label("提醒：运行前请核对最终命令")
+
+    GROUPBOX gb_monitor_rows 734 376 294 80, label("辅助预览（完整数据请看原生窗口）")
+    EDIT ed_monitor_rows 746 397 270 50, multiline nomemory label("数据预览")
+
+    BUTTON bu_monitor_browse 734 463 70 25, label("相关数据") onpush(program monitor_browse)
+    BUTTON bu_monitor_summary 809 463 70 25, label("详细统计") onpush(program monitor_summary)
+    BUTTON bu_monitor_graph 884 463 70 25, label("分布图") onpush(program monitor_graph)
+    BUTTON bu_monitor_relation 959 463 69 25, label("关系图") onpush(program monitor_relation)
+    TEXT tx_monitor_change 734 495 294 20, label("执行后变化：尚未通过工具箱运行命令。")
+
+    /* 状态栏 */
+    GROUPBOX gb_status 8 527 1034 43, label("当前状态")
+    TEXT tx_status_data 18 547 235 ., label("当前数据：读取中")
+    TEXT tx_status_panel 258 547 155 ., label("面板状态：读取中")
+    TEXT tx_status_nk 418 547 160 ., label("N/K：读取中")
+    TEXT tx_status_cpu 583 547 116 ., label("处理器：读取中")
+
+    /* 只读显示框背后的隐藏值控件；用户只能通过“＋/清”修改 */
+    EDIT ed_vars_value 0 0 1 ., nomemory
+    EDIT ed_absorb_value 0 0 1 ., nomemory
+    EDIT ed_endog_value 0 0 1 ., nomemory
+    EDIT ed_inst_value 0 0 1 ., nomemory
+END
+
+LIST weight_labels
+BEGIN
+    "无权重"
+    "分析权重 aweight"
+    "频数权重 fweight"
+    "概率权重 pweight"
+    "重要性权重 iweight"
+END
+LIST weight_values
+BEGIN
+    ""
+    aw
+    fw
+    pw
+    iw
+END
+
+LIST vce_labels
+BEGIN
+    "默认"
+    "稳健 robust"
+    "按变量聚类 cluster"
+END
+
+LIST vce_values
+BEGIN
+    default
+    robust
+    cluster
+END
+
+LIST condition_labels
+BEGIN
+    "等于 =="
+    "不等于 !="
+    "大于 >"
+    "大于等于 >="
+    "小于 <"
+    "小于等于 <="
+END
+
+LIST condition_values
+BEGIN
+    "=="
+    "!="
+    ">"
+    ">="
+    "<"
+    "<="
+END
+
+PROGRAM command
+BEGIN
+    require main.ed_preview
+    put main.ed_preview
+END
+
+PROGRAM init_toolbox
+BEGIN
+    call dialog_ready.setvalue "0"
+    call data_changed.setvalue "0"
+    call current_cmd.setvalue ""
+    call option_buffer.setvalue ""
+    call selected_vars.setvalue ""
+    call selected_absorb.setvalue ""
+    call selected_endog.setvalue ""
+    call selected_inst.setvalue ""
+    call main.ed_vars.disable
+    call main.ed_absorb.disable
+    call main.ed_endog.disable
+    call main.ed_inst.disable
+    call main.ed_monitor_rows.disable
+    call main.ck_auto_browser.seton
+    call main.ed_vars_value.hide
+    call main.ed_absorb_value.hide
+    call main.ed_endog_value.hide
+    call main.ed_inst_value.hide
+    call main.ed_preview.setvalue "请选择命令或在‘任意 Stata 命令’中输入命令名"
+    call main.tx_cluster.hide
+    call main.cb_cluster.hide
+    call main.ck_condition.hide
+    call main.cb_cond_var.hide
+    call main.cb_cond_op.hide
+    call main.ed_cond_value.hide
+    call main.cb_monitor_var.setvalue char _dta[hxtoolbox_monitor_var]
+END
+
+PROGRAM activate_dialog
+BEGIN
+    call dialog_ready.setvalue "1"
+END
+
+PROGRAM refresh_all
+BEGIN
+    call dialog_ready.setvalue "0"
+    put "hxrefresh"
+    stata hidden immediate
+    call program refresh_controls
+    call dialog_ready.setvalue "1"
+    call program monitor_refresh
+END
+
+PROGRAM refresh_controls
+BEGIN
+    call main.cb_dep.repopulate
+    call main.cb_var_pick.repopulate
+    call main.cb_panel.repopulate
+    call main.cb_time.repopulate
+    call main.cb_absorb_pick.repopulate
+    call main.cb_endog_pick.repopulate
+    call main.cb_inst_pick.repopulate
+    call main.cb_weight_var.repopulate
+    call main.cb_cluster.repopulate
+    call main.cb_cond_var.repopulate
+    call main.cb_monitor_var.repopulate
+    call program refresh_status_labels
+END
+
+PROGRAM refresh_status_labels
+BEGIN
+    call main.tx_status_data.setlabel char _dta[hxtoolbox_status_data]
+    call main.tx_status_panel.setlabel char _dta[hxtoolbox_panel_status]
+    call main.tx_status_nk.setlabel char _dta[hxtoolbox_status_nk]
+    call main.tx_status_cpu.setlabel char _dta[hxtoolbox_status_cpu]
+    call main.tx_perf_now.setlabel char _dta[hxtoolbox_perf_now]
+    call main.tx_perf_max.setlabel char _dta[hxtoolbox_perf_max]
+    call main.tx_perf_panel.setlabel char _dta[hxtoolbox_panel_status]
+    call main.tx_panel_status_main.setlabel char _dta[hxtoolbox_panel_status]
+END
+
+PROGRAM refresh_monitor_display
+BEGIN
+    call main.tx_monitor_data.setlabel char _dta[hxtoolbox_monitor_data]
+    call main.tx_monitor_stats1.setlabel char _dta[hxtoolbox_monitor_stats1]
+    call main.tx_monitor_stats2.setlabel char _dta[hxtoolbox_monitor_stats2]
+    call main.tx_monitor_sample.setlabel char _dta[hxtoolbox_monitor_sample]
+    call main.tx_monitor_operation.setlabel char _dta[hxtoolbox_monitor_operation]
+    call main.tx_monitor_risk.setlabel char _dta[hxtoolbox_monitor_risk]
+    call main.ed_monitor_rows.setvalue char _dta[hxtoolbox_monitor_rows]
+    call main.tx_monitor_change.setlabel char _dta[hxtoolbox_monitor_change]
+END
+
+PROGRAM monitor_refresh
+BEGIN
+    if dialog_ready.iseq("1") {
+        put "hxmonitor, action(refresh) command(" `"""'
+        put current_cmd
+        put `"""' ") monitorvar(" `"""'
+        put main.cb_monitor_var
+        put `"""' ") depvar(" `"""'
+        put main.cb_dep
+        put `"""' ") vars(" `"""'
+        put main.ed_vars_value
+        put `"""' ") ifcond(" `"""'
+        put main.ed_if
+        put `"""' ") newvar(" `"""'
+        put main.ed_newvar
+        put `"""' ") expression(" `"""'
+        put main.ed_expression
+        put `"""' ") usingfile(" `"""'
+        put main.fi_using
+        put `"""' ") model(" `"""'
+        put main.cb_model
+        put `"""' ") panel(" `"""'
+        put main.cb_panel
+        put `"""' ") time(" `"""'
+        put main.cb_time
+        put `"""' ") condvar(" `"""'
+        put main.cb_cond_var
+        put `"""' ") condop(" `"""'
+        put main.cb_cond_op
+        put `"""' ") condvalue(" `"""'
+        put main.ed_cond_value
+        put `"""' ")"
+        if main.ck_condition {
+            put " condition"
+        }
+        stata hidden immediate
+        call program refresh_monitor_display
+    }
+END
+
+PROGRAM monitor_var_changed
+BEGIN
+    if dialog_ready.iseq("1") {
+        call program monitor_refresh
+    }
+END
+
+PROGRAM workbench_browser
+BEGIN
+    put "hxworkbench, action(browser)"
+    stata hidden immediate
+END
+
+PROGRAM workbench_editor
+BEGIN
+    put "hxworkbench, action(editor)"
+    stata hidden immediate
+END
+
+PROGRAM workbench_refresh_browser
+BEGIN
+    put "hxworkbench, action(refresh)"
+    stata hidden immediate
+END
+
+PROGRAM workbench_variables
+BEGIN
+    put "hxworkbench, action(variables)"
+    stata hidden immediate
+END
+
+PROGRAM workbench_results
+BEGIN
+    put "hxworkbench, action(results)"
+    stata hidden immediate
+END
+
+PROGRAM workbench_graph
+BEGIN
+    put "hxworkbench, action(graph)"
+    stata hidden immediate
+END
+
+PROGRAM hide_browser
+BEGIN
+    call main.gb_browser.hide
+    call main.tx_browser_title.hide
+    call main.tx_browser_tip.hide
+    call main.tx_method_label.hide
+    call main.cb_method.hide
+    call main.bu_open_method.hide
+    call main.tx_command_label.hide
+    call main.cb_command.hide
+    call main.bu_open_command.hide
+    call main.gb_pipeline.hide
+    call main.tx_pipeline1.hide
+    call main.tx_pipeline_data.hide
+    call main.tx_pipeline2.hide
+    call main.tx_pipeline3.hide
+    call main.bu_remove_fav.hide
+END
+
+PROGRAM hide_any
+BEGIN
+    call main.gb_any.hide
+    call main.tx_any_tip.hide
+    call main.tx_any_cmd.hide
+    call main.ed_any_cmd.hide
+    call main.bu_any_resolve.hide
+    call main.tx_any_fallback1.hide
+    call main.tx_any_fallback2.hide
+END
+
+PROGRAM hide_schema
+BEGIN
+    call main.gb_schema.hide
+    call main.tx_cmd_title.hide
+    call main.tx_quality.hide
+    call main.tx_installed.hide
+    call main.tx_help.hide
+    call main.tx_source.hide
+    call main.bu_help.hide
+    call main.bu_official.hide
+    call main.bu_schema_refresh.hide
+    call main.bu_add_favorite.hide
+    call main.bu_example.hide
+    call main.gb_params.hide
+    call main.tx_dep.hide
+    call main.cb_dep.hide
+    call main.tx_newvar.hide
+    call main.ed_newvar.hide
+    call main.tx_model.hide
+    call main.cb_model.hide
+    call main.tx_vars.hide
+    call main.cb_var_pick.hide
+    call main.bu_var_add.hide
+    call main.ed_vars.hide
+    call main.bu_var_clear.hide
+    call main.tx_panel.hide
+    call main.cb_panel.hide
+    call main.cb_time.hide
+    call main.bu_xtset.hide
+    call main.tx_absorb.hide
+    call main.cb_absorb_pick.hide
+    call main.bu_absorb_add.hide
+    call main.ed_absorb.hide
+    call main.bu_absorb_clear.hide
+    call main.tx_endog.hide
+    call main.cb_endog_pick.hide
+    call main.bu_endog_add.hide
+    call main.ed_endog.hide
+    call main.bu_endog_clear.hide
+    call main.tx_using.hide
+    call main.fi_using.hide
+    call main.tx_inst.hide
+    call main.cb_inst_pick.hide
+    call main.bu_inst_add.hide
+    call main.ed_inst.hide
+    call main.bu_inst_clear.hide
+    call main.tx_expression.hide
+    call main.ed_expression.hide
+    call main.tx_weight.hide
+    call main.cb_weight.hide
+    call main.cb_weight_var.hide
+    call main.tx_vce.hide
+    call main.cb_vce.hide
+    call main.cb_cluster.hide
+    call main.tx_cluster.hide
+    call main.tx_if.hide
+    call main.ed_if.hide
+    call main.ck_condition.hide
+    call main.cb_cond_var.hide
+    call main.cb_cond_op.hide
+    call main.ed_cond_value.hide
+    call main.tx_panel_status_main.hide
+    call main.bu_more.hide
+    call main.bu_merge_check.hide
+    call main.gb_advanced.hide
+    call main.tx_advanced_tip.hide
+    call main.tx_weight.hide
+    call main.cb_weight.hide
+    call main.cb_weight_var.hide
+    call main.tx_in.hide
+    call main.ed_in.hide
+    call main.tx_special.hide
+    call main.ed_special.hide
+    call main.tx_options.hide
+    call main.ed_options.hide
+    call main.tx_advanced_note.hide
+    call main.bu_advanced_back.hide
+    call main.gb_examples.hide
+    call main.tx_example_code1.hide
+    call main.tx_example_explain1.hide
+    call main.tx_example_code2.hide
+    call main.tx_example_explain2.hide
+    call main.tx_example_note.hide
+    call main.bu_example_back.hide
+END
+
+PROGRAM hide_test
+BEGIN
+    call main.gb_test.hide
+    call main.tx_test_tip.hide
+    call main.bu_auto.hide
+    call main.bu_nlsw88.hide
+    call main.bu_nlswork.hide
+    call main.bu_grunfeld.hide
+    call main.bu_union.hide
+    call main.bu_sysuse_dir.hide
+    call main.gb_testfiles.hide
+    call main.tx_test_temp.hide
+    call main.bu_make_merge.hide
+    call main.bu_make_append.hide
+    call main.tx_test_paths.hide
+END
+
+PROGRAM hide_perf
+BEGIN
+    call main.gb_perf.hide
+    call main.tx_perf_intro.hide
+    call main.gb_perf_state.hide
+    call main.tx_perf_now.hide
+    call main.tx_perf_max.hide
+    call main.tx_perf_panel.hide
+    call main.bu_perf_on.hide
+    call main.bu_perf_off.hide
+    call main.bu_perf_status.hide
+    call main.tx_perf_history.hide
+END
+
+PROGRAM hide_pages
+BEGIN
+    call program hide_browser
+    call program hide_any
+    call program hide_schema
+    call program hide_test
+    call program hide_perf
+END
+
+PROGRAM show_browser
+BEGIN
+    call program hide_pages
+    call main.gb_browser.show
+    call main.tx_browser_title.show
+    call main.tx_browser_tip.show
+    call main.gb_pipeline.show
+    call main.tx_pipeline1.show
+    call main.tx_pipeline_data.show
+    call main.tx_pipeline2.show
+    call main.tx_pipeline3.show
+    call main.tx_pipeline1.setlabel "主要意图：选择一个具体命令后，这里说明它解决什么问题。"
+    call main.tx_pipeline_data.setlabel "推荐数据：说明适合的数据结构、变量类型和必要条件。"
+    call main.tx_pipeline2.setlabel "优点：说明什么情况下值得使用。"
+    call main.tx_pipeline3.setlabel "缺点与注意：说明模型假设、数据要求和常见风险。"
+    call main.bu_remove_fav.hide
+END
+
+PROGRAM describe_selected
+BEGIN
+    if dialog_ready.iseq("1") & main.cb_command {
+        call main.cb_command.withvalue current_cmd.setvalue "@"
+        put "hxinsight, command("
+        put current_cmd
+        put ")"
+        stata hidden immediate
+        call main.tx_pipeline1.setlabel char _dta[hxtoolbox_insight_intent]
+        call main.tx_pipeline_data.setlabel char _dta[hxtoolbox_insight_data]
+        call main.tx_pipeline2.setlabel char _dta[hxtoolbox_insight_advantages]
+        call main.tx_pipeline3.setlabel char _dta[hxtoolbox_insight_limitations]
+    }
+END
+
+PROGRAM show_home
+BEGIN
+    call program show_browser
+    call main.tx_browser_title.setlabel "我的实证工具箱"
+    call main.tx_browser_tip.setlabel "从左侧选择数据、统计、回归模型或后估计，再依次选择方法和命令。"
+    call main.tx_method_label.hide
+    call main.cb_method.hide
+    call main.bu_open_method.hide
+    call main.tx_command_label.hide
+    call main.cb_command.hide
+    call main.bu_open_command.hide
+END
+
+PROGRAM show_method_picker
+BEGIN
+    call program show_browser
+    call main.tx_method_label.show
+    call main.cb_method.show
+    call main.bu_open_method.show
+    call main.tx_command_label.hide
+    call main.cb_command.hide
+    call main.bu_open_command.hide
+    call main.cb_method.repopulate
+END
+
+PROGRAM show_command_picker
+BEGIN
+    call dialog_ready.setvalue "0"
+    call program show_browser
+    call main.tx_method_label.hide
+    call main.cb_method.hide
+    call main.bu_open_method.hide
+    call main.tx_command_label.show
+    call main.cb_command.show
+    call main.bu_open_command.show
+    call main.cb_command.repopulate
+    call dialog_ready.setvalue "1"
+END
+
+PROGRAM nav_favorites
+BEGIN
+    put "hxregistry, category(favorites)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "★ 常用命令"
+    call main.tx_browser_tip.setlabel "直接选择常用命令，进入这个命令自己的简化设置页面。"
+    call program show_command_picker
+    call main.bu_remove_fav.show
+END
+
+PROGRAM nav_recent
+BEGIN
+    put "hxregistry, category(recent)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "最近使用的命令"
+    call main.tx_browser_tip.setlabel "这里显示最近通过工具箱打开或运行的命令。"
+    call program show_command_picker
+END
+
+PROGRAM nav_data
+BEGIN
+    put "hxregistry, category(data)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "数据"
+    call main.tx_browser_tip.setlabel "先选择变量生成、样本筛选、合并追加等方法类别。"
+    call program show_method_picker
+END
+
+PROGRAM nav_stats
+BEGIN
+    put "hxregistry, category(stats)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "统计"
+    call main.tx_browser_tip.setlabel "先选择描述统计、相关分析、均值检验或频数列联。"
+    call program show_method_picker
+END
+
+PROGRAM nav_reg
+BEGIN
+    put "hxregistry, category(reg)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "回归模型"
+    call main.tx_browser_tip.setlabel "先选择线性、面板、二元结果、计数或工具变量模型。"
+    call program show_method_picker
+END
+
+PROGRAM nav_post
+BEGIN
+    put "hxregistry, category(post)"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "后估计"
+    call main.tx_browser_tip.setlabel "先选择系数检验，或预测值与边际效应。"
+    call program show_method_picker
+END
+
+PROGRAM search_commands
+BEGIN
+    put "hxregistry, search(" `"""'
+    put main.ed_search
+    put `"""' ")"
+    stata hidden immediate
+    call main.tx_browser_title.setlabel "搜索结果"
+    call main.tx_browser_tip.setlabel "搜索结果中的每个命令仍使用统一解析和语义解释流程。"
+    call program show_command_picker
+END
+
+PROGRAM open_method
+BEGIN
+    require main.cb_method
+    call dialog_ready.setvalue "0"
+    put "hxregistry, method(" `"""'
+    put main.cb_method
+    put `"""' ")"
+    stata hidden immediate
+    call main.tx_command_label.setlabel char _dta[hxtoolbox_method_title]
+    call main.tx_browser_tip.setlabel char _dta[hxtoolbox_method_desc]
+    call main.tx_command_label.show
+    call main.cb_command.show
+    call main.bu_open_command.show
+    call main.cb_command.repopulate
+    call dialog_ready.setvalue "1"
+END
+
+PROGRAM nav_any
+BEGIN
+    call program hide_pages
+    call main.gb_any.show
+    call main.tx_any_tip.show
+    call main.tx_any_cmd.show
+    call main.ed_any_cmd.show
+    call main.bu_any_resolve.show
+    call main.tx_any_fallback1.show
+    call main.tx_any_fallback2.show
+END
+
+PROGRAM nav_test
+BEGIN
+    call program hide_pages
+    call main.gb_test.show
+    call main.tx_test_tip.show
+    call main.bu_auto.show
+    call main.bu_nlsw88.show
+    call main.bu_nlswork.show
+    call main.bu_grunfeld.show
+    call main.bu_union.show
+    call main.bu_sysuse_dir.show
+    call main.gb_testfiles.show
+    call main.tx_test_temp.show
+    call main.bu_make_merge.show
+    call main.bu_make_append.show
+    call main.tx_test_paths.show
+END
+
+PROGRAM nav_perf
+BEGIN
+    call program hide_pages
+    call main.gb_perf.show
+    call main.tx_perf_intro.show
+    call main.gb_perf_state.show
+    call main.tx_perf_now.show
+    call main.tx_perf_max.show
+    call main.tx_perf_panel.show
+    call main.bu_perf_on.show
+    call main.bu_perf_off.show
+    call main.bu_perf_status.show
+    call main.tx_perf_history.show
+    call program refresh_all
+END
+
+PROGRAM open_selected
+BEGIN
+    require main.cb_command
+    call main.cb_command.withvalue current_cmd.setvalue "@"
+    put "hxresolve "
+    put current_cmd
+    stata hidden immediate
+    call program render_schema
+END
+
+PROGRAM resolve_any
+BEGIN
+    require main.ed_any_cmd
+    call main.ed_any_cmd.withvalue current_cmd.setvalue "@"
+    put "hxresolve "
+    put current_cmd
+    stata hidden immediate
+    call program render_schema
+END
+
+PROGRAM render_schema
+BEGIN
+    call dialog_ready.setvalue "0"
+    call program hide_pages
+    put "hxpick, target(all) action(clear)"
+    stata hidden immediate
+    call current_cmd.setvalue char _dta[hxtoolbox_resolve_name]
+    call schema_dep.setvalue char _dta[hxtoolbox_schema_has_depvar]
+    call schema_vars.setvalue char _dta[hxtoolbox_schema_has_varlist]
+    call schema_if.setvalue char _dta[hxtoolbox_schema_has_if]
+    call schema_in.setvalue char _dta[hxtoolbox_schema_has_in]
+    call schema_weight.setvalue char _dta[hxtoolbox_schema_has_weight]
+    call schema_using.setvalue char _dta[hxtoolbox_schema_has_using]
+    call schema_newvar.setvalue char _dta[hxtoolbox_schema_has_newvar]
+    call schema_expression.setvalue char _dta[hxtoolbox_schema_has_expression]
+    call schema_absorb.setvalue char _dta[hxtoolbox_schema_has_absorb]
+    call schema_vce.setvalue char _dta[hxtoolbox_schema_has_vce]
+    call schema_cluster.setvalue char _dta[hxtoolbox_schema_has_cluster]
+    call schema_iv.setvalue char _dta[hxtoolbox_schema_has_iv]
+    call schema_panel.setvalue char _dta[hxtoolbox_schema_needs_panel]
+    call schema_model_before.setvalue char _dta[hxtoolbox_schema_model_before]
+    call schema_models.setvalue char _dta[hxtoolbox_schema_models]
+    call schema_template.setvalue char _dta[hxtoolbox_schema_template]
+    call schema_show_advanced.setvalue char _dta[hxtoolbox_sem_show_advanced]
+    call schema_show_merge_check.setvalue char _dta[hxtoolbox_sem_show_merge_check]
+    call schema_is_xtset.setvalue char _dta[hxtoolbox_sem_is_xtset]
+    call schema_keepdrop_mode.setvalue char _dta[hxtoolbox_sem_keepdrop_mode]
+    call schema_winsor_mode.setvalue char _dta[hxtoolbox_sem_winsor_mode]
+    call schema_predict_mode.setvalue char _dta[hxtoolbox_sem_predict_mode]
+
+    call main.tx_cmd_title.setlabel char _dta[hxtoolbox_sem_title]
+    call main.tx_quality.setlabel char _dta[hxtoolbox_resolve_quality]
+    call main.tx_installed.setlabel char _dta[hxtoolbox_sem_purpose1]
+    call main.tx_help.setlabel char _dta[hxtoolbox_sem_purpose2]
+    call main.tx_source.setlabel char _dta[hxtoolbox_resolve_installed]
+    call main.tx_dep.setlabel char _dta[hxtoolbox_sem_dep_label]
+    call main.tx_vars.setlabel char _dta[hxtoolbox_sem_vars_label]
+    call main.tx_newvar.setlabel char _dta[hxtoolbox_sem_newvar_label]
+    call main.tx_expression.setlabel char _dta[hxtoolbox_sem_expr_label]
+    call main.tx_model.setlabel char _dta[hxtoolbox_sem_model_label]
+    call main.tx_absorb.setlabel char _dta[hxtoolbox_sem_absorb_label]
+    call main.tx_endog.setlabel char _dta[hxtoolbox_sem_endog_label]
+    call main.tx_inst.setlabel char _dta[hxtoolbox_sem_inst_label]
+    call main.tx_using.setlabel char _dta[hxtoolbox_sem_using_label]
+    call main.tx_if.setlabel char _dta[hxtoolbox_sem_if_label]
+    call main.tx_example_code1.setlabel char _dta[hxtoolbox_sem_example1]
+    call main.tx_example_explain1.setlabel char _dta[hxtoolbox_sem_explain1]
+    call main.tx_example_code2.setlabel char _dta[hxtoolbox_sem_example2]
+    call main.tx_example_explain2.setlabel char _dta[hxtoolbox_sem_explain2]
+    call main.tx_panel_status_main.setlabel char _dta[hxtoolbox_panel_status]
+
+    call main.cb_model.repopulate
+    call main.ed_newvar.setvalue ""
+    call main.ed_expression.setvalue char _dta[hxtoolbox_sem_default_expression]
+    call main.ed_vars.setvalue ""
+    call main.ed_absorb.setvalue ""
+    call main.ed_endog.setvalue ""
+    call main.ed_inst.setvalue ""
+    call main.ed_vars_value.setvalue ""
+    call main.ed_absorb_value.setvalue ""
+    call main.ed_endog_value.setvalue ""
+    call main.ed_inst_value.setvalue ""
+    call selected_vars.setvalue ""
+    call selected_absorb.setvalue ""
+    call selected_endog.setvalue ""
+    call selected_inst.setvalue ""
+    call main.ed_if.setvalue ""
+    call main.ck_condition.setoff
+    call main.ed_cond_value.setvalue ""
+    call main.ed_in.setvalue ""
+    call main.ed_special.setvalue ""
+    call main.ed_options.setvalue ""
+    call main.fi_using.setvalue ""
+    if schema_models {
+        call main.cb_model.setvalue char _dta[hxtoolbox_schema_default_model]
+    }
+    if schema_vce.iseq("1") {
+        call main.cb_vce.setvalue "default"
+    }
+
+    call main.gb_schema.show
+    call main.tx_cmd_title.show
+    call main.tx_quality.show
+    call main.tx_installed.show
+    call main.tx_help.show
+    call main.tx_source.show
+    call main.bu_example.show
+    call main.bu_help.show
+    call main.bu_official.show
+    call main.bu_schema_refresh.show
+    call main.bu_add_favorite.show
+    call program show_param_controls
+    call dialog_ready.setvalue "1"
+    call program preview_schema
+END
+
+PROGRAM hide_param_controls
+BEGIN
+    call main.gb_params.hide
+    call main.tx_dep.hide
+    call main.cb_dep.hide
+    call main.tx_newvar.hide
+    call main.ed_newvar.hide
+    call main.tx_model.hide
+    call main.cb_model.hide
+    call main.tx_vars.hide
+    call main.cb_var_pick.hide
+    call main.bu_var_add.hide
+    call main.ed_vars.hide
+    call main.bu_var_clear.hide
+    call main.tx_panel.hide
+    call main.cb_panel.hide
+    call main.cb_time.hide
+    call main.bu_xtset.hide
+    call main.tx_panel_status_main.hide
+    call main.tx_absorb.hide
+    call main.cb_absorb_pick.hide
+    call main.bu_absorb_add.hide
+    call main.ed_absorb.hide
+    call main.bu_absorb_clear.hide
+    call main.tx_endog.hide
+    call main.cb_endog_pick.hide
+    call main.bu_endog_add.hide
+    call main.ed_endog.hide
+    call main.bu_endog_clear.hide
+    call main.tx_using.hide
+    call main.fi_using.hide
+    call main.tx_inst.hide
+    call main.cb_inst_pick.hide
+    call main.bu_inst_add.hide
+    call main.ed_inst.hide
+    call main.bu_inst_clear.hide
+    call main.tx_expression.hide
+    call main.ed_expression.hide
+    call main.tx_vce.hide
+    call main.cb_vce.hide
+    call main.tx_cluster.hide
+    call main.cb_cluster.hide
+    call main.tx_if.hide
+    call main.ed_if.hide
+    call main.ck_condition.hide
+    call main.cb_cond_var.hide
+    call main.cb_cond_op.hide
+    call main.ed_cond_value.hide
+    call main.bu_more.hide
+    call main.bu_merge_check.hide
+END
+
+PROGRAM hide_advanced_page
+BEGIN
+    call main.gb_advanced.hide
+    call main.tx_advanced_tip.hide
+    call main.tx_weight.hide
+    call main.cb_weight.hide
+    call main.cb_weight_var.hide
+    call main.tx_in.hide
+    call main.ed_in.hide
+    call main.tx_special.hide
+    call main.ed_special.hide
+    call main.tx_options.hide
+    call main.ed_options.hide
+    call main.tx_advanced_note.hide
+    call main.bu_advanced_back.hide
+END
+
+PROGRAM hide_examples_page
+BEGIN
+    call main.gb_examples.hide
+    call main.tx_example_code1.hide
+    call main.tx_example_explain1.hide
+    call main.tx_example_code2.hide
+    call main.tx_example_explain2.hide
+    call main.tx_example_note.hide
+    call main.bu_example_back.hide
+END
+
+PROGRAM show_param_controls
+BEGIN
+    call program hide_advanced_page
+    call program hide_examples_page
+    call program hide_param_controls
+    call main.gb_params.show
+    if schema_newvar.iseq("1") {
+        call main.tx_newvar.show
+        call main.ed_newvar.show
+    }
+    if schema_dep.iseq("1") {
+        call main.tx_dep.show
+        call main.cb_dep.show
+    }
+    if schema_models {
+        call main.tx_model.show
+        call main.cb_model.show
+    }
+    if schema_vars.iseq("1") {
+        call main.tx_vars.show
+        call main.cb_var_pick.show
+        call main.bu_var_add.show
+        call main.ed_vars.show
+        call main.bu_var_clear.show
+    }
+    if schema_template.iseq("generic") & schema_dep.iseq("0") & schema_vars.iseq("0") & schema_expression.iseq("0") {
+        call main.tx_vars.setlabel "能够确认的变量（可选）"
+        call main.tx_vars.show
+        call main.cb_var_pick.show
+        call main.bu_var_add.show
+        call main.ed_vars.show
+        call main.bu_var_clear.show
+    }
+    if schema_panel.iseq("1") {
+        call main.tx_panel.show
+        call main.cb_panel.show
+        if schema_template.iseq("collapse") {
+            call main.cb_time.hide
+            call main.bu_xtset.hide
+            call main.tx_panel_status_main.hide
+        }
+        else if schema_template.iseq("reshape") {
+            call main.cb_time.show
+            call main.bu_xtset.hide
+            call main.tx_panel_status_main.hide
+        }
+        else {
+            call main.cb_time.show
+            call main.bu_xtset.show
+            call main.tx_panel_status_main.show
+        }
+    }
+    if schema_using.iseq("1") {
+        call main.tx_using.show
+        call main.fi_using.show
+    }
+    if schema_expression.iseq("1") {
+        call main.tx_expression.show
+        call main.ed_expression.show
+    }
+    if schema_iv.iseq("1") {
+        call main.tx_endog.show
+        call main.cb_endog_pick.show
+        call main.bu_endog_add.show
+        call main.ed_endog.show
+        call main.bu_endog_clear.show
+        call main.tx_inst.show
+        call main.cb_inst_pick.show
+        call main.bu_inst_add.show
+        call main.ed_inst.show
+        call main.bu_inst_clear.show
+    }
+    if schema_absorb.iseq("1") {
+        call main.tx_absorb.show
+        call main.cb_absorb_pick.show
+        call main.bu_absorb_add.show
+        call main.ed_absorb.show
+        call main.bu_absorb_clear.show
+    }
+    if schema_vce.iseq("1") {
+        call main.tx_vce.show
+        call main.cb_vce.show
+    }
+    if schema_if.iseq("1") {
+        if schema_template.iseq("replace") {
+            call main.ck_condition.show
+            call program condition_changed
+        }
+        else {
+            call main.tx_if.show
+            call main.ed_if.show
+        }
+    }
+    if schema_show_advanced.iseq("1") {
+        call main.bu_more.show
+    }
+    if schema_show_merge_check.iseq("1") {
+        call main.bu_merge_check.show
+    }
+    if schema_keepdrop_mode.iseq("1") {
+        call program model_changed
+    }
+    if schema_template.iseq("ttest") {
+        call program model_changed
+    }
+END
+
+PROGRAM condition_changed
+BEGIN
+    if main.ck_condition {
+        call main.cb_cond_var.show
+        call main.cb_cond_op.show
+        call main.ed_cond_value.show
+    }
+    else {
+        call main.cb_cond_var.hide
+        call main.cb_cond_op.hide
+        call main.ed_cond_value.hide
+    }
+    call program preview_schema
+END
+
+PROGRAM show_advanced
+BEGIN
+    call program hide_param_controls
+    call program hide_examples_page
+    call main.gb_advanced.show
+    call main.tx_advanced_tip.show
+    if schema_weight.iseq("1") {
+        call main.tx_weight.show
+        call main.cb_weight.show
+        call main.cb_weight_var.show
+    }
+    if schema_in.iseq("1") {
+        call main.tx_in.show
+        call main.ed_in.show
+    }
+    call main.tx_special.show
+    call main.ed_special.show
+    call main.tx_options.show
+    call main.ed_options.show
+    call main.tx_advanced_note.show
+    call main.bu_advanced_back.show
+END
+
+PROGRAM show_examples
+BEGIN
+    call program hide_param_controls
+    call program hide_advanced_page
+    call main.gb_examples.show
+    call main.tx_example_code1.show
+    call main.tx_example_explain1.show
+    call main.tx_example_code2.show
+    call main.tx_example_explain2.show
+    call main.tx_example_note.show
+    call main.bu_example_back.show
+END
+
+PROGRAM back_to_params
+BEGIN
+    call program show_param_controls
+END
+
+PROGRAM vce_changed
+BEGIN
+    if main.cb_vce.iseq("cluster") {
+        call main.tx_cluster.show
+        call main.cb_cluster.show
+    }
+    else {
+        call main.tx_cluster.hide
+        call main.cb_cluster.hide
+    }
+    call program preview_schema
+END
+
+PROGRAM model_changed
+BEGIN
+    if schema_keepdrop_mode.iseq("1") {
+        if main.cb_model.iseq("处理变量") {
+            call main.tx_vars.show
+            call main.cb_var_pick.show
+            call main.bu_var_add.show
+            call main.ed_vars.show
+            call main.bu_var_clear.show
+            call main.tx_if.hide
+            call main.ed_if.hide
+        }
+        else {
+            call main.tx_vars.hide
+            call main.cb_var_pick.hide
+            call main.bu_var_add.hide
+            call main.ed_vars.hide
+            call main.bu_var_clear.hide
+            call main.tx_if.show
+            call main.ed_if.show
+        }
+    }
+    if schema_template.iseq("ttest") {
+        if main.cb_model.iseq("分组比较") {
+            call main.tx_expression.setlabel "分组变量（如 firm）"
+        }
+        else if main.cb_model.iseq("配对比较") {
+            call main.tx_expression.setlabel "第二变量（如 x）"
+        }
+        else {
+            call main.tx_expression.setlabel "比较数值（如 0）"
+        }
+    }
+    if schema_template.iseq("conversion") {
+        if main.cb_model.iseq("覆盖原变量") {
+            call main.tx_newvar.hide
+            call main.ed_newvar.hide
+        }
+        else {
+            call main.tx_newvar.show
+            call main.ed_newvar.show
+        }
+    }
+    call program preview_schema
+END
+
+PROGRAM preview_schema_minimal
+BEGIN
+    put "hxpreview"
+    stata hidden immediate
+    call main.ed_preview.setvalue char _dta[hxtoolbox_preview]
+END
+
+PROGRAM preview_schema
+BEGIN
+    if dialog_ready.iseq("1") {
+    put "hxpreview, depvar(" `"""'
+    put main.cb_dep
+    put `"""' ") newvar(" `"""'
+    put main.ed_newvar
+    put `"""' ") model(" `"""'
+    put main.cb_model
+    put `"""' ") expression(" `"""'
+    put main.ed_expression
+    put `"""' ") usingfile(" `"""'
+    put main.fi_using
+    put `"""' ") panel(" `"""'
+    put main.cb_panel
+    put `"""' ") time(" `"""'
+    put main.cb_time
+    put `"""' ") vce(" `"""'
+    put main.cb_vce
+    put `"""' ") cluster(" `"""'
+    put main.cb_cluster
+    put `"""' ") ifcond(" `"""'
+    put main.ed_if
+    put `"""' ") incond(" `"""'
+    put main.ed_in
+    put `"""' ") special(" `"""'
+    put main.ed_special
+    put `"""' ") options(" `"""'
+    put main.ed_options
+    put `"""' ") weight(" `"""'
+    put main.cb_weight
+    put `"""' ") weightvar(" `"""'
+    put main.cb_weight_var
+    put `"""' ") condvar(" `"""'
+    put main.cb_cond_var
+    put `"""' ") condop(" `"""'
+    put main.cb_cond_op
+    put `"""' ") condvalue(" `"""'
+    put main.ed_cond_value
+    put `"""' ")"
+    if main.ck_condition {
+        put " condition"
+    }
+    stata hidden immediate
+    call main.ed_preview.setvalue char _dta[hxtoolbox_preview]
+    call program monitor_refresh
+    }
+END
+
+PROGRAM run_monitored
+BEGIN
+    require main.ed_preview
+    call program monitor_refresh
+    call dialog_ready.setvalue "0"
+    put "hxexecute, command(" `"""'
+    put main.ed_preview
+    put `"""' ")"
+    stata hidden immediate
+    call data_changed.setvalue char _dta[hxtoolbox_native_refresh]
+    call program refresh_controls
+    call main.cb_monitor_var.setvalue char _dta[hxtoolbox_monitor_var]
+    call program refresh_monitor_display
+    call dialog_ready.setvalue "1"
+    if main.ck_auto_browser & data_changed.iseq("1") {
+        call program workbench_refresh_browser
+    }
+END
+
+PROGRAM monitor_browse
+BEGIN
+    call program monitor_refresh
+    put "hxmonitor, action(browse)"
+    stata hidden immediate
+END
+
+PROGRAM monitor_summary
+BEGIN
+    call program monitor_refresh
+    put "hxmonitor, action(summary)"
+    stata hidden immediate
+END
+
+PROGRAM monitor_graph
+BEGIN
+    call program monitor_refresh
+    put "hxmonitor, action(graph)"
+    stata hidden immediate
+END
+
+PROGRAM monitor_relation
+BEGIN
+    call program monitor_refresh
+    put "hxmonitor, action(relation)"
+    stata hidden immediate
+END
+
+PROGRAM preview_schema_legacy
+BEGIN
+    /*
+       可见的“已选变量”框保持禁用，防止键盘录入；真正参与命令
+       拼接的是同值的隐藏 EDIT。Stata 的 dialog 引擎可以稳定读取
+       控件值，这也避免隐藏命令执行后 SCRIPT STRING 状态不同步。
+    */
+    call option_buffer.setvalue ""
+    call main.ed_preview.setvalue ""
+    call current_cmd.withvalue main.ed_preview.append "@"
+
+    if schema_is_xtset.iseq("1") {
+        if main.cb_panel {
+            call main.ed_preview.append " "
+            call main.cb_panel.withvalue main.ed_preview.append "@"
+        }
+        if main.cb_time {
+            call main.ed_preview.append " "
+            call main.cb_time.withvalue main.ed_preview.append "@"
+        }
+    }
+
+    if schema_model_before.iseq("1") {
+        if main.cb_model {
+            call main.ed_preview.append " "
+            if main.cb_model.iseq("两阶段最小二乘（2SLS）") {
+                call main.ed_preview.append "2sls"
+            }
+            else if main.cb_model.iseq("有限信息极大似然（LIML）") {
+                call main.ed_preview.append "liml"
+            }
+            else if main.cb_model.iseq("广义矩估计（GMM）") {
+                call main.ed_preview.append "gmm"
+            }
+            else {
+                call main.cb_model.withvalue main.ed_preview.append "@"
+            }
+        }
+    }
+    if schema_newvar.iseq("1") {
+        if main.ed_newvar {
+            call main.ed_preview.append " "
+            call main.ed_newvar.withvalue main.ed_preview.append "@"
+            if schema_expression.iseq("1") & schema_template.iseq("generate") {
+                call main.ed_preview.append " = "
+                call main.ed_expression.withvalue main.ed_preview.append "@"
+            }
+        }
+    }
+    if schema_dep.iseq("1") {
+        if main.cb_dep {
+            call main.ed_preview.append " "
+            call main.cb_dep.withvalue main.ed_preview.append "@"
+        }
+    }
+    if schema_template.iseq("replace") {
+        if main.ed_expression {
+            call main.ed_preview.append " = "
+            call main.ed_expression.withvalue main.ed_preview.append "@"
+        }
+    }
+    if schema_template.iseq("expression_body") {
+        if main.ed_expression {
+            call main.ed_preview.append " "
+            call main.ed_expression.withvalue main.ed_preview.append "@"
+        }
+    }
+
+    if schema_template.iseq("ttest") {
+        call main.ed_preview.append " "
+        call main.ed_vars_value.withvalue main.ed_preview.append "@"
+        if main.cb_model.iseq("单样本（=数值）") | main.cb_model.iseq("配对比较") {
+            call main.ed_preview.append " == "
+            call main.ed_expression.withvalue main.ed_preview.append "@"
+        }
+    }
+    else if schema_keepdrop_mode.iseq("1") {
+        if main.cb_model.iseq("处理变量") {
+            call main.ed_preview.append " "
+            call main.ed_vars_value.withvalue main.ed_preview.append "@"
+        }
+    }
+    else {
+        if schema_vars.iseq("1") {
+            call main.ed_preview.append " "
+            call main.ed_vars_value.withvalue main.ed_preview.append "@"
+        }
+        if schema_template.iseq("generic") & schema_dep.iseq("0") & schema_vars.iseq("0") & schema_expression.iseq("0") {
+            call main.ed_preview.append " "
+            call main.ed_vars_value.withvalue main.ed_preview.append "@"
+        }
+    }
+
+    if schema_iv.iseq("1") {
+        if main.ed_endog_value {
+            call main.ed_preview.append " ("
+            call main.ed_endog_value.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append " = "
+            call main.ed_inst_value.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append ")"
+        }
+    }
+    if main.ed_special {
+        call main.ed_preview.append " "
+        call main.ed_special.withvalue main.ed_preview.append "@"
+    }
+    if schema_using.iseq("1") {
+        if main.fi_using {
+            call main.ed_preview.append " using "
+            call main.fi_using.withvalue main.ed_preview.append "@"
+        }
+    }
+    if schema_weight.iseq("1") {
+        if main.cb_weight {
+            call main.ed_preview.append " ["
+            call main.cb_weight.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append "="
+            call main.cb_weight_var.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append "]"
+        }
+    }
+    if schema_template.iseq("replace") {
+        if main.ck_condition & main.cb_cond_var & main.cb_cond_op & main.ed_cond_value {
+            call main.ed_preview.append " if "
+            call main.cb_cond_var.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append " "
+            call main.cb_cond_op.withvalue main.ed_preview.append "@"
+            call main.ed_preview.append " "
+            call main.ed_cond_value.withvalue main.ed_preview.append "@"
+        }
+    }
+    else if schema_if.iseq("1") {
+        if schema_keepdrop_mode.iseq("1") {
+            if main.cb_model.iseq("处理样本") {
+                if main.ed_if {
+                    call main.ed_preview.append " if "
+                    call main.ed_if.withvalue main.ed_preview.append "@"
+                }
+            }
+        }
+        else {
+            if main.ed_if {
+                call main.ed_preview.append " if "
+                call main.ed_if.withvalue main.ed_preview.append "@"
+            }
+        }
+    }
+    if schema_in.iseq("1") {
+        if main.ed_in {
+            call main.ed_preview.append " in "
+            call main.ed_in.withvalue main.ed_preview.append "@"
+        }
+    }
+
+    if schema_template.iseq("ttest") {
+        if main.cb_model.iseq("分组比较") {
+            call option_buffer.append " by("
+            call main.ed_expression.withvalue option_buffer.append "@"
+            call option_buffer.append ")"
+        }
+    }
+    if schema_models & schema_model_before.iseq("0") {
+        if schema_keepdrop_mode.iseq("0") & schema_winsor_mode.iseq("0") & schema_predict_mode.iseq("0") & schema_template.iseq("ttest") == 0 {
+            if main.cb_model {
+                call option_buffer.append " "
+                if main.cb_model.iseq("固定效应（FE）") {
+                    call option_buffer.append "fe"
+                }
+                else if main.cb_model.iseq("随机效应（RE）") {
+                    call option_buffer.append "re"
+                }
+                else if main.cb_model.iseq("组间效应（Between）") {
+                    call option_buffer.append "be"
+                }
+                else if main.cb_model.iseq("总体平均（PA）") {
+                    call option_buffer.append "pa"
+                }
+                else {
+                    call main.cb_model.withvalue option_buffer.append "@"
+                }
+            }
+        }
+    }
+    if schema_winsor_mode.iseq("1") {
+        if main.ed_expression {
+            call option_buffer.append " cuts("
+            call main.ed_expression.withvalue option_buffer.append "@"
+            call option_buffer.append ")"
+        }
+        if main.cb_model.iseq("覆盖原变量") {
+            call option_buffer.append " replace"
+        }
+        else {
+            call option_buffer.append " suffix(_w)"
+        }
+    }
+    if schema_predict_mode.iseq("1") {
+        if main.cb_model.iseq("残差") {
+            call option_buffer.append " residuals"
+        }
+        if main.cb_model.iseq("标准化残差") {
+            call option_buffer.append " rstandard"
+        }
+    }
+    if schema_template.iseq("margins") {
+        if main.ed_expression {
+            call option_buffer.append " "
+            call main.ed_expression.withvalue option_buffer.append "@"
+        }
+    }
+    if schema_absorb.iseq("1") {
+        if main.ed_absorb_value {
+            call option_buffer.append " absorb("
+            call main.ed_absorb_value.withvalue option_buffer.append "@"
+            call option_buffer.append ")"
+        }
+    }
+    if schema_vce.iseq("1") {
+        if main.cb_vce.iseq("robust") {
+            call option_buffer.append " vce(robust)"
+        }
+        if main.cb_vce.iseq("cluster") {
+            call option_buffer.append " vce(cluster "
+            call main.cb_cluster.withvalue option_buffer.append "@"
+            call option_buffer.append ")"
+        }
+    }
+    if main.ed_options {
+        call option_buffer.append " "
+        call main.ed_options.withvalue option_buffer.append "@"
+    }
+    if option_buffer {
+        call main.ed_preview.append ","
+        call option_buffer.withvalue main.ed_preview.append "@"
+    }
+END
+
+PROGRAM add_var
+BEGIN
+    put "hxpick, target(vars) action(add) value("
+    put main.cb_var_pick
+    put ")"
+    stata hidden immediate
+    call selected_vars.setvalue char _dta[hxtoolbox_pick_vars]
+    call main.ed_vars.setvalue char _dta[hxtoolbox_pick_vars]
+    call main.ed_vars_value.setvalue char _dta[hxtoolbox_pick_vars]
+    call program preview_schema
+END
+PROGRAM clear_vars
+BEGIN
+    put "hxpick, target(vars) action(clear)"
+    stata hidden immediate
+    call main.ed_vars.setvalue ""
+    call main.ed_vars_value.setvalue ""
+    call selected_vars.setvalue ""
+    call program preview_schema
+END
+PROGRAM add_absorb
+BEGIN
+    put "hxpick, target(absorb) action(add) value("
+    put main.cb_absorb_pick
+    put ")"
+    stata hidden immediate
+    call selected_absorb.setvalue char _dta[hxtoolbox_pick_absorb]
+    call main.ed_absorb.setvalue char _dta[hxtoolbox_pick_absorb]
+    call main.ed_absorb_value.setvalue char _dta[hxtoolbox_pick_absorb]
+    call program preview_schema
+END
+PROGRAM clear_absorb
+BEGIN
+    put "hxpick, target(absorb) action(clear)"
+    stata hidden immediate
+    call main.ed_absorb.setvalue ""
+    call main.ed_absorb_value.setvalue ""
+    call selected_absorb.setvalue ""
+    call program preview_schema
+END
+PROGRAM add_endog
+BEGIN
+    put "hxpick, target(endog) action(add) value("
+    put main.cb_endog_pick
+    put ")"
+    stata hidden immediate
+    call selected_endog.setvalue char _dta[hxtoolbox_pick_endog]
+    call main.ed_endog.setvalue char _dta[hxtoolbox_pick_endog]
+    call main.ed_endog_value.setvalue char _dta[hxtoolbox_pick_endog]
+    call program preview_schema
+END
+PROGRAM clear_endog
+BEGIN
+    put "hxpick, target(endog) action(clear)"
+    stata hidden immediate
+    call main.ed_endog.setvalue ""
+    call main.ed_endog_value.setvalue ""
+    call selected_endog.setvalue ""
+    call program preview_schema
+END
+PROGRAM add_inst
+BEGIN
+    put "hxpick, target(inst) action(add) value("
+    put main.cb_inst_pick
+    put ")"
+    stata hidden immediate
+    call selected_inst.setvalue char _dta[hxtoolbox_pick_inst]
+    call main.ed_inst.setvalue char _dta[hxtoolbox_pick_inst]
+    call main.ed_inst_value.setvalue char _dta[hxtoolbox_pick_inst]
+    call program preview_schema
+END
+PROGRAM clear_inst
+BEGIN
+    put "hxpick, target(inst) action(clear)"
+    stata hidden immediate
+    call main.ed_inst.setvalue ""
+    call main.ed_inst_value.setvalue ""
+    call selected_inst.setvalue ""
+    call program preview_schema
+END
+
+PROGRAM set_panel
+BEGIN
+    require main.cb_panel
+    put "hxpanel set, panel("
+    put main.cb_panel
+    put ")"
+    if main.cb_time {
+        put " time("
+        put main.cb_time
+        put ")"
+    }
+    stata
+    call program refresh_all
+    call program preview_schema
+END
+
+PROGRAM check_merge
+BEGIN
+    require main.cb_model
+    require main.ed_vars_value
+    require main.fi_using
+    put "hxprecheck, command(merge) type("
+    put main.cb_model
+    put ") keys(" `"""'
+    put main.ed_vars_value
+    put `"""' ") usingfile(" `"""'
+    put main.fi_using
+    put `"""' ")"
+    stata
+END
+
+PROGRAM open_help
+BEGIN
+    put "hxopen "
+    put current_cmd
+    put ", help"
+    stata
+END
+PROGRAM open_official
+BEGIN
+    put "hxopen "
+    put current_cmd
+    put ", dialog"
+    stata
+END
+PROGRAM refresh_schema
+BEGIN
+    put "hxresolve "
+    put current_cmd
+    put ", refresh"
+    stata hidden immediate
+    call program render_schema
+END
+PROGRAM add_current_favorite
+BEGIN
+    put "hxregistry, favorite("
+    put current_cmd
+    put ")"
+    stata hidden immediate
+END
+PROGRAM remove_selected_favorite
+BEGIN
+    require main.cb_command
+    put "hxregistry, unfavorite("
+    put main.cb_command
+    put ") category(favorites)"
+    stata hidden immediate
+    call main.cb_command.repopulate
+END
+
+PROGRAM test_auto
+BEGIN
+    put "hxtestdata auto"
+    stata
+    call program refresh_all
+    if main.ck_auto_browser {
+        call program workbench_refresh_browser
+    }
+END
+PROGRAM test_nlsw88
+BEGIN
+    put "hxtestdata nlsw88"
+    stata
+    call program refresh_all
+    if main.ck_auto_browser {
+        call program workbench_refresh_browser
+    }
+END
+PROGRAM test_nlswork
+BEGIN
+    put "hxtestdata nlswork"
+    stata
+    call program refresh_all
+    if main.ck_auto_browser {
+        call program workbench_refresh_browser
+    }
+END
+PROGRAM test_grunfeld
+BEGIN
+    put "hxtestdata grunfeld"
+    stata
+    call program refresh_all
+    if main.ck_auto_browser {
+        call program workbench_refresh_browser
+    }
+END
+PROGRAM test_union
+BEGIN
+    put "hxtestdata union"
+    stata
+    call program refresh_all
+    if main.ck_auto_browser {
+        call program workbench_refresh_browser
+    }
+END
+PROGRAM test_dir
+BEGIN
+    put "hxtestdata dir"
+    stata
+END
+PROGRAM test_merge
+BEGIN
+    put "hxtestdata merge"
+    stata
+    call main.tx_test_paths.setlabel char _dta[hxtoolbox_testdir]
+END
+PROGRAM test_append
+BEGIN
+    put "hxtestdata append"
+    stata
+    call main.tx_test_paths.setlabel char _dta[hxtoolbox_testdir]
+END
+
+PROGRAM perf_on
+BEGIN
+    put "hxthreads on"
+    stata
+    call program refresh_all
+END
+PROGRAM perf_off
+BEGIN
+    put "hxthreads off"
+    stata
+    call program refresh_all
+END
+PROGRAM perf_status
+BEGIN
+    put "hxthreads status"
+    stata
+    call program refresh_all
+END
