@@ -41,10 +41,13 @@ xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-method-p
 xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-oneclick-preview build/previews/oneclick.png
 [ -s build/previews/home.png ] && [ -s build/previews/linear.png ] && [ -s build/previews/oneclick.png ]
 python3 - <<'PY'
-from PIL import Image
+import struct
 for f in ['home.png','linear.png','oneclick.png']:
-    im=Image.open('build/previews/'+f)
-    assert im.size == (1672,901), (f,im.size)
+    with open('build/previews/'+f,'rb') as h:
+        sig=h.read(24)
+    assert sig[:8] == b'\x89PNG\r\n\x1a\n'
+    w,hgt=struct.unpack('>II',sig[16:24])
+    assert (w,hgt)==(1672,901),(f,w,hgt)
 print('HX_PIXEL_MATCH_121_RENDER_SIZE_OK')
 PY
 
