@@ -1,4 +1,4 @@
-*! hxsemantics 1.3.0  11aug2026
+*! hxsemantics 1.3.1  12aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -478,11 +478,13 @@ program define hxsemantics, rclass
             local explain2 "估计带 AR(1) 误差的 Prais–Winsten 回归。"
         }
         else if inlist("`cmd'", "xtreg", "xtlogit", "xtprobit") {
-            local needs_panel 1
+            /* xtset is a separate Stata command.  Keep these pages limited to
+               parameters that belong to the estimation command itself. */
+            local needs_panel 0
             if "`cmd'" == "xtreg" {
                 local title "xtreg — 面板数据回归"
                 local purpose1 "适合企业、个人或地区在多个年份重复观察的数据。"
-                local purpose2 "FE 控制个体长期不变特征；RE 假设个体效应与解释变量不相关。"
+                local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtreg 自己的参数。"
                 local models "固定效应（FE） 随机效应（RE） 组间效应（Between）"
                 local example1 "xtset firm year"
                 local explain1 "先告诉 Stata：firm 是企业，year 是年份。"
@@ -492,7 +494,7 @@ program define hxsemantics, rclass
             else if "`cmd'" == "xtlogit" {
                 local title "xtlogit — 面板二元结果模型"
                 local purpose1 "用于面板数据中取值为 0/1 的因变量。"
-                local purpose2 "运行前需要先用 xtset 设置个体与时间变量。"
+                local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtlogit 自己的参数。"
                 local models "固定效应（FE） 随机效应（RE） 总体平均（PA）"
                 local example1 "xtset firm year"
                 local explain1 "设置企业和年份面板结构。"
@@ -502,7 +504,7 @@ program define hxsemantics, rclass
             else {
                 local title "xtprobit — 面板 Probit 模型"
                 local purpose1 "用于面板数据中取值为 0/1 的因变量，使用 Probit 概率模型。"
-                local purpose2 "运行前需要先用 xtset 设置面板结构。"
+                local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtprobit 自己的参数。"
                 local models "随机效应（RE） 总体平均（PA）"
                 local example1 "xtset firm year"
                 local explain1 "设置企业和年份面板结构。"
@@ -554,6 +556,8 @@ program define hxsemantics, rclass
                 local purpose1 "使用泊松伪极大似然估计，并吸收多个固定效应。"
                 local purpose2 "常用于贸易流量、非负结果和存在大量零值的数据。"
                 local has_absorb 1
+                local has_vce 1
+                local has_cluster 1
                 local example1 "ppmlhdfe y x c1 c2, absorb(firm year)"
                 local explain1 "估计 PPML，并控制企业和年份固定效应。"
                 local example2 "ppmlhdfe y x c1 c2, absorb(firm year) vce(cluster firm)"
