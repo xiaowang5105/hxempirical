@@ -2324,6 +2324,8 @@ public final class HxWorkbench {
       private final JTextField ifCondition = new JTextField();
       private final JTextField inCondition = new JTextField();
       private final JTextField options = new JTextField();
+      private final JComboBox<String> genericWeightType = new JComboBox<>(new String[]{"无", "fweight", "aweight", "pweight", "iweight"});
+      private final JComboBox<String> genericWeightVar = variableCombo();
       private final JComboBox<String> regressX = variableCombo();
       private final JList<String> regressControls = variableList();
       private final JComboBox<String> regressFactor = variableCombo();
@@ -2345,8 +2347,9 @@ public final class HxWorkbench {
       private boolean regressWorkspaceActive;
       private final JLabel usingLabel = new JLabel();
       private final JToggleButton advancedToggle = new JToggleButton("更多设置  +");
-      private final JPanel advancedContent = new JPanel(new BorderLayout(0, 6));
+      private final JPanel advancedContent = new JPanel();
       private JPanel clusterFieldBlock;
+      private JPanel genericWeightVarFieldBlock;
       private final JComboBox<String> oneClickY = variableCombo();
       private final JComboBox<String> oneClickX = variableCombo();
       private final JList<String> oneClickRequired = variableList();
@@ -2700,8 +2703,7 @@ public final class HxWorkbench {
          this.addField(var4++, "标准误方式", this.vce);
          this.clusterFieldBlock = this.addField(var4++, "聚类变量（仅 Cluster 时需要）", this.cluster);
          this.clusterFieldBlock.setVisible(false);
-         this.addField(var4++, "筛选条件 if（可选）", this.ifCondition);
-         this.addAdvancedSettings(var4++);
+         this.addAdvancedSettings(var4++, true, true, true);
          GridBagConstraints var12 = this.constraints(0, var4);
          var12.gridwidth = 2;
          var12.weighty = 1.0;
@@ -4393,7 +4395,7 @@ public final class HxWorkbench {
             styleTextField(var5);
          }
 
-         for (JComboBox var10 : Arrays.asList(this.depvar, this.model, this.panel, this.time, this.vce, this.cluster)) {
+         for (JComboBox var10 : Arrays.asList(this.depvar, this.model, this.panel, this.time, this.vce, this.cluster, this.genericWeightType, this.genericWeightVar)) {
             styleCombo(var10);
          }
 
@@ -4445,11 +4447,7 @@ public final class HxWorkbench {
          this.changeArea.setBackground(SURFACE);
          this.changeArea.setForeground(TEXT);
          this.advancedContent.setOpaque(false);
-         JLabel var14 = new JLabel("仍需手动输入的 Stata options（可留空）");
-         var14.setForeground(MUTED);
-         var14.setFont(var14.getFont().deriveFont(10.5F));
-         this.advancedContent.add(var14, "North");
-         this.advancedContent.add(this.options, "Center");
+         this.advancedContent.setLayout(new BoxLayout(this.advancedContent, BoxLayout.Y_AXIS));
          this.advancedContent.setVisible(false);
          styleSecondaryButton(this.advancedToggle);
          this.advancedToggle.setHorizontalAlignment(2);
@@ -5120,6 +5118,10 @@ public final class HxWorkbench {
                this.updateRegressConditionalFields();
             }
          });
+         this.genericWeightType.addActionListener(var1x -> {
+            this.updateGenericWeightConditionalFields();
+            this.schedulePreview();
+         });
          this.addPreviewListeners(
             this.depvar,
             this.variables,
@@ -5136,6 +5138,8 @@ public final class HxWorkbench {
             this.cluster,
             this.ifCondition,
             this.inCondition,
+            this.genericWeightType,
+            this.genericWeightVar,
             this.options
          );
          this.addPreviewListeners(
@@ -6310,15 +6314,7 @@ public final class HxWorkbench {
          }
 
          this.clusterFieldBlock = this.flag("has_cluster") ? this.addField(var4++, "聚类变量（仅 Cluster 时需要）", this.cluster) : null;
-         if (this.flag("has_if")) {
-            this.addField(var4++, this.sem("if_label"), this.ifCondition);
-         }
-
-         if (this.flag("has_in")) {
-            this.addField(var4++, "观测范围 in（可选）", this.inCondition);
-         }
-
-         this.addAdvancedSettings(var4++);
+         this.addAdvancedSettings(var4++, this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
          GridBagConstraints var9 = this.constraints(0, var4);
          var9.gridwidth = 2;
          var9.weighty = 1.0;
@@ -7552,6 +7548,7 @@ public final class HxWorkbench {
          replaceComboItems(this.panel, var1);
          replaceComboItems(this.time, var1);
          replaceComboItems(this.cluster, var1);
+         replaceComboItems(this.genericWeightVar, var1);
          replaceListItems(this.variables, var1);
          replaceListItems(this.absorb, var1);
          replaceListItems(this.endog, var1);
@@ -7605,6 +7602,11 @@ public final class HxWorkbench {
                this.appendOption(var1, "cluster", selected(this.cluster));
                this.appendOption(var1, "ifcond", this.ifCondition.getText());
                this.appendOption(var1, "incond", this.inCondition.getText());
+               String genericWeight = selected(this.genericWeightType);
+               if (!"无".equals(genericWeight)) {
+                  this.appendOption(var1, "weight", genericWeight);
+                  this.appendOption(var1, "weightvar", selected(this.genericWeightVar));
+               }
                this.appendOption(var1, "options", this.options.getText());
                HxWorkbench.StataBridge.execute(var1.toString(), false);
                this.rebuilding = true;
@@ -8876,24 +8878,69 @@ public final class HxWorkbench {
          return var4;
       }
 
-      private void addAdvancedSettings(int var1) {
+      private void addAdvancedSettings(int var1, boolean var2, boolean var3, boolean var4) {
+         this.rebuildGenericAdvancedContent(var2, var3, var4);
          this.advancedToggle.setSelected(false);
          this.advancedToggle.setText("更多设置  +");
          this.advancedContent.setVisible(false);
-         JPanel var2 = new JPanel();
-         var2.setOpaque(false);
-         var2.setLayout(new BoxLayout(var2, 1));
+         JPanel var5 = new JPanel();
+         var5.setOpaque(false);
+         var5.setLayout(new BoxLayout(var5, BoxLayout.Y_AXIS));
          this.advancedToggle.setAlignmentX(0.0F);
          this.advancedContent.setAlignmentX(0.0F);
-         var2.add(this.advancedToggle);
-         var2.add(Box.createVerticalStrut(7));
-         var2.add(this.advancedContent);
-         GridBagConstraints var3 = this.constraints(0, var1);
-         var3.gridwidth = 2;
-         var3.weightx = 1.0;
-         var3.fill = 2;
-         var3.insets = new Insets(0, 0, 13, 0);
-         this.formPanel.add(var2, var3);
+         var5.add(this.advancedToggle);
+         var5.add(Box.createVerticalStrut(7));
+         var5.add(this.advancedContent);
+         GridBagConstraints var6 = this.constraints(0, var1);
+         var6.gridwidth = 2;
+         var6.weightx = 1.0;
+         var6.fill = 2;
+         var6.insets = new Insets(0, 0, 13, 0);
+         this.formPanel.add(var5, var6);
+      }
+
+      private void rebuildGenericAdvancedContent(boolean var1, boolean var2, boolean var3) {
+         this.advancedContent.removeAll();
+         this.genericWeightVarFieldBlock = null;
+         if (var1) {
+            this.advancedContent.add(this.labeledInline("样本条件 if", this.ifCondition));
+            this.advancedContent.add(Box.createVerticalStrut(8));
+         }
+
+         if (var2) {
+            this.advancedContent.add(this.labeledInline("观测范围 in", this.inCondition));
+            this.advancedContent.add(Box.createVerticalStrut(8));
+         }
+
+         if (var3) {
+            JPanel var4 = new JPanel(new GridLayout(1, 2, 8, 0));
+            var4.setOpaque(false);
+            var4.add(this.miniLabeled("权重类型", this.genericWeightType));
+            var4.add(this.miniLabeled("权重变量", this.genericWeightVar));
+            this.genericWeightVarFieldBlock = this.labeledInline("权重", var4);
+            this.advancedContent.add(this.genericWeightVarFieldBlock);
+            this.advancedContent.add(Box.createVerticalStrut(8));
+         }
+
+         JLabel var5 = new JLabel("其他 Stata options（高级，可留空）");
+         var5.setForeground(MUTED);
+         var5.setFont(var5.getFont().deriveFont(10.5F));
+         var5.setAlignmentX(0.0F);
+         this.options.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+         this.advancedContent.add(var5);
+         this.advancedContent.add(Box.createVerticalStrut(4));
+         this.advancedContent.add(this.options);
+         this.updateGenericWeightConditionalFields();
+         this.advancedContent.revalidate();
+         this.advancedContent.repaint();
+      }
+
+      private void updateGenericWeightConditionalFields() {
+         boolean var1 = !"无".equals(selected(this.genericWeightType));
+         this.genericWeightVar.setEnabled(var1);
+         if (!var1) {
+            this.genericWeightVar.setSelectedItem(null);
+         }
       }
 
       private void addTaskGroup(int var1, String var2, String[][] var3) {
@@ -8940,9 +8987,10 @@ public final class HxWorkbench {
          if (this.clusterFieldBlock != null) {
             boolean var1 = "cluster".equalsIgnoreCase(selected(this.vce));
             this.clusterFieldBlock.setVisible(var1);
-            this.formPanel.revalidate();
-            this.formPanel.repaint();
          }
+         this.updateGenericWeightConditionalFields();
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
       }
 
       private static boolean comboContains(JComboBox<String> var0, String var1) {
