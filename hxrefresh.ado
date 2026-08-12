@@ -1,4 +1,4 @@
-*! hxrefresh 3.0.0  09aug2026
+*! hxrefresh 3.1.0  12aug2026
 *! Refresh variable lists and toolbox status text stored in dataset characteristics
 program define hxrefresh
     version 16.0
@@ -6,10 +6,6 @@ program define hxrefresh
     capture quietly ds
     if _rc local allvars ""
     else local allvars `"`r(varlist)'"'
-
-    capture quietly ds, has(type numeric)
-    if _rc local numericvars ""
-    else local numericvars `"`r(varlist)'"'
 
     local k : word count `allvars'
     capture quietly count
@@ -19,7 +15,6 @@ program define hxrefresh
     local filename `"`c(filename)'"'
     if trim(`"`filename'"') == "" local filename "未保存/内存数据"
 
-    char _dta[hxselect_numeric_vars] `"`numericvars'"'
     char _dta[hxtoolbox_all_vars] `"`allvars'"'
     char _dta[hxtoolbox_status_data] `"当前数据：`filename'"'
     char _dta[hxtoolbox_status_nk] `"样本数：`n'    变量数：`k'"'

@@ -1,36 +1,82 @@
 # hxempirical
 
-**HX Empirical Workbench** 是一个面向 Stata 的可视化实证分析工作台，目标是把常见的经管实证操作从“记命令、查语法、反复改代码”变成“选择任务、设置参数、检查命令、直接运行”。
+**HX Empirical Workbench** 是一个面向 Stata 的可视化实证分析工作台。它把常见的经管实证操作组织成可点击、可选择、可预览代码的工作界面，同时保留完整的 Stata 命令，方便复现、检查和继续修改。
 
-它适合希望降低 Stata 上手门槛，同时又需要保留完整代码、保证结果可复现的学生和研究者，尤其适合经济学、金融学、管理学等领域的课程论文、硕士论文和常规实证研究。
+它主要面向经济学、金融学、管理学等领域的课程论文、硕士论文和常规实证研究，也适合希望降低 Stata 上手门槛、同时保留正式代码工作流的用户。
 
 当前发布版本：**0.9.7**  
 支持：**Stata 17 及以上版本**
 
+## 核心结构
+
+hxempirical 目前按两类功能组织：
+
+### 1. 普通命令
+
+普通功能优先调用 **Stata 官方命令** 或 **成熟的第三方命令**。
+
+例如：
+
+- 普通线性回归：`regress`
+- 面板模型：`xtreg`
+- 高维固定效应：`reghdfe`
+- PPML 高维固定效应：`ppmlhdfe`
+- 工具变量：`ivregress`、`ivreghdfe`
+- 缩尾：`winsor2`
+- 系数图：`coefplot`
+- 描述统计：`summarize`、`tabstat`
+- 数据合并：`merge`、`append`
+- 数据结构转换：`reshape`、`collapse`
+
+HX 在这一层负责命令查找、中文说明、参数界面、变量选择、代码生成、运行前检查、History 记录、运行监控和结果展示。最终提交给 Stata 的仍是对应的真实命令。
+
+每个普通命令页按使用频率组织参数：**常用参数直接显示，低频参数放到“更多设置”或高级选项中**。后台检查只在发现问题时提示，例如命令尚未安装、变量不存在、面板尚未 `xtset`、聚类变量无效等。
+
+### 2. HX 专区 / Workflow
+
+专区用于组织一个完整的实证任务。一个 Workflow 可以连续调用多个 Stata 官方命令、第三方命令和少量 HX 辅助逻辑，把多个步骤串成一套可执行流程。
+
+目前包括：
+
+- **DID 专区**：围绕 DID 变量准备、事件时间、事件研究、政策前联合检验和动态图等步骤组织流程。
+- **OneClick 专区**：调用作者发布的真实外部 `oneclick` / `oneclick_robustness` 命令，并负责参数组织、运行隔离和结果读取。
+
+后续的机制分析、稳健性分析、异质性分析等完整研究任务也可以继续按 Workflow 方式扩展。
+
 ## 它能做什么
 
-hxempirical 在 Stata 内提供一个单窗口工作台。你可以从研究任务或命令出发，选择变量和参数，界面会同步生成完整的 Stata 命令。真正运行分析时，命令仍由 Stata 自身执行，并写入 Stata History，方便检查、复现和继续修改。
+hxempirical 在 Stata 内提供单窗口工作台。你可以从研究任务或命令出发，选择变量和参数，界面同步生成完整 Stata 命令。运行时由 Stata 执行该命令，并写入 Stata History。
 
 目前主要包括：
 
-- **任务式入口**：可以按“普通线性回归”“固定效应”“工具变量”“DID”“数据处理”等研究任务寻找功能，也可以直接搜索 Stata 命令。
-- **可视化回归设置**：通过界面选择因变量、核心解释变量、控制变量、固定效应、聚类标准误、权重、`if/in`、交互项、滞后项等。
-- **实时命令预览**：界面底部始终显示将要提交给 Stata 的完整命令，可直接检查和修改。
-- **回归后检验**：普通 OLS 可继续进行 VIF、异方差检验、RESET、信息准则、残差、Cook's distance、leverage、系数检验等常见 postestimation 操作。
-- **数据查看与检查**：右侧可以查看当前 Stata 内存中的数据状态，并提供缺失值分析等工具；查看过程不会修改原始数据。
-- **文件转换**：支持 Excel、CSV、TXT、TSV 转换为 `.dta`，提供预览、编码识别、批量转换和结果记录。
-- **DID 分步构建**：帮助生成 `post`、`did`、事件时间变量、事件研究交互项和政策前联合检验，适合常见政策冲击研究流程。
-- **图形工具**：提供分布图、变量关系图、分组趋势图、回归后图形以及 DID / event-study 相关图形入口。
-- **OneClick 专区**：调用真实的外部 `oneclick` 命令，并把界面设置转换为对应的 Stata 命令；hxempirical 不自行替代其算法。
-- **社区命令支持**：可检测并按需使用 `reghdfe`、`ppmlhdfe`、`ivreghdfe`、`winsor2`、`coefplot`、`event_plot` 等扩展命令。
+- **任务式入口与命令搜索**：按普通线性回归、固定效应、工具变量、数据处理等任务寻找命令，也可以直接搜索 Stata 命令名。
+- **可视化参数设置**：通过界面选择因变量、解释变量、控制变量、固定效应、聚类标准误、权重、`if/in` 等参数。
+- **实时命令预览**：界面底部始终显示最终将提交给 Stata 的完整命令，并允许运行前检查和修改。
+- **回归后检验**：支持常见 postestimation 命令，例如 VIF、异方差检验、RESET、信息准则、残差、Cook's distance、leverage 和系数检验。
+- **数据查看与检查**：读取当前 Stata 内存中的数据状态，并提供变量、缺失值和数据结构相关入口。
+- **文件转换 Workflow**：支持 Excel、CSV、TXT、TSV 转换为 `.dta`，包含预览、编码识别、批量转换和结果记录。
+- **DID Workflow**：组织常见 DID / event-study 研究步骤。
+- **图形命令**：提供分布图、变量关系图、回归结果图以及 DID / event-study 图形入口。
+- **OneClick Workflow**：调用真实外部命令并读取其输出。
+- **社区命令支持**：检测并按需使用 `reghdfe`、`ppmlhdfe`、`ivreghdfe`、`winsor2`、`coefplot`、`event_plot` 等扩展命令。
 - **运行监控**：记录命令、开始和结束时间、耗时、返回码、数据变化以及可获得的估计结果。
-- **最近工作恢复**：保存最近的模型设置，重新打开后可以继续编辑，不会自动替你运行。
+- **最近工作恢复**：保存最近使用的模型设置，便于重新打开后继续编辑。
 
-## 设计思路
+## 设计原则
 
-hxempirical 的核心原则是：**让不会背 Stata 语法的人也能开始做实证，同时让熟悉 Stata 的人始终看得到真正执行的代码。**
+hxempirical 的目标是让用户更容易使用 Stata，同时始终保留真实、完整、可复现的代码。
 
-因此，界面负责帮助你选择和组织参数，Stata 负责真正的数据处理、估计和绘图。生成的命令会进入 History，后续可以直接复制到 `.do` 文件中形成正式、可复现的研究代码。
+普通命令遵循以下原则：
+
+1. **已有 Stata 官方命令时，直接调用官方命令。**
+2. **已有成熟第三方实现时，调用原作者发布的命令。**
+3. **常用参数放前面，低频参数放后面。**
+4. **界面实时生成最终 Stata 命令。**
+5. **运行前检查在后台完成，有异常时再提示用户。**
+6. **统计估计和数据处理尽量交给实际 Stata 命令执行。**
+7. **HX 自定义逻辑主要用于 GUI、解析、检查、调度、结果读取和 Workflow。**
+
+因此，用户可以把工作台生成的命令直接复制进 `.do` 文件，形成正式的研究代码。
 
 ## 一行安装
 
@@ -48,36 +94,43 @@ hxempirical
 
 ## 最简单的使用方式
 
-可以先用 Stata 自带数据测试：
+可以先使用 Stata 自带数据测试：
 
 ```stata
 sysuse auto, clear
 hxempirical
 ```
 
-进入工作台后，可以搜索 `regress` 或选择普通线性回归，在界面中设置：
+进入工作台后搜索 `regress`，或者进入普通线性回归页面，设置：
 
 - Y：`price`
 - X：`mpg`
 - 控制变量：`weight`
 
-界面会生成类似：
+界面会生成：
 
 ```stata
 regress price mpg weight
 ```
 
-确认后直接运行即可。
+确认后直接运行。
 
-## 常用命令
+## 第三方命令
 
-查看版本和环境：
+安装 hxempirical 本身不会一次性下载全部社区命令。进入相关功能时，工作台会检查命令是否已经安装；对于已经配置可靠来源的命令，可以按需安装。
 
-```stata
-hxempirical about
-```
+当前登记的可选命令包括：
 
-检查可选扩展命令：
+- `reghdfe`
+- `winsor2`
+- `ivreghdfe`
+- `ppmlhdfe`
+- `oneclick`
+- `oneclick_robustness`
+- `coefplot`
+- `event_plot`
+
+检查当前环境：
 
 ```stata
 hxempirical doctor
@@ -89,33 +142,41 @@ hxempirical doctor
 hxempirical install reghdfe
 ```
 
+OneClick 专区执行作者发布的真实外部命令。候选控制变量仍应根据理论、文献和识别设计确定。
+
+## 常用管理命令
+
+查看版本和环境：
+
+```stata
+hxempirical about
+```
+
 打开经典 Stata 对话框界面：
 
 ```stata
 hxempirical, classic
 ```
 
-## 添加到 Stata 菜单
-
-仅在当前 Stata 会话添加：
+仅在当前 Stata 会话添加菜单入口：
 
 ```stata
 hxempirical menu
 ```
 
-如果希望以后每次启动 Stata 都显示菜单入口：
+以后每次启动 Stata 都显示菜单入口：
 
 ```stata
 hxempirical menu persist
 ```
 
-移除该持久菜单：
+移除持久菜单：
 
 ```stata
 hxempirical menu remove
 ```
 
-菜单位置为：
+菜单位置：
 
 **用户（User） > 我的实证工具箱**
 
@@ -133,11 +194,11 @@ net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") rep
 hxempirical update
 ```
 
-如果当前 Stata 会话已经运行过 hxempirical，并在更新时出现 Java/JAR 文件正在使用、`r(602)` 等提示，请关闭 Stata，重新打开后先执行安装或更新命令。
+如果当前 Stata 会话已经加载过 hxempirical，并在更新时出现 Java/JAR 文件正在使用、`r(602)` 等提示，请关闭 Stata，重新打开后先执行安装或更新命令。
 
 ## 卸载
 
-如果曾启用持久菜单，建议先运行：
+如果曾启用持久菜单，先运行：
 
 ```stata
 hxempirical menu remove
@@ -149,31 +210,14 @@ hxempirical menu remove
 ado uninstall hxempirical
 ```
 
-卸载或更新后建议重新启动 Stata，以释放已经加载的 Java 类。
-
-## 关于外部扩展命令
-
-安装 hxempirical 本身不会自动下载所有社区命令。只有当某项功能真正需要外部命令时，工作台才会进行检测，并在有可靠安装来源的情况下提示安装。
-
-例如：
-
-- `reghdfe`
-- `winsor2`
-- `ivreghdfe`
-- `ppmlhdfe`
-- `oneclick`
-- `oneclick_robustness`
-- `coefplot`
-- `event_plot`
-
-其中 OneClick 功能调用作者真实的外部命令。控制变量组合仍应基于理论、文献和识别设计进行选择，工具本身不会替代研究设计。
+更新或卸载后重新启动 Stata，可以释放已经加载的 Java 类。
 
 ## 兼容性
 
 - Stata 17 或更高版本
-- Windows / macOS 均按跨平台方式设计
+- Windows / macOS 按跨平台方式设计
 - Java 工作台基于 Stata 自带 Java / SFI 接口
-- 如果 Java 工作台无法启动，可以使用：
+- Java 工作台无法启动时，可以使用：
 
 ```stata
 hxempirical, classic
@@ -181,14 +225,13 @@ hxempirical, classic
 
 打开随包提供的经典 Stata 界面。
 
-## 当前定位
+## 当前开发方向
 
-hxempirical 目前主要服务于经管实证研究中的高频操作，重点是：
+当前重构重点是：
 
-1. 降低 Stata 命令使用门槛；
-2. 把常见实证流程组织到统一界面；
-3. 始终保留真实、完整、可复现的 Stata 命令；
-4. 尽量减少在菜单、帮助文档、代码和数据窗口之间来回切换；
-5. 让初学者可以直接开始，同时不给熟悉 Stata 的用户制造“黑箱”。
-
-项目仍在持续完善中，后续会继续扩展常用实证命令、数据处理、诊断、绘图和论文工作流支持。
+1. 普通功能统一回到真实 Stata 官方命令或第三方命令；
+2. 清理历史版本中与现成命令重复的 HX 实现；
+3. 普通命令页统一采用“常用参数 → 更多设置 → 最终命令”的结构；
+4. 将多步骤特调功能统一收归 HX Workflow；
+5. 保留命令解析、自动页面生成、运行监控和 History 等工作台基础能力；
+6. 持续扩展经管实证研究常用命令与 Workflow。

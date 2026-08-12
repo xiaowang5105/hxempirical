@@ -1,5 +1,5 @@
-*! hxregistry 2.7.1  11aug2026
-*! Three-level method catalog, search, favorites, and recent-command state
+*! hxregistry 2.8.0  12aug2026
+*! Command-first catalog plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
     syntax [, SEARCH(string asis) CATEGORY(string) FAVORITE(string) ///
@@ -12,6 +12,7 @@ program define hxregistry, rclass
     local graph_cmds "histogram kdensity scatter lfit graph_box twoway marginsplot coefplot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
+    local workflow_cmds "hxconvert did_builder did_trends oneclick oneclick_robustness"
     local all_cmds "`data_cmds' `stats_cmds' `reg_cmds' `post_cmds' `graph_cmds' `did_cmds' `oneclick_cmds'"
 
     local data_methods "导入与转换 数据检查 变量处理 样本处理 合并与追加 数据结构"
@@ -153,6 +154,7 @@ program define hxregistry, rclass
     char _dta[hxtoolbox_graph_cmds] `"`graph_cmds'"'
     char _dta[hxtoolbox_did_cmds] `"`did_cmds'"'
     char _dta[hxtoolbox_oneclick_cmds] `"`oneclick_cmds'"'
+    char _dta[hxtoolbox_workflow_cmds] `"`workflow_cmds'"'
     char _dta[hxtoolbox_data_methods] `"`data_methods'"'
     char _dta[hxtoolbox_stats_methods] `"`stats_methods'"'
     char _dta[hxtoolbox_reg_methods] `"`reg_methods'"'
@@ -212,7 +214,7 @@ program define hxregistry, rclass
     local method_title `"`method'"'
     local method_desc "选择下面的具体 Stata 命令，再进入该命令自己的设置页面。"
     if inlist(`"`method'"', "导入与转换", "import_convert") local view "hxconvert"
-    else if inlist(`"`method'"', "数据检查", "data_check") local view "缺失值分析 duplicates"
+    else if inlist(`"`method'"', "数据检查", "data_check") local view "misstable duplicates"
     else if inlist(`"`method'"', "变量处理", "variable_processing") local view "generate replace encode decode destring tostring winsor2"
     else if inlist(`"`method'"', "样本处理", "sample_processing") local view "keep drop"
     else if inlist(`"`method'"', "合并与追加", "merge_append") local view "merge append"
@@ -222,11 +224,11 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "均值检验", "mean_test") local view "ttest"
     else if inlist(`"`method'"', "频数列联", "frequency") local view "tabulate"
     else if inlist(`"`method'"', "普通线性回归", "linear_ols") local view "regress"
-    else if inlist(`"`method'"', "固定效应线性回归", "linear_fe") local view "areg reghdfe"
+    else if inlist(`"`method'"', "固定效应线性回归", "linear_fe") local view "reghdfe areg"
     else if inlist(`"`method'"', "稳健与特殊线性回归", "linear_special") local view "rreg cnsreg vwls eivreg"
     else if inlist(`"`method'"', "分位数回归", "linear_quantile") local view "qreg"
     else if inlist(`"`method'"', "时间序列线性回归", "linear_ts") local view "newey prais"
-    else if inlist(`"`method'"', "线性模型", "linear") local view "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais"
+    else if inlist(`"`method'"', "线性模型", "linear") local view "regress reghdfe areg qreg rreg cnsreg vwls eivreg newey prais"
     else if inlist(`"`method'"', "面板模型", "panel") local view "xtreg xtlogit xtprobit"
     else if inlist(`"`method'"', "二元结果", "binary") local view "logit probit"
     else if inlist(`"`method'"', "计数模型", "count") local view "poisson nbreg ppmlhdfe"
