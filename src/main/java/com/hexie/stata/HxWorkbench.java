@@ -3412,7 +3412,7 @@ public final class HxWorkbench {
          var24.getViewport().setBackground(APP_BG);
          var24.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
          var24.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-         var24.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+         var24.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
          var24.getVerticalScrollBar().setUnitIncrement(18);
          var1.add(var24, "Center");
          SwingUtilities.invokeLater(this::refreshHomeContext);
@@ -3955,7 +3955,7 @@ public final class HxWorkbench {
          var5.getViewport().setBackground(APP_BG);
          var5.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
          var5.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-         var5.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
+         var5.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
          var5.getVerticalScrollBar().setUnitIncrement(18);
          var1.add(var5, "Center");
          return var1;
