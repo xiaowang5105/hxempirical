@@ -1,4 +1,4 @@
-*! hxresolve 3.1.2  12aug2026
+*! hxresolve 3.1.3  12aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -87,6 +87,18 @@ program define hxresolve, rclass
     }
     if "`cmd'" == "ivreghdfe" {
         local has_iv 1
+    }
+    if inlist("`cmd'", "didregress", "xtdidregress") {
+        local has_depvar 1
+        local has_varlist 1
+        local has_if 1
+        local has_in 1
+        local has_weight 1
+        local has_absorb 1
+        local has_vce 1
+        local has_cluster 1
+        local needs_panel 1
+        local vces "default robust cluster"
     }
 
     quietly hxinsight, command(`cmd')

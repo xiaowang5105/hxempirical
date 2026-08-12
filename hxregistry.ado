@@ -1,4 +1,4 @@
-*! hxregistry 2.9.0  12aug2026
+*! hxregistry 2.9.1  12aug2026
 *! Command-first catalog plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -7,17 +7,17 @@ program define hxregistry, rclass
 
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
     local stats_cmds "summarize tabstat pwcorr correlate ttest tabulate"
-    local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe"
+    local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
     local post_cmds "test lincom predict margins"
     local graph_cmds "histogram kdensity scatter lfit graph_box twoway marginsplot coefplot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
-    local workflow_cmds "hxconvert did_builder did_trends oneclick oneclick_robustness"
-    local all_cmds "`data_cmds' `stats_cmds' `reg_cmds' `post_cmds' `graph_cmds' `did_cmds' `oneclick_cmds'"
+    local workflow_cmds "hxconvert oneclick oneclick_robustness"
+    local all_cmds "`data_cmds' `stats_cmds' `reg_cmds' `post_cmds' `graph_cmds' `oneclick_cmds'"
 
     local data_methods "导入与转换 数据检查 变量处理 样本处理 合并与追加 数据结构"
     local stats_methods "描述统计 相关分析 均值检验 频数列联"
-    local reg_methods "线性模型 面板模型 二元结果 计数模型 工具变量"
+    local reg_methods "线性模型 面板模型 二元结果 计数模型 工具变量 双重差分"
     local post_methods "系数检验 预测边际"
     local graph_methods "数据分布 变量关系 回归结果"
     local did_methods "DID分步构建 平行趋势与动态图"
@@ -119,7 +119,9 @@ program define hxregistry, rclass
         local key_probit "probit 二元 概率回归"
         local key_poisson "poisson count 泊松 计数模型"
         local key_nbreg "nbreg negative binomial 负二项 计数模型"
-        local key_ivregress "ivregress iv 工具变量 2sls liml gmm 内生性"
+        local key_ivregress "ivregress iv 2sls gmm liml 工具变量 内生性"
+    local key_didregress "didregress did difference-in-differences ddd 双重差分 重复截面 平行趋势 因果推断"
+    local key_xtdidregress "xtdidregress did panel longitudinal 双重差分 面板 平行趋势 因果推断"
         local key_ivreghdfe "ivreghdfe high dimensional fixed effects instrument 高维固定效应 工具变量 内生性"
         local key_did_builder "did difference in differences event study treat post event_time 平行趋势 事件研究 双重差分 政策冲击 动态效应"
         local key_ppmlhdfe "ppmlhdfe poisson pseudo maximum likelihood fixed effects 泊松 伪极大似然 高维固定效应"
@@ -233,6 +235,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "二元结果", "binary") local view "logit probit"
     else if inlist(`"`method'"', "计数模型", "count") local view "poisson nbreg ppmlhdfe"
     else if inlist(`"`method'"', "工具变量", "iv") local view "ivregress ivreghdfe"
+    else if inlist(`"`method'"', "双重差分", "did") local view "didregress xtdidregress"
     else if inlist(`"`method'"', "DID分步构建", "did_build", "DID模型构建", "did_model") local view "did_builder"
     else if inlist(`"`method'"', "系数检验", "coefficient") local view "test lincom"
     else if inlist(`"`method'"', "预测边际", "prediction") local view "predict margins"

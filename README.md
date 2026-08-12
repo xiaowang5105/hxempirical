@@ -2,9 +2,9 @@
 
 ## 当前版本与下载
 
-**当前发布版本：1.0.2**  
+**当前发布版本：1.0.3**  
 **支持：Stata 17 及以上版本**  
-**上次修改时间：2026-08-12 16:49（UTC+8）**
+**上次修改时间：2026-08-12 17:18（UTC+8）**
 
 **安装源：** https://xiaowang5105.github.io/hxempirical/
 
@@ -44,7 +44,7 @@ hxempirical 目前主要提供以下能力：
 - **数据处理**：支持变量生成与修改、缺失值检查、重复值检查、`keep/drop`、`merge`、`append`、`reshape`、`collapse`、`xtset`、`tsset` 等操作。
 - **文件导入与转换**：支持 DTA、Excel、CSV 等常见数据文件，并提供 Excel / CSV / TXT / TSV 转换为 `.dta` 的工作流。
 - **图形与结果展示**：支持常见分布图、关系图、回归结果图，以及 `coefplot`、`event_plot` 等第三方图形命令。
-- **DID Workflow**：围绕 DID 变量准备、事件时间、事件研究、政策前联合检验和动态图等步骤组织完整流程。
+- **Stata 官方 DID**：把 `didregress`（重复截面）和 `xtdidregress`（面板 / 纵向数据）作为普通命令直接使用；不再单独展示 HX DID 专区。
 - **OneClick Workflow**：直接调用作者发布的真实 `oneclick` / `oneclick_robustness` 命令，并负责参数组织、运行隔离和结果读取。
 - **运行监控**：记录最终命令、开始与结束时间、耗时、返回码以及可获得的数据变化和估计结果。
 - **最近工作恢复**：保存最近使用的模型设置，方便重新打开后继续编辑。
@@ -66,6 +66,7 @@ hxempirical 目前分为两类功能。
 | 固定效应 | `areg` / `reghdfe` / `xtreg` |
 | PPML 高维固定效应 | `ppmlhdfe` |
 | 工具变量 | `ivregress` / `ivreghdfe` |
+| 双重差分 | `didregress` / `xtdidregress` |
 | 描述统计 | `summarize` / `tabstat` |
 | 缩尾 | `winsor2` |
 | 数据合并 | `merge` / `append` |
@@ -80,10 +81,11 @@ HX 在这一层主要负责命令查找、中文说明、参数界面、变量�
 
 Workflow 用于组织“一个完整研究任务”，而不是单独包装某一个命令。
 
-目前主要包括：
+当前自定义专区主要保留：
 
-- **DID 专区**：将 DID 构造、事件时间、事件研究、政策前联合检验、图形等步骤放在同一流程中。
 - **OneClick 专区**：调用真实外部 `oneclick` / `oneclick_robustness`，并补充参数组织、结果读取和运行隔离。
+
+DID 不再作为 HX 专区重复实现；标准 DID 优先进入普通命令层，直接调用 Stata 官方 `didregress` / `xtdidregress`。
 
 后续机制分析、稳健性分析、异质性分析等完整研究任务也可以继续按 Workflow 方式扩展。
 
@@ -248,6 +250,20 @@ hxempirical, classic
 
 ## 修改记录
 
+### 2026-08-12 17:18（UTC+8）
+
+**修改时间**：2026-08-12 17:18（UTC+8）
+
+**修改内容**：
+
+- 固定开始页“展开全部功能 / 收起全部功能”控制区的垂直位置；展开完整功能目录时，按钮不再因为上方任务区被压缩而上下跳动。
+- 按“官方命令优先”原则取消公开的 HX DID 专区入口；标准 DID 改为回归模型中的普通命令方法。
+- 新增 Stata 官方 `didregress` 与 `xtdidregress` 页面：重复截面使用 `didregress`，面板 / 纵向数据使用 `xtdidregress`；页面结构化填写结果变量、协变量、处理变量、`group()`、`time()`、权重和标准误，并生成真实官方 Stata 命令。
+- 首页“双重差分”、完整功能目录和 DID 关键词搜索全部改为进入官方 DID 命令选择页；旧 `did_builder` / `did_trends` / `event_plot` 不再作为 DID 专区公开导航。
+- DID 运行前增加核心变量角色和必填项检查；`xtdidregress` 页面明确提示先使用 `xtset` 声明面板结构。
+- 修正通用命令生成中的权重位置，使 `[weight=var]` 位于 `if/in` 之后，更符合 Stata 官方 syntax 顺序。
+- Java 工作台、Stata 命令目录、语义层、解析兜底、命令生成、help、package manifest 与 README 同步更新为 **1.0.3**，并重新构建 `hxworkbench.jar`。
+
 ### 2026-08-12 16:49（UTC+8）
 
 **修改时间**：2026-08-12 16:49（UTC+8）
@@ -261,7 +277,17 @@ hxempirical, classic
 
 ## 版本记录
 
-### 1.0.2（当前版本）
+### 1.0.3（当前版本）
+
+**发布时间**：2026-08-12 17:18（UTC+8）
+
+**修改内容**：
+
+- 稳定开始页展开 / 收起按钮位置。
+- 标准 DID 改为优先使用 Stata 官方 `didregress` / `xtdidregress`，不再公开单独 HX DID 专区。
+- DID 页面、搜索、命令目录、运行前检查和真实命令生成同步完成；权重语法顺序一并修正。
+
+### 1.0.2
 
 **发布时间**：2026-08-12 16:31（UTC+8）
 

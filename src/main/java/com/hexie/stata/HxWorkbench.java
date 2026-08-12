@@ -121,7 +121,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.0.2";
+   public static final String VERSION = "1.0.3";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -342,7 +342,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.0.2");
+      SFIToolkit.displayln("HxWorkbench 1.0.3");
       return 0;
    }
 
@@ -1894,6 +1894,8 @@ public final class HxWorkbench {
             "ivregress",
             "ivreg2",
             "ivreghdfe",
+            "didregress",
+            "xtdidregress",
             "ppmlhdfe",
             "glm",
             "tobit",
@@ -2084,6 +2086,8 @@ public final class HxWorkbench {
                return "count";
             case "工具变量":
                return "iv";
+            case "双重差分":
+               return "did";
             case "DID分步构建":
                return "did_build";
             case "DID模型构建":
@@ -2584,6 +2588,24 @@ public final class HxWorkbench {
          addGuide(var0, "twoway", "二维叠加图", "自由组合散点、线、置信区间等多个图层。", "需要制作结构较复杂的论文二维图形。", "twoway (scatter y x) (lfit y x)", "表达能力强，图层语法也更灵活。");
          addGuide(var0, "coefplot", "回归系数图", "把一个或多个已存模型的系数和置信区间画成图。", "展示基准、稳健性、异质性或动态效应结果。", "coefplot model1 model2, drop(_cons)", "依赖已存估计结果，需要安装第三方命令。");
          addGuide(var0, "marginsplot", "边际效应图", "把 margins 结果转换为预测值或边际效应图。", "展示交互项、非线性效应和情景比较。", "marginsplot", "必须先成功运行 margins。");
+         addGuide(
+            var0,
+            "didregress",
+            "官方双重差分（重复截面）",
+            "使用 Stata 官方 didregress 估计 DID / DDD 的平均处理效应。",
+            "不同时间抽取不同个体的重复截面数据，处理在组层级发生。",
+            "didregress (y x1 x2) (treat), group(group) time(year)",
+            "Stata 17+ 官方命令；面板数据应改用 xtdidregress。"
+         );
+         addGuide(
+            var0,
+            "xtdidregress",
+            "官方面板双重差分",
+            "使用 Stata 官方 xtdidregress 在纵向 / 面板数据中估计 DID。",
+            "同一个体或企业被重复观察的面板数据；运行前先用 xtset 声明面板结构。",
+            "xtdidregress (y x1 x2) (treat), group(group) time(year)",
+            "Stata 17+ 官方命令；重复截面数据使用 didregress。"
+         );
          addGuide(var0, "did_trends", "处理组与对照组趋势", "比较政策前后两组平均结果的时间走势。", "含处理组、时间变量和结果变量的面板或重复截面数据。", "选择 Y、处理组和年份后绘图", "用于直观诊断，正式平行趋势还需要回归检验。");
          addGuide(var0, "event_plot", "事件研究动态图", "展示政策前后各相对时期的估计系数和置信区间。", "已经完成事件研究估计并保留系数结果。", "event_plot, default_look", "集中展示动态效应，基准期和置信区间必须说明。");
          addGuide(
@@ -2657,7 +2679,6 @@ public final class HxWorkbench {
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
-         this.categoryModel.addElement(new HxWorkbench.Category("DID 专区", "did"));
          this.categoryModel.addElement(new HxWorkbench.Category("OneClick 专区", "oneclick"));
          this.categoryModel.addElement(new HxWorkbench.Category("测试数据", "test"));
          this.categoryModel.addElement(new HxWorkbench.Category("性能设置", "performance"));
@@ -2666,7 +2687,7 @@ public final class HxWorkbench {
          this.categoryList.setSelectedIndex(3);
          this.methodModel.clear();
 
-         for (String var2 : Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量")) {
+         for (String var2 : Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量", "双重差分")) {
             this.methodModel.addElement(var2);
          }
 
@@ -2819,7 +2840,7 @@ public final class HxWorkbench {
 
       private void populateDidPreviewState() {
          this.rebuilding = true;
-         this.categoryList.setSelectedIndex(6);
+         this.categoryList.setSelectedIndex(3);
          this.methodModel.clear();
          this.methodModel.addElement("DID分步构建");
          this.methodModel.addElement("平行趋势与动态图");
@@ -2867,7 +2888,7 @@ public final class HxWorkbench {
 
       private void populateOneClickPreviewState() {
          this.rebuilding = true;
-         this.categoryList.setSelectedIndex(7);
+         this.categoryList.setSelectedIndex(6);
          this.methodModel.clear();
          this.methodModel.addElement("控制变量组合筛选");
          this.methodModel.addElement("控制变量组合稳健性");
@@ -3020,7 +3041,6 @@ public final class HxWorkbench {
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
-         this.categoryModel.addElement(new HxWorkbench.Category("DID 专区", "did"));
          this.categoryModel.addElement(new HxWorkbench.Category("OneClick 专区", "oneclick"));
          this.categoryModel.addElement(new HxWorkbench.Category("测试数据", "test"));
          this.categoryModel.addElement(new HxWorkbench.Category("性能设置", "performance"));
@@ -3271,7 +3291,7 @@ public final class HxWorkbench {
          var13.add(this.homeLauncherButton("描述统计", "summarize / tabstat", () -> this.browseMethod("stats", "描述统计"), false));
          var13.add(this.homeLauncherButton("基准回归", "普通 OLS · regress", () -> this.openRegressWorkspace(), true));
          var13.add(this.homeLauncherButton("固定效应", "areg / reghdfe / xtreg", () -> this.browseMethod("reg", "固定效应线性回归"), true));
-         var13.add(this.homeLauncherButton("DID / 事件研究", "分步构建与平行趋势", () -> this.browseMethodCategory("did"), true));
+         var13.add(this.homeLauncherButton("双重差分", "didregress / xtdidregress", () -> this.browseMethod("reg", "双重差分"), true));
          var13.add(this.homeLauncherButton("OneClick", "控制变量组合与稳健性", () -> this.browseMethodCategory("oneclick"), true));
          var12.add(var13, "Center");
          var9.add(var12, var10);
@@ -3320,6 +3340,8 @@ public final class HxWorkbench {
          var21.setMaximumSize(new Dimension(Integer.MAX_VALUE, 210));
          var14.add(var21);
          var9.add(var14, var11);
+         var9.setPreferredSize(new Dimension(800, 390));
+         var9.setMinimumSize(new Dimension(0, 390));
          var9.setMaximumSize(new Dimension(Integer.MAX_VALUE, 390));
          var2.add(var9);
          var2.add(Box.createVerticalStrut(18));
@@ -3378,18 +3400,18 @@ public final class HxWorkbench {
                {"特殊线性回归", "rreg / cnsreg / vwls / eivreg", "reg", "稳健与特殊线性回归"},
                {"时间序列回归", "newey / prais", "reg", "时间序列线性回归"},
                {"面板模型", "xtreg 等", "reg", "面板模型"},
-               {"工具变量", "ivregress / ivreghdfe", "reg", "工具变量"}
+               {"工具变量", "内生变量与工具变量", "reg", "工具变量"},
+               {"双重差分", "didregress / xtdidregress", "reg", "双重差分"}
             },
             false
          );
          this.addHomeSection(
             this.homeAllFunctionsPanel,
-            "专题与图形",
+            "Workflow 与图形",
             new String[][]{
-               {"DID", "双重差分与事件研究", "methodcategory", "did"},
-               {"OneClick", "控制变量组合", "methodcategory", "oneclick"},
-               {"数据图形", "分布、散点与拟合", "graph", "数据分布"},
-               {"回归结果图", "系数与边际效应", "graph", "回归结果"}
+               {"OneClick", "控制变量组合与稳健性", "methodcategory", "oneclick"},
+               {"数据图形", "分布、散点与趋势", "graph", "数据分布"},
+               {"回归结果图", "系数图与边际效应", "graph", "回归结果"}
             },
             true
          );
@@ -3536,7 +3558,7 @@ public final class HxWorkbench {
                   this.selectResultView("regresspost", true);
                   this.statusLabel.setText("这些诊断属于普通线性回归的后估计工具；请先运行 regress，再点击右侧诊断。");
                } else if (containsAny(var2, "平行趋势", "事件研究", "eventstudy", "did", "双重差分")) {
-                  this.browseMethodCategory("did");
+                  this.browseMethod("reg", "双重差分");
                } else if (!containsAny(var2, "oneclick", "控制变量组合", "组合稳健", "规格稳健", "稳健性组合", "控制变量怎么加", "结果稳不稳")
                   && (!var2.contains("控制变量") || !var2.contains("稳") && !var2.contains("组合") && !var2.contains("敏感"))) {
                   if (containsAny(var2, "导入", "excel", "csv", "转换dta", "转dta", "数据转换")) {
@@ -4260,6 +4282,8 @@ public final class HxWorkbench {
             return Arrays.asList("poisson", "nbreg", "ppmlhdfe");
          } else if ("工具变量".equals(var0)) {
             return Arrays.asList("ivregress", "ivreghdfe");
+         } else if ("双重差分".equals(var0)) {
+            return Arrays.asList("didregress", "xtdidregress");
          } else if ("系数检验".equals(var0)) {
             return Arrays.asList("test", "lincom");
          } else if ("预测边际".equals(var0)) {
@@ -4287,7 +4311,7 @@ public final class HxWorkbench {
          } else if ("stats".equals(var0)) {
             return Arrays.asList("描述统计", "相关分析", "均值检验", "频数列联");
          } else if ("reg".equals(var0)) {
-            return Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量");
+            return Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量", "双重差分");
          } else if ("post".equals(var0)) {
             return Arrays.asList("系数检验", "预测边际");
          } else if ("graph".equals(var0)) {
@@ -4330,6 +4354,8 @@ public final class HxWorkbench {
             return "分析非负计数或含零值的结果";
          } else if ("工具变量".equals(var0)) {
             return "处理解释变量内生性";
+         } else if ("双重差分".equals(var0)) {
+            return "使用 Stata 官方 didregress / xtdidregress 估计标准 DID";
          } else if ("系数检验".equals(var0)) {
             return "检验系数限制和线性组合";
          } else if ("预测边际".equals(var0)) {
@@ -4368,6 +4394,8 @@ public final class HxWorkbench {
             return "计数结果先检查均值和方差；过度离散可比较 nbreg，含多维固定效应和大量零值可考虑 ppmlhdfe。";
          } else if ("工具变量".equals(var0)) {
             return "普通 IV 用 ivregress；同时需要吸收多组高维固定效应时用 ivreghdfe。";
+         } else if ("双重差分".equals(var0)) {
+            return "重复截面使用 Stata 官方 didregress；面板数据先 xtset，再使用 xtdidregress。";
          } else if ("合并与追加".equals(var0)) {
             return "按键补充变量用 merge；把多个结构相同的文件按行堆叠用 append。";
          } else if ("变量处理".equals(var0)) {
@@ -5303,7 +5331,6 @@ public final class HxWorkbench {
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
-         this.categoryModel.addElement(new HxWorkbench.Category("DID 专区", "did"));
          this.categoryModel.addElement(new HxWorkbench.Category("OneClick 专区", "oneclick"));
          this.categoryModel.addElement(new HxWorkbench.Category("测试数据", "test"));
          this.categoryModel.addElement(new HxWorkbench.Category("性能设置", "performance"));
@@ -8140,7 +8167,8 @@ public final class HxWorkbench {
       private boolean validateFocusedEstimationBeforeRun() {
          List<String> estimators = Arrays.asList(
             "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
-            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe"
+            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
+            "didregress", "xtdidregress"
          );
          if (!estimators.contains(this.currentCommand)) {
             return true;
@@ -8149,6 +8177,31 @@ public final class HxWorkbench {
          if (this.flag("has_depvar") && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择因变量。", "因变量缺失", 1);
             return false;
+         }
+
+         if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
+            String treatment = selected(this.panel);
+            String didTime = selected(this.time);
+            List<String> didGroups = this.absorb.getSelectedValuesList();
+            if (treatment.isBlank() || didTime.isBlank() || didGroups.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "DID 需要选择处理变量、time() 时间变量和至少 1 个 group() 变量。", "DID 设置尚未完整", 1);
+               return false;
+            }
+            String outcome = selected(this.depvar);
+            if (treatment.equals(outcome) || didTime.equals(outcome) || didGroups.contains(outcome)) {
+               JOptionPane.showMessageDialog(this, "结果变量不能同时作为处理变量、时间变量或 group() 变量。", "DID 变量角色重复", 2);
+               return false;
+            }
+            if (didGroups.contains(treatment) || didGroups.contains(didTime) || treatment.equals(didTime)) {
+               JOptionPane.showMessageDialog(this, "处理变量、时间变量和 group() 变量需要使用不同的数据角色。", "DID 变量角色重复", 2);
+               return false;
+            }
+            LinkedHashSet<String> didControls = new LinkedHashSet<>(this.variables.getSelectedValuesList());
+            didControls.retainAll(Arrays.asList(outcome, treatment, didTime));
+            if (!didControls.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "协变量 / 控制变量中重复选择了 DID 核心变量：" + String.join("、", didControls), "DID 变量角色重复", 2);
+               return false;
+            }
          }
 
          if ("areg".equals(this.currentCommand) && this.absorb.getSelectedValuesList().size() != 1) {
@@ -9272,7 +9325,9 @@ public final class HxWorkbench {
       private void configureGenericWeightTypes() {
          String var1 = selected(this.genericWeightType);
          List<String> var2;
-         if ("ppmlhdfe".equals(this.currentCommand)) {
+         if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "aweight", "pweight");
+         } else if ("ppmlhdfe".equals(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "pweight");
          } else if ("reghdfe".equals(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "aweight", "pweight");
@@ -9408,6 +9463,8 @@ public final class HxWorkbench {
             return "统计与检验|频数列联";
          } else if (Arrays.asList("regress", "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais").contains(var0)) {
             return "回归模型|线性模型";
+         } else if (Arrays.asList("didregress", "xtdidregress").contains(var0)) {
+            return "回归模型|双重差分";
          } else if (Arrays.asList("xtreg", "xtlogit", "xtprobit").contains(var0)) {
             return "回归模型|面板模型";
          } else if (Arrays.asList("logit", "probit").contains(var0)) {

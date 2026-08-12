@@ -1,4 +1,4 @@
-*! hxpreview 1.3.0  12aug2026
+*! hxpreview 1.3.1  12aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -37,6 +37,20 @@ program define hxpreview, rclass
     if "`command'" == "misstable" local preview "misstable summarize"
     if "`command'" == "duplicates" local preview "duplicates report"
     local opt ""
+
+    if `"`template'"' == "didregress" {
+        local did_outcome `"`depvar'"'
+        if `"`vars'"' != "" local did_outcome `"`did_outcome' `vars'"'
+        local preview `"`command'"'
+        if `"`did_outcome'"' != "" local preview `"`preview' (`did_outcome')"'
+        if `"`panel'"' != "" local preview `"`preview' (`panel')"'
+        if `"`absorb'"' != "" local opt `"`opt' group(`absorb')"'
+        if `"`time'"' != "" local opt `"`opt' time(`time')"'
+        local has_depvar 0
+        local has_varlist 0
+        local has_absorb 0
+        local needs_panel 0
+    }
 
     if "`is_xtset'" == "1" {
         if `"`panel'"' != "" local preview `"`preview' `panel'"'
@@ -106,10 +120,6 @@ program define hxpreview, rclass
     if "`has_using'" == "1" & `"`usingfile'"' != "" {
         local preview `"`preview' using `usingfile'"'
     }
-    if "`has_weight'" == "1" & `"`weight'"' != "" & `"`weightvar'"' != "" {
-        local preview `"`preview' [`weight'=`weightvar']"'
-    }
-
     if `"`template'"' == "replace" & "`condition'" != "" {
         if `"`condvar'`condop'`condvalue'"' != "" {
             local preview `"`preview' if `condvar' `condop' `condvalue'"'
@@ -125,6 +135,9 @@ program define hxpreview, rclass
     }
     if "`has_in'" == "1" & `"`incond'"' != "" {
         local preview `"`preview' in `incond'"'
+    }
+    if "`has_weight'" == "1" & `"`weight'"' != "" & `"`weightvar'"' != "" {
+        local preview `"`preview' [`weight'=`weightvar']"'
     }
 
     if `"`template'"' == "margins" & `"`expression'"' != "" {
