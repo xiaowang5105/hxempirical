@@ -9,7 +9,7 @@ Stata 实证工作台（HX Empirical Workbench）。
 在 Stata 命令窗口运行：
 
 ```stata
-net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace
+net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
 ```
 
 安装完成后即可启动。
