@@ -1,9 +1,9 @@
-name: Cleanup release staging
+name: Cleanup failed release staging
 
 on:
   push:
     paths:
-      - '.cleanup-release-staging'
+      - '.cleanup-all-release-staging'
 
 permissions:
   contents: write
@@ -15,16 +15,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Remove staging payloads
+      - name: Remove all failed staging and one-time workflows
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .release_b64 .release_bin .release_u15 .cleanup-release-staging
+          rm -rf .release16 .release_parts .release_b64 .release_bin .release_u15
+          rm -f .cleanup-all-release-staging .cleanup-release-staging
+          rm -f .github/workflows/materialize-release.yml .github/workflows/cleanup-release-staging.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m 'Clean release staging files'
+          git commit -m 'Clean failed release staging and workflows'
           git push
