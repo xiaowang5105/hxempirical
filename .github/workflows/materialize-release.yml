@@ -10,29 +10,27 @@ permissions:
 
 jobs:
   materialize:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Rebuild release ZIP
+      - name: Rebuild and verify release ZIP
         shell: bash
         run: |
           set -euo pipefail
           test -f .release_parts/READY
-          : > /tmp/hx_release.zip
-          for f in .release_parts/part_*.b64; do
-            base64 --decode "$f" >> /tmp/hx_release.zip
-          done
+          cat .release_parts/part_*.b64 | base64 --decode > /tmp/hx_release.zip
           echo '8bf0d78dea88b1a98f91106e929054008ccf9bdeb129e91f0acf2f3a63ed03be  /tmp/hx_release.zip' | sha256sum -c -
           unzip -t /tmp/hx_release.zip
           unzip -o /tmp/hx_release.zip -d .
           test -f stata.toc
           test -f hxempirical.pkg
           test -f hxworkbench.jar
-          rm -rf .release_parts .release_b64 .release_bin
-      - name: Commit release files
+          test "$(find . -maxdepth 1 -type f \( -name '*.ado' -o -name '*.sthlp' -o -name '*.dlg' -o -name '*.dta' -o -name '*.jar' -o -name '*.pkg' -o -name 'stata.toc' \) | wc -l)" -eq 46
+          rm -rf .release_parts .release_b64 .release_bin .release_u15
+          rm -f .github/workflows/materialize-release.yml .github/workflows/cleanup-release-staging.yml
+      - name: Commit verified release files
         shell: bash
         run: |
           set -euo pipefail
