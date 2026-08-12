@@ -1,4 +1,4 @@
-*! hxresolve 3.1.1  12aug2026
+*! hxresolve 3.1.2  12aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -73,6 +73,11 @@ program define hxresolve, rclass
        These keep common fields available even before the community command
        is installed and its local help/syntax can be parsed. */
     if inlist("`cmd'", "reghdfe", "ppmlhdfe", "ivreghdfe") {
+        local has_depvar 1
+        local has_varlist 1
+        local has_if 1
+        local has_in 1
+        local has_weight 1
         local has_absorb 1
         local has_vce 1
         local has_cluster 1

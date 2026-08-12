@@ -1,4 +1,4 @@
-*! hxsemantics 1.3.1  12aug2026
+*! hxsemantics 1.3.2  12aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -45,6 +45,7 @@ program define hxsemantics, rclass
     local newvar_label "新变量名（自己起）"
     local expr_label "数值或计算公式"
     local model_label "方法 / 模型"
+    local default_model ""
     local absorb_label "固定效应 absorb()"
     local endog_label "内生变量（需要处理）"
     local inst_label "工具变量"
@@ -486,6 +487,7 @@ program define hxsemantics, rclass
                 local purpose1 "适合企业、个人或地区在多个年份重复观察的数据。"
                 local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtreg 自己的参数。"
                 local models "固定效应（FE） 随机效应（RE） 组间效应（Between）"
+                local default_model "随机效应（RE）"
                 local example1 "xtset firm year"
                 local explain1 "先告诉 Stata：firm 是企业，year 是年份。"
                 local example2 "xtreg y x c1 c2, fe"
@@ -496,6 +498,7 @@ program define hxsemantics, rclass
                 local purpose1 "用于面板数据中取值为 0/1 的因变量。"
                 local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtlogit 自己的参数。"
                 local models "固定效应（FE） 随机效应（RE） 总体平均（PA）"
+                local default_model "随机效应（RE）"
                 local example1 "xtset firm year"
                 local explain1 "设置企业和年份面板结构。"
                 local example2 "xtlogit y x c1 c2, fe"
@@ -506,6 +509,7 @@ program define hxsemantics, rclass
                 local purpose1 "用于面板数据中取值为 0/1 的因变量，使用 Probit 概率模型。"
                 local purpose2 "运行前应先单独用 xtset 声明面板结构；本页只设置 xtprobit 自己的参数。"
                 local models "随机效应（RE） 总体平均（PA）"
+                local default_model "随机效应（RE）"
                 local example1 "xtset firm year"
                 local explain1 "设置企业和年份面板结构。"
                 local example2 "xtprobit y x c1 c2, re"
@@ -736,7 +740,7 @@ program define hxsemantics, rclass
         local models = trim(itrim(`"`models'"'))
         local models : list uniq models
     }
-    local default_model : word 1 of `models'
+    if `"`default_model'"' == "" local default_model : word 1 of `models'
     if `"`vces'"' == "" local vces "default"
 
     foreach key in title purpose1 purpose2 dep_label vars_label newvar_label ///

@@ -6256,6 +6256,11 @@ public final class HxWorkbench {
             this.model.addItem(var2);
          }
 
+         String var3 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_default_model"));
+         if (!var3.isBlank() && comboContains(this.model, var3)) {
+            this.model.setSelectedItem(var3);
+         }
+
          this.vce.removeAllItems();
          this.vce.addItem("default");
 
@@ -6286,6 +6291,11 @@ public final class HxWorkbench {
             this.addField(var4++, this.sem("expr_label"), this.expression);
          }
 
+         if (this.flag("has_iv")) {
+            this.addField(var4++, this.sem("endog_label"), this.listPane(this.endog));
+            this.addField(var4++, this.sem("inst_label"), this.listPane(this.instruments));
+         }
+
          if (this.model.getItemCount() > 0) {
             this.addField(var4++, this.sem("model_label"), this.model);
          }
@@ -6302,11 +6312,6 @@ public final class HxWorkbench {
 
          if (this.flag("has_absorb")) {
             this.addField(var4++, this.sem("absorb_label"), this.listPane(this.absorb));
-         }
-
-         if (this.flag("has_iv")) {
-            this.addField(var4++, this.sem("endog_label"), this.listPane(this.endog));
-            this.addField(var4++, this.sem("inst_label"), this.listPane(this.instruments));
          }
 
          if (this.flag("has_vce")) {
@@ -7991,7 +7996,8 @@ public final class HxWorkbench {
          } else if ("oneclick".equals(this.currentCommand) || "oneclick_robustness".equals(this.currentCommand)) {
             this.runOneClick();
          } else if (!"did_builder".equals(this.currentCommand) || this.validateDidBeforeRun()) {
-            if (!"regress".equals(this.currentCommand) || !this.regressWorkspaceActive || this.validateRegressBeforeRun()) {
+            if (this.validateFocusedEstimationBeforeRun()
+               && (!"regress".equals(this.currentCommand) || !this.regressWorkspaceActive || this.validateRegressBeforeRun())) {
                String var1 = this.previewArea.getText().trim();
                if (var1.isEmpty()) {
                   JOptionPane.showMessageDialog(this, "请先完整选择命令需要的变量或参数。", "命令尚未完整", 1);
@@ -8016,6 +8022,60 @@ public final class HxWorkbench {
                }
             }
          }
+      }
+
+      private boolean validateFocusedEstimationBeforeRun() {
+         if (!Arrays.asList("reghdfe", "ppmlhdfe", "ivregress", "ivreghdfe", "xtreg").contains(this.currentCommand)) {
+            return true;
+         }
+
+         if (this.flag("has_iv")) {
+            List<String> var1 = this.endog.getSelectedValuesList();
+            List<String> var2 = this.instruments.getSelectedValuesList();
+            if (var1.isEmpty() || var2.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "工具变量回归需要同时选择内生变量和工具变量。", "IV 设置尚未完整", 1);
+               return false;
+            }
+
+            LinkedHashSet<String> var3 = new LinkedHashSet<>(var1);
+            var3.retainAll(var2);
+            if (!var3.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "同一变量不能同时作为内生变量和工具变量：" + String.join("、", var3), "IV 变量角色重复", 2);
+               return false;
+            }
+
+            String var4 = selected(this.depvar);
+            if (var1.contains(var4) || var2.contains(var4)) {
+               JOptionPane.showMessageDialog(this, "因变量不能同时作为内生解释变量或工具变量。", "IV 变量角色重复", 2);
+               return false;
+            }
+
+            LinkedHashSet<String> var5 = new LinkedHashSet<>(this.variables.getSelectedValuesList());
+            var5.retainAll(var1);
+            if (!var5.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "正常解释变量 / 控制中重复选择了内生变量：" + String.join("、", var5), "IV 变量角色重复", 2);
+               return false;
+            }
+
+            var5 = new LinkedHashSet<>(this.variables.getSelectedValuesList());
+            var5.retainAll(var2);
+            if (!var5.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "正常解释变量 / 控制中重复选择了工具变量：" + String.join("、", var5), "IV 变量角色重复", 2);
+               return false;
+            }
+         }
+
+         if ("cluster".equalsIgnoreCase(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 Cluster 后，请指定聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+
+         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+
+         return true;
       }
 
       private boolean validateDidBeforeRun() {
@@ -8902,6 +8962,9 @@ public final class HxWorkbench {
       private void rebuildGenericAdvancedContent(boolean var1, boolean var2, boolean var3) {
          this.advancedContent.removeAll();
          this.genericWeightVarFieldBlock = null;
+         if (var3) {
+            this.configureGenericWeightTypes();
+         }
          if (var1) {
             this.advancedContent.add(this.labeledInline("样本条件 if", this.ifCondition));
             this.advancedContent.add(Box.createVerticalStrut(8));
@@ -8933,6 +8996,25 @@ public final class HxWorkbench {
          this.updateGenericWeightConditionalFields();
          this.advancedContent.revalidate();
          this.advancedContent.repaint();
+      }
+
+      private void configureGenericWeightTypes() {
+         String var1 = selected(this.genericWeightType);
+         List<String> var2;
+         if ("ppmlhdfe".equals(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "pweight");
+         } else if ("reghdfe".equals(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "aweight", "pweight");
+         } else {
+            var2 = Arrays.asList("无", "fweight", "aweight", "pweight", "iweight");
+         }
+
+         this.genericWeightType.removeAllItems();
+         for (String var4 : var2) {
+            this.genericWeightType.addItem(var4);
+         }
+
+         this.genericWeightType.setSelectedItem(var2.contains(var1) ? var1 : "无");
       }
 
       private void updateGenericWeightConditionalFields() {
