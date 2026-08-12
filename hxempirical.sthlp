@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.1  12aug2026}{...}
+{* *! version 1.2.2  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -26,7 +26,7 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.2.1 interface follows the supplied 1672x941 reference layouts directly.
+The 1.2.2 interface follows the supplied 1672x941 reference layouts directly.
 The start page uses a fixed left navigation rail, a Start Analysis card, five
 quick actions, current-data status, a 2-by-3 common-task area, recent work, and a
 single row of additional functions. The linear-model directory and OneClick
