@@ -19,6 +19,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '11'
+      - name: Repair temporary migration guard
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tools/apply_ui_navigation_101.py')
+          text = p.read_text(encoding='utf-8')
+          old = "if 'breadcrumbLabel' in java or 'chooserBreadcrumb' in java:"
+          new = "if 'breadcrumbLabel' in java or 'private final JLabel chooserBreadcrumb =' in java:"
+          if old in text:
+              p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          print('HX_UI_NAV_GUARD_REPAIRED')
+          PY
       - name: Apply patch and build
         run: bash tools/ui_navigation_101_ci.sh
       - name: Commit production changes
