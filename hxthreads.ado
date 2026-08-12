@@ -1,5 +1,5 @@
-*! hxthreads 1.1.0  10aug2026
-*! Manual Stata/MP processor switch for the hxselect toolbox
+*! hxthreads 1.2.0  12aug2026
+*! Manual Stata/MP processor switch for the HX empirical workbench
 program define hxthreads, rclass
     version 16.0
     syntax [anything(name=action)]
