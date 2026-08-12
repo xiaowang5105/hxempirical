@@ -121,7 +121,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.0.3";
+   public static final String VERSION = "1.1.0";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -253,7 +253,7 @@ public final class HxWorkbench {
                }
 
                if (var18) {
-                  var19x.showRegressPage();
+                  var19x.openBaselineRegressionWorkspace();
                }
 
                var19x.setSize(1440, 860);
@@ -2076,6 +2076,16 @@ public final class HxWorkbench {
                return "mean_test";
             case "频数列联":
                return "frequency";
+            case "普通线性回归":
+               return "linear_ols";
+            case "固定效应线性回归":
+               return "linear_fe";
+            case "稳健与特殊线性回归":
+               return "linear_special";
+            case "分位数回归":
+               return "linear_quantile";
+            case "时间序列线性回归":
+               return "linear_ts";
             case "线性模型":
                return "linear";
             case "面板模型":
@@ -2230,7 +2240,6 @@ public final class HxWorkbench {
       private final JLabel homeDatasetStatus = new JLabel("尚未载入数据");
       private final JLabel homeDatasetDetail = new JLabel("载入数据后显示样本数与变量数");
       private final JPanel homeAllFunctionsPanel = new JPanel();
-      private final JToggleButton homeAllFunctionsToggle = new JToggleButton("展开全部功能  +");
       private static final Preferences PREFS = Preferences.userRoot().node("com/hexie/stata/hxempirical");
       private static final String PREF_RECENT_COUNT = "recent.count";
       private static final int MAX_RECENT_SNAPSHOTS = 3;
@@ -2350,6 +2359,13 @@ public final class HxWorkbench {
       private JPanel regressClusterFieldBlock;
       private JPanel regressWeightVarFieldBlock;
       private boolean regressWorkspaceActive;
+      private final JComboBox<String> baselineEstimator = new JComboBox<>(new String[]{"xtreg", "reghdfe", "areg", "regress"});
+      private final JComboBox<String> baselineXtModel = new JComboBox<>(new String[]{"固定效应（FE）", "随机效应（RE）", "组间效应（BE）"});
+      private final JLabel baselineEstimatorSource = new JLabel("Stata 官方");
+      private JPanel baselineEstimatorHeader;
+      private JPanel baselineXtModelFieldBlock;
+      private JPanel baselineAbsorbFieldBlock;
+      private boolean baselineTaskActive;
       private final JLabel usingLabel = new JLabel();
       private final JToggleButton advancedToggle = new JToggleButton("更多设置  +");
       private final JPanel advancedContent = new JPanel();
@@ -3289,7 +3305,7 @@ public final class HxWorkbench {
          var13.setOpaque(false);
          var13.add(this.homeLauncherButton("导入数据", "DTA / Excel / CSV", () -> this.navigateTo("data", "导入与转换", "hxconvert"), false));
          var13.add(this.homeLauncherButton("描述统计", "summarize / tabstat", () -> this.browseMethod("stats", "描述统计"), false));
-         var13.add(this.homeLauncherButton("基准回归", "普通 OLS · regress", () -> this.openRegressWorkspace(), true));
+         var13.add(this.homeLauncherButton("基准回归", "xtreg · 可切换估计方法", () -> this.openBaselineRegressionWorkspace(), true));
          var13.add(this.homeLauncherButton("固定效应", "areg / reghdfe / xtreg", () -> this.browseMethod("reg", "固定效应线性回归"), true));
          var13.add(this.homeLauncherButton("双重差分", "didregress / xtdidregress", () -> this.browseMethod("reg", "双重差分"), true));
          var13.add(this.homeLauncherButton("OneClick", "控制变量组合与稳健性", () -> this.browseMethodCategory("oneclick"), true));
@@ -3340,28 +3356,14 @@ public final class HxWorkbench {
          var21.setMaximumSize(new Dimension(Integer.MAX_VALUE, 210));
          var14.add(var21);
          var9.add(var14, var11);
-         var9.setPreferredSize(new Dimension(800, 390));
-         var9.setMinimumSize(new Dimension(0, 390));
-         var9.setMaximumSize(new Dimension(Integer.MAX_VALUE, 390));
          var2.add(var9);
          var2.add(Box.createVerticalStrut(18));
          JPanel var22 = new JPanel(new BorderLayout());
          var22.setOpaque(false);
-         JLabel var23 = sectionTitle("更多功能");
+         JLabel var23 = sectionTitle("全部功能");
          var22.add(var23, "West");
-         styleSecondaryButton(this.homeAllFunctionsToggle);
-         this.homeAllFunctionsToggle.setFocusPainted(false);
-         this.homeAllFunctionsToggle.addActionListener(var2x -> {
-            boolean var3x = this.homeAllFunctionsToggle.isSelected();
-            this.homeAllFunctionsPanel.setVisible(var3x);
-            this.homeAllFunctionsToggle.setText(var3x ? "收起全部功能  −" : "展开全部功能  +");
-            var2.revalidate();
-            var2.repaint();
-         });
-         this.homeAllFunctionsToggle.setPreferredSize(new Dimension(150, 34));
-         var22.add(this.homeAllFunctionsToggle, "East");
          var22.setAlignmentX(0.0F);
-         var22.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+         var22.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
          var2.add(var22);
          var2.add(Box.createVerticalStrut(8));
          this.homeAllFunctionsPanel.removeAll();
@@ -3426,7 +3428,7 @@ public final class HxWorkbench {
             },
             false
          );
-         this.homeAllFunctionsPanel.setVisible(false);
+         this.homeAllFunctionsPanel.setVisible(true);
          this.homeAllFunctionsPanel.setAlignmentX(0.0F);
          var2.add(this.homeAllFunctionsPanel);
          JScrollPane var24 = new JScrollPane(var2);
@@ -3545,8 +3547,8 @@ public final class HxWorkbench {
          } else {
             String var2 = var1.toLowerCase(Locale.ROOT).replaceAll("\\s+", "");
             if (containsAny(var2, "基准回归", "普通回归", "ols", "普通线性", "线性回归")) {
-               this.openRegressWorkspace();
-               this.statusLabel.setText("已按“" + var1 + "”打开普通线性回归。");
+               this.openBaselineRegressionWorkspace();
+               this.statusLabel.setText("已按“" + var1 + "”打开基准回归工作区。");
             } else if (!containsAny(var2, "固定效应", "双向固定", "企业年份", "企业和年份", "reghdfe", "areg")
                && (!var2.contains("企业") || !var2.contains("年份") || !var2.contains("控制") && !var2.contains("效应"))) {
                if (containsAny(var2, "缺失", "missing", "misstable")) {
@@ -3878,10 +3880,7 @@ public final class HxWorkbench {
       }
 
       private void openRegressWorkspace() {
-         this.activeCategoryCode = "reg";
-         this.activeCategoryName = "回归模型";
-         this.activeMethodName = "普通线性回归";
-         this.showCommand("regress");
+         this.openBaselineRegressionWorkspace();
       }
 
       private void browseMethodCategory(String var1) {
@@ -3990,6 +3989,7 @@ public final class HxWorkbench {
          this.selectCategoryCode(var1);
          this.setBusy(true, "正在读取“" + var2 + "”…");
          this.rebuilding = true;
+         this.commandList.clearSelection();
          this.commandModel.clear();
          if (this.previewMode) {
             for (String var4 : previewCommandsForMethod(var2)) {
@@ -4035,52 +4035,31 @@ public final class HxWorkbench {
       private void renderCommandChooser(String var1, String var2, List<String> var3) {
          this.setChooserBreadcrumb(var2.isBlank() ? var1 : var1 + "  >  " + var2);
          this.chooserTitle.setText(var2.isBlank() ? var1 : var2);
-         this.chooserHint.setText("比较用途、适用数据和示例，再选择这次要使用的命令。");
+         this.chooserHint.setText("选择一个命令进入参数设置；详细说明放在命令页面中。");
          this.chooserContent.removeAll();
          if (var3.isEmpty()) {
             JLabel var4 = new JLabel("当前没有找到可用命令。", 0);
             var4.setForeground(MUTED);
             var4.setAlignmentX(0.5F);
-            this.chooserContent.add(Box.createVerticalStrut(70));
+            this.chooserContent.add(Box.createVerticalStrut(48));
             this.chooserContent.add(var4);
          } else {
-            String var11 = methodRecommendation(var2);
-            if (!var11.isBlank()) {
-               JPanel var5 = new JPanel(new BorderLayout());
-               var5.setBackground(ACCENT_SOFT);
-               var5.setBorder(
-                  BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(195, 215, 242), 8), new EmptyBorder(10, 13, 10, 13))
-               );
-               JLabel var6 = new JLabel("<html><b>选择提示：</b> " + html(var11) + "</html>");
-               var6.setForeground(new Color(32, 75, 135));
-               var6.setFont(var6.getFont().deriveFont(11.5F));
-               var5.add(var6, "Center");
-               var5.setAlignmentX(0.0F);
-               var5.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
-               this.chooserContent.add(var5);
-               this.chooserContent.add(Box.createVerticalStrut(12));
+            int cols = var3.size() <= 2 ? 1 : 2;
+            JPanel grid = new JPanel(new GridLayout(0, cols, 10, 10));
+            grid.setOpaque(false);
+            grid.setAlignmentX(0.0F);
+            int rows = Math.max(1, (var3.size() + cols - 1) / cols);
+            grid.setPreferredSize(new Dimension(800, rows * 78));
+            grid.setMaximumSize(new Dimension(Integer.MAX_VALUE, rows * 78));
+            for (String command : var3) {
+               grid.add(this.commandChoiceButton(command, cols));
             }
-
-            int var12 = var3.size() <= 4 ? 1 : 2;
-            JPanel var13 = new JPanel(new GridLayout(0, var12, 10, 10));
-            var13.setOpaque(false);
-            var13.setAlignmentX(0.0F);
-            int var7 = Math.max(1, (var3.size() + var12 - 1) / var12);
-            int var8 = var12 == 1 ? 124 : 150;
-            var13.setPreferredSize(new Dimension(800, var7 * var8));
-            var13.setMaximumSize(new Dimension(Integer.MAX_VALUE, var7 * var8));
-
-            for (String var10 : var3) {
-               var13.add(this.commandChoiceButton(var10, var12));
+            if (cols == 2 && var3.size() % 2 != 0) {
+               JPanel filler = new JPanel();
+               filler.setOpaque(false);
+               grid.add(filler);
             }
-
-            if (var12 == 2 && var3.size() % 2 != 0) {
-               JPanel var14 = new JPanel();
-               var14.setOpaque(false);
-               var13.add(var14);
-            }
-
-            this.chooserContent.add(var13);
+            this.chooserContent.add(grid);
          }
 
          this.chooserReady = true;
@@ -4094,37 +4073,40 @@ public final class HxWorkbench {
          this.stageLayout.show(this.stageCards, "chooser");
       }
 
-      private JButton commandChoiceButton(String var1, int var2) {
-         HxWorkbench.WorkbenchFrame.CommandGuide var3 = commandGuide(var1);
-         String var4 = var2 == 1 ? "760px" : "430px";
-         JButton var5 = new JButton(
-            "<html><div style='width:"
-               + var4
-               + ";text-align:left'><span style='font-family:monospace;font-size:13px'><b>"
-               + html(var1)
-               + "</b></span>&nbsp;&nbsp;<span style='font-size:11px'><b>"
-               + html(var3.title)
-               + "</b></span><br><span style='font-size:10px;color:#1f2c3f'>"
-               + html(var3.purpose)
-               + "</span><br><span style='font-size:9px;color:#526176'><b>适合：</b>"
-               + html(var3.bestFor)
-               + "</span><br><span style='font-family:monospace;font-size:9px;color:#2a66be'><b>示例：</b>"
-               + html(var3.example)
-               + "</span><br><span style='font-size:9px;color:#637083'><b>区别：</b>"
-               + html(var3.difference)
-               + "</span></div></html>"
+      private JButton commandChoiceButton(String command, int cols) {
+         HxWorkbench.WorkbenchFrame.CommandGuide guide = commandGuide(command);
+         String width = cols == 1 ? "760px" : "410px";
+         String source = commandSource(command);
+         JButton button = new JButton(
+            "<html><div style='width:" + width + ";text-align:left'>"
+               + "<span style='font-family:monospace;font-size:13px'><b>" + html(command) + "</b></span>"
+               + "&nbsp;&nbsp;<span style='font-size:11px'><b>" + html(guide.title) + "</b></span>"
+               + "&nbsp;&nbsp;<span style='font-size:9px;color:#2a66be'>[" + html(source) + "]</span>"
+               + "<br><span style='font-size:10px;color:#637083'>" + html(guide.purpose) + "</span>"
+               + "</div></html>"
          );
-         var5.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 250, 253), new Color(238, 243, 249), TEXT, BORDER));
-         var5.setBorder(new EmptyBorder(11, 15, 11, 15));
-         var5.setHorizontalAlignment(2);
-         var5.setVerticalAlignment(0);
-         var5.setPreferredSize(new Dimension(320, var2 == 1 ? 114 : 140));
-         var5.setToolTipText("进入 " + var1 + " 参数设置");
-         var5.setCursor(Cursor.getPredefinedCursor(12));
-         var5.setFocusPainted(false);
-         var5.setContentAreaFilled(false);
-         var5.addActionListener(var2x -> this.openCommandPage(var1));
-         return var5;
+         button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 250, 253), new Color(238, 243, 249), TEXT, BORDER));
+         button.setBorder(new EmptyBorder(9, 14, 9, 14));
+         button.setHorizontalAlignment(2);
+         button.setVerticalAlignment(0);
+         button.setPreferredSize(new Dimension(320, 68));
+         button.setToolTipText("进入 " + command + " 参数设置");
+         button.setCursor(Cursor.getPredefinedCursor(12));
+         button.setFocusPainted(false);
+         button.setContentAreaFilled(false);
+         button.addActionListener(event -> this.openCommandPage(command));
+         return button;
+      }
+
+      private static String commandSource(String command) {
+         if (command == null) return "";
+         if (command.startsWith("oneclick") || "hxconvert".equals(command) || "缺失值分析".equals(command)) {
+            return "HX Workflow";
+         }
+         if (Arrays.asList("reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "coefplot", "event_plot").contains(command)) {
+            return "第三方";
+         }
+         return "Stata 官方";
       }
 
       private void handleChooserBack() {
@@ -4498,6 +4480,8 @@ public final class HxWorkbench {
             styleCombo(var10);
          }
 
+         styleCombo(this.baselineEstimator);
+         styleCombo(this.baselineXtModel);
          this.vce.setRenderer(new HxWorkbench.WorkbenchFrame.VceRenderer());
          styleCombo(this.missingMode);
          styleCombo(this.missingSort);
@@ -4586,6 +4570,19 @@ public final class HxWorkbench {
          var4.addActionListener(var1x -> this.openHelp());
          JPanel var5 = new JPanel(new FlowLayout(2, 7, 0));
          var5.setOpaque(false);
+         this.baselineEstimatorHeader = new JPanel(new FlowLayout(0, 5, 0));
+         this.baselineEstimatorHeader.setOpaque(false);
+         JLabel baselineEstimatorLabel = new JLabel("估计方法");
+         baselineEstimatorLabel.setForeground(MUTED);
+         baselineEstimatorLabel.setFont(baselineEstimatorLabel.getFont().deriveFont(10.5F));
+         this.baselineEstimator.setPreferredSize(new Dimension(118, 29));
+         this.baselineEstimatorSource.setForeground(ACCENT);
+         this.baselineEstimatorSource.setFont(this.baselineEstimatorSource.getFont().deriveFont(Font.BOLD, 10.0F));
+         this.baselineEstimatorHeader.add(baselineEstimatorLabel);
+         this.baselineEstimatorHeader.add(this.baselineEstimator);
+         this.baselineEstimatorHeader.add(this.baselineEstimatorSource);
+         this.baselineEstimatorHeader.setVisible(false);
+         var5.add(this.baselineEstimatorHeader);
          var5.add(this.changeMethodButton);
          var5.add(this.homeButton);
          var5.add(var4);
@@ -5200,7 +5197,7 @@ public final class HxWorkbench {
          this.convertEncoding.addActionListener(var1x -> this.updateConversionPreview());
          this.vce.addActionListener(var1x -> {
             this.updateConditionalFields();
-            if (this.regressWorkspaceActive) {
+            if (this.regressWorkspaceActive || this.baselineTaskActive) {
                this.updateRegressConditionalFields();
             }
          });
@@ -5245,14 +5242,24 @@ public final class HxWorkbench {
          this.regressNoConstant.addActionListener(var1x -> this.schedulePreview());
          this.regressBeta.addActionListener(var1x -> this.schedulePreview());
          this.regressWeightType.addActionListener(var1x -> this.updateRegressConditionalFields());
+         this.baselineEstimator.addActionListener(var1x -> {
+            if (!this.rebuilding && this.baselineTaskActive) {
+               this.switchBaselineEstimator();
+            }
+         });
+         this.baselineXtModel.addActionListener(var1x -> {
+            if (!this.rebuilding && this.baselineTaskActive) {
+               this.updateBaselinePreview();
+            }
+         });
          this.depvar.addActionListener(var1x -> {
-            if (this.regressWorkspaceActive) {
+            if (this.regressWorkspaceActive || this.baselineTaskActive) {
                this.sanitizeRegressControls();
                this.schedulePreview();
             }
          });
          this.regressX.addActionListener(var1x -> {
-            if (this.regressWorkspaceActive) {
+            if (this.regressWorkspaceActive || this.baselineTaskActive) {
                this.sanitizeRegressControls();
                this.schedulePreview();
             }
@@ -5495,7 +5502,239 @@ public final class HxWorkbench {
          }
       }
 
+      private void openBaselineRegressionWorkspace() {
+         this.activeCategoryCode = "reg";
+         this.activeCategoryName = "回归模型";
+         this.activeMethodName = "基准回归";
+         this.chooserReady = false;
+         this.showBaselineRegressionPage(true);
+      }
+
+      private void showBaselineRegressionPage(boolean resetEstimator) {
+         this.regressWorkspaceActive = false;
+         this.baselineTaskActive = true;
+         this.showWorkspacePage();
+         this.selectDataView();
+         this.commandDock.setVisible(true);
+         this.commandTabs.setVisible(true);
+         this.commandTabs.setSelectedIndex(0);
+         this.previewArea.setEditable(true);
+         this.runButton.setText("运行基准回归");
+         this.commandTitle.setText("基准回归");
+         this.commandTitle.setToolTipText("在同一个任务页面切换 xtreg / reghdfe / areg / regress");
+         this.setWorkspaceBreadcrumb("回归模型  ›  基准回归");
+         this.exampleLabel.setText("<html>先设置 Y、核心 X 和 Controls；右上角只用一个小下拉框切换估计方法，变量设置会保留。</html>");
+         this.insightArea.setText("基准回归工作区把研究任务放在前面。默认使用 xtreg（固定效应），也可以在同一页切换 reghdfe、areg 或 regress。切换时保留 Y、核心 X、Controls、样本条件和标准误等公共设置，只替换估计器特有参数和最终 Stata 命令。");
+         this.syntaxArea.setText("任务工作区：xtreg / reghdfe / areg / regress；最终仍执行所选估计器的真实 Stata 命令。");
+         if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(true);
+         this.refreshVariableControls();
+         this.refreshRegressVariables(true);
+         if (resetEstimator) {
+            this.rebuilding = true;
+            this.baselineEstimator.setSelectedItem("xtreg");
+            this.baselineXtModel.setSelectedItem("固定效应（FE）");
+            this.rebuilding = false;
+         }
+         this.switchBaselineEstimator();
+         this.statusLabel.setText("基准回归：默认 xtreg；可在右上角切换估计方法，公共变量设置不会清空。");
+      }
+
+      private void switchBaselineEstimator() {
+         if (!this.baselineTaskActive) return;
+         String estimator = selected(this.baselineEstimator);
+         if (estimator.isBlank()) return;
+         this.currentCommand = estimator;
+         this.baselineEstimatorSource.setText(commandSource(estimator));
+         this.baselineEstimatorSource.setForeground("第三方".equals(commandSource(estimator)) ? new Color(143, 91, 24) : ACCENT);
+         if (!this.previewMode) {
+            HxWorkbench.StataBridge.execute("quietly hxresolve " + estimator, false);
+            this.offerOptionalDependency(estimator);
+         }
+         this.rebuilding = true;
+         String previousWeight = selected(this.regressWeightType);
+         this.regressWeightType.removeAllItems();
+         this.regressWeightType.addItem("无");
+         this.regressWeightType.addItem("fweight");
+         this.regressWeightType.addItem("aweight");
+         this.regressWeightType.addItem("pweight");
+         if (!"reghdfe".equals(estimator) && !"areg".equals(estimator)) this.regressWeightType.addItem("iweight");
+         this.setComboValue(this.regressWeightType, previousWeight);
+         if (selected(this.regressWeightType).isBlank()) this.regressWeightType.setSelectedItem("无");
+         this.rebuilding = false;
+         this.rebuildBaselineForm();
+         this.updateBaselinePreview();
+      }
+
+      private void rebuildBaselineForm() {
+         String estimator = selected(this.baselineEstimator);
+         this.formPanel.removeAll();
+         int row = 0;
+         this.addField(row++, "因变量 Y", this.depvar);
+         this.addField(row++, "核心解释变量 X", this.regressX);
+         this.addField(row++, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+         this.baselineXtModelFieldBlock = null;
+         this.baselineAbsorbFieldBlock = null;
+         if ("xtreg".equals(estimator)) {
+            this.baselineXtModelFieldBlock = this.addField(row++, "模型", this.baselineXtModel);
+         } else if ("reghdfe".equals(estimator) || "areg".equals(estimator)) {
+            this.absorb.setSelectionMode("areg".equals(estimator) ? 0 : 2);
+            this.baselineAbsorbFieldBlock = this.addField(row++, "固定效应 absorb()", this.listPane(this.absorb));
+         }
+         this.addField(row++, "标准误", this.vce);
+         this.regressClusterFieldBlock = this.addField(row++, "聚类变量", this.cluster);
+
+         JPanel moreSettings = this.buildBaselineMoreSettings(estimator);
+         JToggleButton moreToggle = new JToggleButton("展开更多设置  +");
+         styleSecondaryButton(moreToggle);
+         moreSettings.setVisible(false);
+         moreToggle.addActionListener(event -> {
+            boolean expanded = moreToggle.isSelected();
+            moreToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            moreSettings.setVisible(expanded);
+            this.formPanel.revalidate();
+            this.formPanel.repaint();
+         });
+         JPanel moreBlock = new JPanel();
+         moreBlock.setOpaque(false);
+         moreBlock.setLayout(new BoxLayout(moreBlock, BoxLayout.Y_AXIS));
+         moreToggle.setAlignmentX(0.0F);
+         moreSettings.setAlignmentX(0.0F);
+         moreBlock.add(moreToggle);
+         moreBlock.add(Box.createVerticalStrut(7));
+         moreBlock.add(moreSettings);
+         this.addField(row++, "更多设置", moreBlock);
+         GridBagConstraints filler = this.constraints(0, row);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.updateRegressConditionalFields();
+      }
+
+      private JPanel buildBaselineMoreSettings(String estimator) {
+         JPanel panel = new JPanel();
+         panel.setOpaque(false);
+         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 8, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.miniLabeled("样本条件 if", this.ifCondition));
+         sampleRow.add(this.miniLabeled("观测范围 in", this.inCondition));
+         panel.add(sampleRow);
+         panel.add(Box.createVerticalStrut(12));
+         JLabel termsTitle = new JLabel("分类变量、交互项与滞后项");
+         termsTitle.setForeground(MUTED);
+         termsTitle.setFont(termsTitle.getFont().deriveFont(Font.BOLD));
+         termsTitle.setAlignmentX(0.0F);
+         panel.add(termsTitle);
+         panel.add(Box.createVerticalStrut(7));
+         panel.add(this.buildRegressTermBuilder());
+         panel.add(Box.createVerticalStrut(12));
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 8, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.miniLabeled("权重类型", this.regressWeightType));
+         weightRow.add(this.miniLabeled("权重变量", this.regressWeightVar));
+         this.regressWeightVarFieldBlock = weightRow;
+         panel.add(weightRow);
+         if ("regress".equals(estimator)) {
+            panel.add(Box.createVerticalStrut(10));
+            JPanel reportRow = new JPanel(new GridLayout(1, 3, 8, 0));
+            reportRow.setOpaque(false);
+            reportRow.add(this.regressNoConstant);
+            reportRow.add(this.regressBeta);
+            reportRow.add(this.miniLabeled("置信水平", this.regressLevel));
+            panel.add(reportRow);
+         }
+         panel.add(Box.createVerticalStrut(10));
+         panel.add(this.labeledInline("其他 Stata options（高级）", this.regressAdvancedOptions));
+         return panel;
+      }
+
+      private void updateBaselinePreview() {
+         if (!this.baselineTaskActive || this.rebuilding) return;
+         String estimator = selected(this.baselineEstimator);
+         String y = selected(this.depvar);
+         String x = selected(this.regressX);
+         LinkedHashSet<String> rhs = new LinkedHashSet<>();
+         if (!x.isBlank()) rhs.add(x);
+         for (String control : this.regressControls.getSelectedValuesList()) {
+            if (!control.equals(y) && !control.equals(x)) rhs.add(control);
+         }
+         for (int i = 0; i < this.regressSpecialTermsModel.size(); i++) rhs.add(this.regressSpecialTermsModel.get(i));
+         StringBuilder command = new StringBuilder(estimator);
+         if (!y.isBlank()) command.append(" ").append(y);
+         if (!rhs.isEmpty()) command.append(" ").append(String.join(" ", rhs));
+         String weight = selected(this.regressWeightType);
+         String weightVar = selected(this.regressWeightVar);
+         if (!"无".equals(weight) && !weightVar.isBlank()) command.append(" [").append(weight).append("=").append(weightVar).append("]");
+         if (!this.ifCondition.getText().trim().isBlank()) command.append(" if ").append(this.ifCondition.getText().trim());
+         if (!this.inCondition.getText().trim().isBlank()) command.append(" in ").append(this.inCondition.getText().trim());
+         ArrayList<String> opts = new ArrayList<>();
+         if ("xtreg".equals(estimator)) {
+            String modelText = selected(this.baselineXtModel);
+            opts.add(modelText.startsWith("固定") ? "fe" : modelText.startsWith("随机") ? "re" : "be");
+         } else if ("reghdfe".equals(estimator) && !this.absorb.getSelectedValuesList().isEmpty()) {
+            opts.add("absorb(" + String.join(" ", this.absorb.getSelectedValuesList()) + ")");
+         } else if ("areg".equals(estimator) && !this.absorb.getSelectedValuesList().isEmpty()) {
+            opts.add("absorb(" + this.absorb.getSelectedValuesList().get(0) + ")");
+         }
+         if ("robust".equals(selected(this.vce))) opts.add("vce(robust)");
+         else if ("cluster".equals(selected(this.vce)) && !selected(this.cluster).isBlank()) opts.add("vce(cluster " + selected(this.cluster) + ")");
+         if ("regress".equals(estimator)) {
+            if (this.regressNoConstant.isSelected()) opts.add("noconstant");
+            if (this.regressBeta.isSelected()) opts.add("beta");
+            int level = ((Number)this.regressLevel.getValue()).intValue();
+            if (level != 95) opts.add("level(" + level + ")");
+         }
+         if (!this.regressAdvancedOptions.getText().trim().isBlank()) opts.add(this.regressAdvancedOptions.getText().trim());
+         if (!opts.isEmpty()) command.append(", ").append(String.join(" ", opts));
+         this.currentCommand = estimator;
+         this.rebuilding = true;
+         this.previewArea.setText(command.toString().trim());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateBaselineBeforeRun() {
+         String y = selected(this.depvar);
+         String x = selected(this.regressX);
+         if (y.isBlank() || x.isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择因变量 Y 和核心解释变量 X。", "基准回归设置尚未完整", 1);
+            return false;
+         }
+         if (y.equals(x)) {
+            JOptionPane.showMessageDialog(this, "Y 和核心 X 不能是同一个变量。", "变量角色重复", 2);
+            return false;
+         }
+         if (this.regressControls.getSelectedValuesList().contains(y) || this.regressControls.getSelectedValuesList().contains(x)) {
+            JOptionPane.showMessageDialog(this, "Controls 中重复选择了 Y 或核心 X。", "变量角色重复", 2);
+            return false;
+         }
+         String estimator = selected(this.baselineEstimator);
+         if ("reghdfe".equals(estimator) && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "reghdfe 至少需要选择 1 个固定效应 absorb()。", "固定效应缺失", 1);
+            return false;
+         }
+         if ("areg".equals(estimator) && this.absorb.getSelectedValuesList().size() != 1) {
+            JOptionPane.showMessageDialog(this, "areg 需要且只能选择 1 个固定效应 absorb()。", "固定效应设置尚未完整", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 Cluster 后，请指定聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+         if (!"无".equals(selected(this.regressWeightType)) && selected(this.regressWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         return true;
+      }
+
       private void showRegressPage() {
+         this.baselineTaskActive = false;
+         if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(false);
          this.regressWorkspaceActive = true;
          this.showWorkspacePage();
          this.selectDataView();
@@ -5758,7 +5997,8 @@ public final class HxWorkbench {
             }
 
             this.regressSpecialTermsModel.addElement(var1);
-            this.updateRegressPreview();
+            if (this.baselineTaskActive) this.updateBaselinePreview();
+            else this.updateRegressPreview();
          }
       }
 
@@ -5779,7 +6019,7 @@ public final class HxWorkbench {
       }
 
       private void sanitizeRegressControls() {
-         if (this.regressWorkspaceActive && !this.rebuilding) {
+         if ((this.regressWorkspaceActive || this.baselineTaskActive) && !this.rebuilding) {
             String var1 = selected(this.depvar);
             String var2 = selected(this.regressX);
             ArrayList var3 = new ArrayList();
@@ -5916,6 +6156,8 @@ public final class HxWorkbench {
       private void showHomePage() {
          this.currentCommand = "";
          this.regressWorkspaceActive = false;
+         this.baselineTaskActive = false;
+         if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(false);
          this.searchResultsMode = false;
          this.runButton.setEnabled(false);
          this.homeButton.setEnabled(false);
@@ -5927,6 +6169,8 @@ public final class HxWorkbench {
       }
 
       private void openCommandPage(String var1) {
+         this.baselineTaskActive = false;
+         if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(false);
          this.showWorkspacePage();
          if ("hxconvert".equals(var1)) {
             this.showConvertDtaPage();
@@ -7720,7 +7964,9 @@ public final class HxWorkbench {
 
       private void updatePreview() {
          if (!this.rebuilding && !this.currentCommand.isBlank()) {
-            if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
+            if (this.baselineTaskActive) {
+               this.updateBaselinePreview();
+            } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
                this.updateRegressPreview();
             } else if ("oneclick".equals(this.currentCommand) || "oneclick_robustness".equals(this.currentCommand)) {
                this.updateOneClickPreview();
@@ -8136,6 +8382,7 @@ public final class HxWorkbench {
             this.runOneClick();
          } else if (!"did_builder".equals(this.currentCommand) || this.validateDidBeforeRun()) {
             if (this.validateOrdinaryCommandBeforeRun()
+               && (!this.baselineTaskActive || this.validateBaselineBeforeRun())
                && this.validateFocusedEstimationBeforeRun()
                && (!"regress".equals(this.currentCommand) || !this.regressWorkspaceActive || this.validateRegressBeforeRun())) {
                String var1 = this.previewArea.getText().trim();
