@@ -5869,6 +5869,13 @@ public final class HxWorkbench {
          this.runButton.setText("绘制图形");
          this.runButton.setEnabled(true);
          this.breadcrumbLabel.setText(commandPath(var1));
+         this.depvar.setSelectedItem(null);
+         this.panel.setSelectedItem(null);
+         this.time.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.ifCondition.setText("");
+         this.options.setText("");
+         this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
          this.formPanel.removeAll();
          int var2 = 0;
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
@@ -8217,6 +8224,16 @@ public final class HxWorkbench {
             JOptionPane.showMessageDialog(this, "请选择至少 1 个需要缩尾的变量。", "缩尾设置尚未完整", 1);
             return false;
          }
+         if (Arrays.asList("keep", "drop").contains(command)) {
+            if ("处理变量".equals(selected(this.model)) && this.variables.getSelectedValuesList().isEmpty()) {
+               JOptionPane.showMessageDialog(this, command + " 选择“处理变量”时，需要选择至少 1 个变量。", "样本/变量处理设置尚未完整", 1);
+               return false;
+            }
+            if ("处理样本".equals(selected(this.model)) && this.ifCondition.getText().trim().isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 选择“处理样本”时，需要填写 if 条件。", "样本/变量处理设置尚未完整", 1);
+               return false;
+            }
+         }
          if ("merge".equals(command)
             && (this.variables.getSelectedValuesList().isEmpty() || this.usingFile.getText().trim().isBlank() || selected(this.model).isBlank())) {
             JOptionPane.showMessageDialog(this, "merge 需要合并关系、关联变量和 using 文件。", "合并设置尚未完整", 1);
@@ -8241,6 +8258,10 @@ public final class HxWorkbench {
          }
          if ("tsset".equals(command) && selected(this.time).isBlank()) {
             JOptionPane.showMessageDialog(this, "tsset 需要选择时间变量；纯时间序列时面板变量可以留空。", "时间设置尚未完整", 1);
+            return false;
+         }
+         if ("tabstat".equals(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "tabstat 需要选择至少 1 个要汇总的变量。", "描述统计设置尚未完整", 1);
             return false;
          }
          if ("ttest".equals(command)) {

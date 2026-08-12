@@ -23,8 +23,8 @@
 - 统计检验页补齐 `ttest` 的角色说明与运行前检查，避免单样本、分组和配对三种模式混淆。
 - 线性与特殊估计命令进一步结构化：`qreg` 的 `quantile()`、`cnsreg` 的 `constraints()`、`vwls` 的 `sd()`、`eivreg` 的 `reliab()`、`newey` 的 `lag()` 均提供直接字段，不再要求用户把最关键参数全部手写在高级 options 中。
 - 修正 `margins` 代码生成位置，使 `dydx()` / `at()` 等内容按 Stata option 语法进入逗号后；`coefplot` 与 `event_plot` 增加命令主体输入入口，保留原作者命令语法。
-- 特殊图形页统一为“核心变量直接显示，if 与低频图形 options 收入更多设置”；普通图形导航不再把 HX 的 `did_trends` 当作普通图形方法展示。
-- 补齐 `tsset`、`rreg`、`cnsreg`、`vwls`、`eivreg`、`newey`、`prais` 等命令的面包屑归类和帮助映射；普通命令运行前增加必要字段与明显角色冲突检查。
+- 特殊图形页统一为“核心变量直接显示，if 与低频图形 options 收入更多设置”，并在切换图形时清理上一页隐藏状态，避免旧筛选条件或图形选项被无意带入；普通图形导航不再把 HX 的 `did_trends` 当作普通图形方法展示。
+- 补齐 `tsset`、`rreg`、`cnsreg`、`vwls`、`eivreg`、`newey`、`prais` 等命令的面包屑归类和帮助映射；普通命令运行前增加必要字段与明显角色冲突检查，并补上 `keep/drop` 模式必填项及 `tabstat` 变量必填检查。
 - 通用命令页切换时清理上一条命令残留的字段状态，并应用语义默认值；`areg` 固定效应选择限制为单变量，其他 HDFE 命令继续支持多选。
 - Java 工作台与 `hxworkbench.jar` 同步重建；完整离线 UI preview 集合、Java 11 / class major 55、命令目录覆盖和关键代码生成规则均纳入最终 smoke test。
 
