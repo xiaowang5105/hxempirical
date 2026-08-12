@@ -1,0 +1,39 @@
+name: Fix focused estimator validation
+
+on:
+  push:
+    branches:
+      - ui-focused-estimators
+
+permissions:
+  contents: write
+
+jobs:
+  fix-build-test:
+    if: "${{ !contains(github.event.head_commit.message, '[generated-validation]') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ui-focused-estimators
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '11'
+      - name: Tighten focused estimator validation
+        run: python3 tools/fix_focused_validation.py
+      - name: Compile and render smoke tests
+        run: bash tools/build_focused_validation_ci.sh
+      - name: Commit generated production files
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No generated changes.'
+          else
+            git commit -m '[generated-validation] Tighten focused estimator validation'
+            git push origin HEAD:ui-focused-estimators
+          fi
