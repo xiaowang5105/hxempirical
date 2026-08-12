@@ -19,22 +19,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '11'
-      - name: Repair refactor script quoting
+      - name: Repair temporary refactor script quoting for audit
         run: python3 tools/repair_complete_command_layer_script.py
-      - name: Apply command-layer completion patch
+      - name: Apply last guardrail fixes once
         run: |
-          python3 -m py_compile tools/complete_command_layer.py
-          python3 tools/complete_command_layer.py
+          if grep -Fq '补上 `keep/drop` 模式必填项及 `tabstat` 变量必填检查' README.md; then
+            echo "Final guardrail fixes already present"
+          else
+            python3 tools/final_command_layer_fix.py
+          fi
       - name: Build and run complete offline audit
         run: bash tools/complete_command_layer_ci.sh
-      - name: Commit production changes
+      - name: Commit final production changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md hxregistry.ado hxsemantics.ado hxpreview.ado src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
+          git add README.md src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
           if git diff --cached --quiet; then
             echo "No production changes to commit"
           else
-            git commit -m "[generated-complete] Finish ordinary command layer"
+            git commit -m "[generated-complete] Add final ordinary command guardrails"
             git push
           fi
