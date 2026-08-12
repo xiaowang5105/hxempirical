@@ -35,4 +35,12 @@ if old_key in reg:
     reg = reg.replace(old_key, expected_key, 1)
 reg_path.write_text(reg, encoding='utf-8')
 
+help_path = Path('hxempirical.sthlp')
+help_text = help_path.read_text(encoding='utf-8')
+anchor = '{pstd}\nThe built-in linear-regression catalog also exposes'
+normalized = 'Command settings use structured variables.\n\n{pstd}\nThe built-in linear-regression catalog also exposes'
+if anchor in help_text and normalized not in help_text:
+    help_text = help_text.replace(anchor, normalized, 1)
+help_path.write_text(help_text, encoding='utf-8')
+
 print('HX_PREPATCH_HOME_103_OK')
