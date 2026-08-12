@@ -2,10 +2,10 @@
 
 Stata 实证工作台（HX Empirical Workbench）。
 
-## 安装
+## 一行安装
 
 ```stata
-net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/")
+net install hxempirical, from("https://raw.githubusercontent.com/xiaowang5105/hxempirical/main/") replace
 ```
 
 ## 启动
