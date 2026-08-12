@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.1.0  12aug2026}{...}
+{* *! version 1.2.0  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -20,10 +20,10 @@
 {title:Description}
 
 {pstd}
-{cmd:hxempirical} opens one workbench containing command navigation, command
-settings, a live command preview, and a read-only view of the dataset currently
-in Stata memory. Commands run in Stata itself. The complete command is added to
-Stata's History window before execution.
+{cmd:hxempirical} opens one desktop-style workbench with a fixed left sidebar,
+task-oriented pages, live command preview, and a read-only view of the dataset
+currently in Stata memory. Commands run in Stata itself. The complete command is
+added to Stata's History window before execution.
 
 {pstd}
 The start page keeps one stable layout. Search and six common research tasks stay

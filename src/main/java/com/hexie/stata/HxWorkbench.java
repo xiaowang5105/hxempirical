@@ -105,6 +105,7 @@ import javax.swing.ListModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingConstants;
+import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.UIManager;
@@ -4086,6 +4087,7 @@ public final class HxWorkbench {
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
          this.syncSidebarFromContext();
+         this.syncSidebarFromContext();
          this.activeMethodName = "";
          this.selectCategoryCode(var1);
          ArrayList<String> var2 = new ArrayList<>();
@@ -4191,6 +4193,7 @@ public final class HxWorkbench {
       private void browseMethod(String var1, String var2) {
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
+         this.syncSidebarFromContext();
          this.syncSidebarFromContext();
          this.activeMethodName = var2;
          this.selectCategoryCode(var1);
