@@ -8029,6 +8029,11 @@ public final class HxWorkbench {
             return true;
          }
 
+         if (this.flag("has_depvar") && selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择因变量。", "因变量缺失", 1);
+            return false;
+         }
+
          if (this.flag("has_iv")) {
             List<String> var1 = this.endog.getSelectedValuesList();
             List<String> var2 = this.instruments.getSelectedValuesList();
@@ -8070,7 +8075,9 @@ public final class HxWorkbench {
             return false;
          }
 
-         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+         if (this.flag("has_weight")
+            && !"无".equals(selected(this.genericWeightType))
+            && selected(this.genericWeightVar).isBlank()) {
             JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
             return false;
          }
