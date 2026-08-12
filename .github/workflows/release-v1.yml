@@ -15,74 +15,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Promote current work to version 1.0.0
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          def replace_once(path, old, new, label):
-              p = Path(path)
-              text = p.read_text(encoding='utf-8')
-              if old not in text:
-                  raise SystemExit(f'missing pattern for {label}: {path}')
-              p.write_text(text.replace(old, new, 1), encoding='utf-8')
-
-          # Package-level version metadata.
-          replace_once('hxempirical.pkg', 'd Version 0.9.7', 'd Version 1.0.0', 'pkg version')
-          replace_once('hxempirical.pkg', 'd Distribution-Date: 20260811', 'd Distribution-Date: 20260812', 'pkg distribution date')
-
-          ado = Path('hxempirical.ado')
-          text = ado.read_text(encoding='utf-8')
-          text = text.replace('*! hxempirical 0.9.7  11aug2026', '*! hxempirical 1.0.0  12aug2026', 1)
-          text = text.replace('display as text "版本：" as result "0.9.7"', 'display as text "版本：" as result "1.0.0"', 1)
-          text = text.replace('return local version "0.9.7"', 'return local version "1.0.0"', 1)
-          ado.write_text(text, encoding='utf-8')
-
-          helpf = Path('hxempirical.sthlp')
-          text = helpf.read_text(encoding='utf-8')
-          text = text.replace('{* *! version 0.9.7  11aug2026}{...}', '{* *! version 1.0.0  12aug2026}{...}', 1)
-          helpf.write_text(text, encoding='utf-8')
-
-          # README: all 13:37–15:08 changes are the v1.0.0 release, not separate releases.
-          readme = Path('README.md')
-          text = readme.read_text(encoding='utf-8')
-          text = text.replace('当前发布版本：**0.9.7**', '当前发布版本：**1.0.0**', 1)
-          text = text.replace('上次修改时间：**2026-08-12 15:08（UTC+8）**', '上次修改时间：**2026-08-12 15:46（UTC+8）**', 1)
-
-          start = text.index('## 修改记录')
-          end = text.index('## 核心结构')
-          old_block = text[start:end]
-          timeline = old_block.split('\n', 3)[3]
-          timeline = timeline.replace('### 2026-08-12 ', '#### 2026-08-12 ')
-          new_block = '''## 版本记录
-
-### 1.0.0（当前版本）
-
-**发布时间**：2026-08-12 15:46（UTC+8）
-
-**版本说明**：2026-08-12 13:37—15:08 期间完成的普通命令层重构、界面调整、命令生成修正、运行前检查、Java 工作台重建与最终自查，全部统一归入 **hxempirical 1.0.0**。这些记录是同一个大版本的开发过程，不再视为多个独立发布版本。
-
-#### 1.0.0 开发过程记录
-
-''' + timeline
-          text = text[:start] + new_block + text[end:]
-          readme.write_text(text, encoding='utf-8')
-
-          # Release consistency checks.
-          for path in ['README.md', 'hxempirical.pkg', 'hxempirical.ado', 'hxempirical.sthlp']:
-              t = Path(path).read_text(encoding='utf-8')
-              if '0.9.7' in t:
-                  raise SystemExit(f'old package version remains in {path}')
-          if '当前发布版本：**1.0.0**' not in readme.read_text(encoding='utf-8'):
-              raise SystemExit('README version not promoted')
-          if '### 1.0.0（当前版本）' not in readme.read_text(encoding='utf-8'):
-              raise SystemExit('README release section missing')
-          print('HX_RELEASE_1_0_0_METADATA_OK')
-          PY
-
-      - name: Validate package manifest
+      - name: Apply release migration
+        run: python3 tools/release_v1.py
+      - name: Validate release metadata
         run: |
           grep -Fq 'd Version 1.0.0' hxempirical.pkg
           grep -Fq 'd Distribution-Date: 20260812' hxempirical.pkg
@@ -90,11 +25,10 @@ jobs:
           grep -Fq 'return local version "1.0.0"' hxempirical.ado
           grep -Fq '{* *! version 1.0.0  12aug2026}{...}' hxempirical.sthlp
           grep -Fq '当前发布版本：**1.0.0**' README.md
-          while read -r kind file; do
-            [ -f "$file" ] || { echo "missing package file: $file"; exit 1; }
-          done < <(awk '$1=="f" {print $1, $2}' hxempirical.pkg)
+          awk '$1=="f" {print $2}' hxempirical.pkg | while read -r file; do
+            test -f "$file" || { echo "missing package file: $file"; exit 1; }
+          done
           echo HX_RELEASE_1_0_0_VALIDATION_OK
-
       - name: Commit release metadata
         run: |
           git config user.name "github-actions[bot]"
