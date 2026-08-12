@@ -1,4 +1,4 @@
-*! hxresolve 3.1.0  09aug2026
+*! hxresolve 3.1.1  12aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -68,6 +68,22 @@ program define hxresolve, rclass
     local models `"`r(models)'"'
     local default_model `"`r(default_model)'"'
     local vces `"`r(vces)'"'
+
+    /* Minimum native-command contracts for optional HDFE estimators.
+       These keep common fields available even before the community command
+       is installed and its local help/syntax can be parsed. */
+    if inlist("`cmd'", "reghdfe", "ppmlhdfe", "ivreghdfe") {
+        local has_absorb 1
+        local has_vce 1
+        local has_cluster 1
+        if `"`vces'"' == "" | `"`vces'"' == "default" {
+            local vces "default robust cluster"
+        }
+    }
+    if "`cmd'" == "ivreghdfe" {
+        local has_iv 1
+    }
+
     quietly hxinsight, command(`cmd')
 
     local signature `"`source'|`version'|`helpfile'|`dlgfile'|`quality'|`score'|`template'|`models'|`vces'"'
