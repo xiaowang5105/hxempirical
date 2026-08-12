@@ -2315,8 +2315,6 @@ public final class HxWorkbench {
       private final JTextArea monitorOutcome = readonlyArea();
       private final JTextArea monitorLog = readonlyArea();
       private final JProgressBar monitorProgress = new JProgressBar();
-      private final JToggleButton monitorDetailsToggle = new JToggleButton("详细运行信息  +");
-      private final JPanel monitorDetails = new JPanel(new BorderLayout(0, 7));
       private final DefaultTableModel runQueueModel = new DefaultTableModel(new String[]{"序号", "状态", "命令 / 任务", "耗时", "RC"}, 0) {
          @Override
          public boolean isCellEditable(int var1, int var2) {
@@ -3315,7 +3313,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.1");
+         JLabel version = new JLabel("版本：1.2.2");
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
