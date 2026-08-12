@@ -121,7 +121,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "0.9.7";
+   public static final String VERSION = "1.0.1";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -342,7 +342,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 0.9.7");
+      SFIToolkit.displayln("HxWorkbench 1.0.1");
       return 0;
    }
 
@@ -2234,7 +2234,7 @@ public final class HxWorkbench {
       private final JLabel commandCaption = new JLabel("再选择方法");
       private final JPanel formPanel = new JPanel(new GridBagLayout());
       private final JScrollPane formScroll = new JScrollPane(this.formPanel);
-      private final JLabel breadcrumbLabel = new JLabel("开始");
+      private final JPanel breadcrumbBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
       private final JLabel commandTitle = new JLabel("选择一个 Stata 命令");
       private final JLabel exampleLabel = new JLabel("选择一项工作开始");
       private final JTextArea insightArea = readonlyArea();
@@ -2247,18 +2247,19 @@ public final class HxWorkbench {
       private final JLabel commandDockStatus = new JLabel("等待执行");
       private final JProgressBar commandDockProgress = new JProgressBar();
       private final JButton refreshButton = new JButton("刷新");
-      private final JButton homeButton = new JButton("回到开始");
+      private final JButton homeButton = new JButton("首页");
       private final JToggleButton inspectorToggle = new JToggleButton("隐藏数据 / 结果");
-      private final JButton changeMethodButton = new JButton("更换方法");
+      private final JButton changeMethodButton = new JButton("← 上一级");
       private final JTabbedPane commandTabs = new JTabbedPane();
       private JPanel commandDock;
       private final CardLayout stageLayout = new CardLayout();
       private final JPanel stageCards = new JPanel(this.stageLayout);
       private final JPanel chooserContent = new JPanel();
-      private final JLabel chooserBreadcrumb = new JLabel("开始");
+      private final JPanel chooserBreadcrumbBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
       private final JLabel chooserTitle = new JLabel("选择具体命令");
       private final JLabel chooserHint = new JLabel("选择后进入该命令自己的设置页面");
-      private final JButton chooserBackButton = new JButton("← 返回开始");
+      private final JButton chooserBackButton = new JButton("← 上一级");
+      private final JButton chooserHomeButton = new JButton("首页");
       private String activeCategoryCode = "";
       private String activeCategoryName = "";
       private String activeMethodName = "";
@@ -2679,7 +2680,7 @@ public final class HxWorkbench {
          }
 
          this.commandList.setSelectedIndex(0);
-         this.breadcrumbLabel.setText("回归模型  ›  线性模型  ›  regress");
+         this.setWorkspaceBreadcrumb("回归模型  ›  线性模型  ›  regress");
          this.commandTitle.setText("regress - 普通线性回归");
          this.exampleLabel.setText("<html><b>最简单例子：</b> regress y x c　　用 x 和 c 解释 y</html>");
          this.insightArea
@@ -2790,7 +2791,7 @@ public final class HxWorkbench {
          this.commandDock.setVisible(true);
          this.runButton.setText("绘制图形");
          this.commandTitle.setText("lfit - 线性拟合图");
-         this.breadcrumbLabel.setText("图形  ›  变量关系  ›  lfit");
+         this.setWorkspaceBreadcrumb("图形  ›  变量关系  ›  lfit");
          this.exampleLabel.setText("<html><b>最简单例子：</b> twoway lfit price mpg</html>");
          this.insightArea.setText("主要意图：观察两个变量的线性拟合关系。\n\n推荐数据：至少包含两个数值变量。\n\n优点：方向和离群点直观。\n\n缺点与注意：拟合关系不自动代表因果效应。");
          this.syntaxArea.setText("twoway lfit y x [if] [, options]");
@@ -2928,7 +2929,7 @@ public final class HxWorkbench {
          this.commandList.setSelectedIndex(0);
          this.currentCommand = "__missing_analysis__";
          this.previewArea.setEditable(false);
-         this.breadcrumbLabel.setText("数据处理  ›  数据检查  ›  缺失值分析");
+         this.setWorkspaceBreadcrumb("数据处理  ›  数据检查  ›  缺失值分析");
          this.commandTitle.setText("缺失值分析");
          this.exampleLabel.setText("最简单操作：选择检查变量；面板数据可再选择 firm 和 year 分类查看。");
          this.insightArea
@@ -3105,15 +3106,12 @@ public final class HxWorkbench {
          JLabel var5 = new JLabel("完整命令会写入 Stata History");
          var5.setForeground(MUTED);
          var5.setFont(var5.getFont().deriveFont(11.0F));
-         styleSecondaryButton(this.homeButton);
          styleSecondaryButton(this.inspectorToggle);
-         this.homeButton.addActionListener(var1x -> this.showHomePage());
          this.inspectorToggle.addActionListener(var1x -> this.toggleInspector());
          JPanel var6 = new JPanel(new FlowLayout(2, 10, 0));
          var6.setOpaque(false);
          var6.add(var5);
          var6.add(this.inspectorToggle);
-         var6.add(this.homeButton);
          var1.add(var6, "East");
          return var1;
       }
@@ -3412,6 +3410,9 @@ public final class HxWorkbench {
          JScrollPane var24 = new JScrollPane(var2);
          var24.setBorder(null);
          var24.getViewport().setBackground(APP_BG);
+         var24.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+         var24.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+         var24.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
          var24.getVerticalScrollBar().setUnitIncrement(18);
          var1.add(var24, "Center");
          SwingUtilities.invokeLater(this::refreshHomeContext);
@@ -3880,7 +3881,7 @@ public final class HxWorkbench {
             }
          }
 
-         this.chooserBreadcrumb.setText("开始  >  " + this.activeCategoryName);
+         this.setChooserBreadcrumb("开始  >  " + this.activeCategoryName);
          this.chooserTitle.setText(this.activeCategoryName);
          this.chooserHint.setText("选择具体方法，再比较该方法下可用的 Stata 命令。");
          this.chooserContent.removeAll();
@@ -3923,13 +3924,15 @@ public final class HxWorkbench {
          var2.setBackground(SURFACE);
          var2.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER), new EmptyBorder(16, 24, 15, 24)));
          styleSecondaryButton(this.chooserBackButton);
+         styleSecondaryButton(this.chooserHomeButton);
          this.chooserBackButton.addActionListener(var1x -> this.handleChooserBack());
-         JPanel var3 = new JPanel(new FlowLayout(0, 0, 0));
+         this.chooserHomeButton.addActionListener(var1x -> this.showHomePage());
+         JPanel var3 = new JPanel(new FlowLayout(0, 7, 0));
          var3.setOpaque(false);
          var3.add(this.chooserBackButton);
+         var3.add(this.chooserHomeButton);
          var2.add(var3, "West");
-         this.chooserBreadcrumb.setForeground(ACCENT);
-         this.chooserBreadcrumb.setFont(this.chooserBreadcrumb.getFont().deriveFont(11.0F));
+         this.chooserBreadcrumbBar.setOpaque(false);
          this.chooserTitle.setForeground(TEXT);
          this.chooserTitle.setFont(this.chooserTitle.getFont().deriveFont(1, 21.0F));
          this.chooserHint.setForeground(MUTED);
@@ -3937,7 +3940,7 @@ public final class HxWorkbench {
          JPanel var4 = new JPanel();
          var4.setOpaque(false);
          var4.setLayout(new BoxLayout(var4, 1));
-         var4.add(this.chooserBreadcrumb);
+         var4.add(this.chooserBreadcrumbBar);
          var4.add(Box.createVerticalStrut(5));
          var4.add(this.chooserTitle);
          var4.add(Box.createVerticalStrut(5));
@@ -3950,6 +3953,9 @@ public final class HxWorkbench {
          JScrollPane var5 = new JScrollPane(this.chooserContent);
          var5.setBorder(null);
          var5.getViewport().setBackground(APP_BG);
+         var5.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+         var5.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+         var5.getVerticalScrollBar().setPreferredSize(new Dimension(12, 0));
          var5.getVerticalScrollBar().setUnitIncrement(18);
          var1.add(var5, "Center");
          return var1;
@@ -4005,7 +4011,7 @@ public final class HxWorkbench {
       }
 
       private void renderCommandChooser(String var1, String var2, List<String> var3) {
-         this.chooserBreadcrumb.setText(var2.isBlank() ? var1 : var1 + "  >  " + var2);
+         this.setChooserBreadcrumb(var2.isBlank() ? var1 : var1 + "  >  " + var2);
          this.chooserTitle.setText(var2.isBlank() ? var1 : var2);
          this.chooserHint.setText("比较用途、适用数据和示例，再选择这次要使用的命令。");
          this.chooserContent.removeAll();
@@ -4112,16 +4118,11 @@ public final class HxWorkbench {
       }
 
       private void configureChooserBack() {
-         boolean var1 = !this.chooserAtCategoryLevel
-            && !this.activeCategoryName.isBlank()
-            && !"search".equals(this.activeCategoryCode)
-            && !"favorites".equals(this.activeCategoryCode)
-            && !"recent".equals(this.activeCategoryCode);
-         this.chooserBackButton.setVisible(var1);
-         if (var1) {
-            this.chooserBackButton.setText("← 返回" + this.activeCategoryName);
-            this.chooserBackButton.setToolTipText("查看" + this.activeCategoryName + "中的其他方法");
-         }
+         this.chooserBackButton.setVisible(true);
+         this.chooserBackButton.setText("← 上一级");
+         this.chooserBackButton.setToolTipText(this.chooserAtCategoryLevel ? "返回首页" : "返回上一级选择");
+         this.chooserHomeButton.setVisible(true);
+         this.chooserHomeButton.setToolTipText("返回首页");
       }
 
       private void selectCategoryCode(String var1) {
@@ -4145,16 +4146,87 @@ public final class HxWorkbench {
       }
 
       private void configureWorkspaceBack() {
+         this.changeMethodButton.setText("← 上一级");
          String var1 = this.activeMethodName == null ? "" : this.activeMethodName.trim();
-         if (!var1.isBlank() && !var1.equals(this.activeCategoryName)) {
-            this.changeMethodButton.setText("← 返回" + var1);
-            this.changeMethodButton.setToolTipText("查看" + var1 + "中的其他命令");
-            this.breadcrumbLabel.setToolTipText("返回" + var1 + "命令选择页");
-         } else {
-            this.changeMethodButton.setText("← 返回上一层");
-            this.changeMethodButton.setToolTipText("返回刚才的选择页面");
-            this.breadcrumbLabel.setToolTipText("返回刚才的选择页面");
+         this.changeMethodButton.setToolTipText(!var1.isBlank() && !var1.equals(this.activeCategoryName) ? "返回当前方法的命令选择页" : "返回上一级选择");
+         this.homeButton.setText("首页");
+         this.homeButton.setToolTipText("返回首页");
+      }
+
+      private void setWorkspaceBreadcrumb(String path) {
+         this.renderBreadcrumb(this.breadcrumbBar, path);
+      }
+
+      private void setChooserBreadcrumb(String path) {
+         this.renderBreadcrumb(this.chooserBreadcrumbBar, path);
+      }
+
+      private void renderBreadcrumb(JPanel bar, String path) {
+         bar.removeAll();
+         ArrayList<String> parts = new ArrayList<>();
+         for (String raw : path.split("\\s*[›>]\\s*")) {
+            String part = raw.trim();
+            if (!part.isBlank() && !"开始".equals(part) && !"首页".equals(part)) {
+               parts.add(part);
+            }
          }
+
+         this.addBreadcrumbItem(bar, "首页", this::showHomePage, parts.isEmpty());
+         for (int i = 0; i < parts.size(); i++) {
+            JLabel sep = new JLabel("  ›  ");
+            sep.setForeground(MUTED);
+            sep.setFont(sep.getFont().deriveFont(11.0F));
+            bar.add(sep);
+            Runnable action = null;
+            boolean current = i == parts.size() - 1;
+            if (!current && i == 0) {
+               action = this::openActiveCategoryFromBreadcrumb;
+            } else if (!current && i == 1 && this.activeMethodName != null && !this.activeMethodName.isBlank() && !this.activeMethodName.equals(this.activeCategoryName)) {
+               action = () -> this.browseMethod(this.activeCategoryCode, this.activeMethodName);
+            }
+            this.addBreadcrumbItem(bar, parts.get(i), action, current);
+         }
+         bar.revalidate();
+         bar.repaint();
+      }
+
+      private void openActiveCategoryFromBreadcrumb() {
+         if (this.activeCategoryCode == null || this.activeCategoryCode.isBlank() || "search".equals(this.activeCategoryCode)) {
+            this.showHomePage();
+         } else if ("favorites".equals(this.activeCategoryCode) || "recent".equals(this.activeCategoryCode)) {
+            this.browseCommandCategory(this.activeCategoryCode, this.activeCategoryName);
+         } else if ("test".equals(this.activeCategoryCode) || "performance".equals(this.activeCategoryCode)) {
+            this.showHomePage();
+         } else {
+            this.browseCategoryOverview(this.activeCategoryCode);
+         }
+      }
+
+      private void addBreadcrumbItem(JPanel bar, String text, Runnable action, boolean current) {
+         JLabel item = new JLabel(text);
+         item.setFont(item.getFont().deriveFont(current ? Font.BOLD : Font.PLAIN, 11.0F));
+         item.setForeground(current ? TEXT : ACCENT);
+         if (action != null && !current) {
+            item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            item.setToolTipText("打开“" + text + "”");
+            item.addMouseListener(new MouseAdapter() {
+               @Override
+               public void mouseClicked(MouseEvent event) {
+                  action.run();
+               }
+
+               @Override
+               public void mouseEntered(MouseEvent event) {
+                  item.setForeground(ACCENT.darker());
+               }
+
+               @Override
+               public void mouseExited(MouseEvent event) {
+                  item.setForeground(ACCENT);
+               }
+            });
+         }
+         bar.add(item);
       }
 
       private static List<String> previewCommandsForMethod(String var0) {
@@ -4338,9 +4410,8 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setUnitIncrement(16);
          this.commandTitle.setForeground(TEXT);
          this.commandTitle.setFont(this.commandTitle.getFont().deriveFont(1, 16.0F));
-         this.breadcrumbLabel.setForeground(ACCENT);
-         this.breadcrumbLabel.setFont(this.breadcrumbLabel.getFont().deriveFont(0, 10.5F));
-         this.breadcrumbLabel.setCursor(Cursor.getPredefinedCursor(12));
+         this.breadcrumbBar.setOpaque(false);
+         this.breadcrumbBar.setAlignmentX(0.0F);
          this.exampleLabel.setForeground(new Color(55, 67, 84));
          this.exampleLabel.setFont(this.exampleLabel.getFont().deriveFont(0, 11.0F));
          this.insightArea.setRows(10);
@@ -4472,6 +4543,8 @@ public final class HxWorkbench {
          var3.setOpaque(false);
          var3.add(this.commandTitle, "Center");
          styleSecondaryButton(this.changeMethodButton);
+         styleSecondaryButton(this.homeButton);
+         this.homeButton.addActionListener(var1x -> this.showHomePage());
          this.changeMethodButton.addActionListener(var1x -> {
             if (this.chooserReady) {
                this.inspectorToggle.setVisible(false);
@@ -4486,17 +4559,18 @@ public final class HxWorkbench {
          JPanel var5 = new JPanel(new FlowLayout(2, 7, 0));
          var5.setOpaque(false);
          var5.add(this.changeMethodButton);
+         var5.add(this.homeButton);
          var5.add(var4);
          var3.add(var5, "East");
          JPanel var6 = new JPanel();
          var6.setOpaque(false);
          var6.setLayout(new BoxLayout(var6, 1));
-         this.breadcrumbLabel.setAlignmentX(0.0F);
-         this.breadcrumbLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+         this.breadcrumbBar.setAlignmentX(0.0F);
+         this.breadcrumbBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
          var3.setAlignmentX(0.0F);
          this.exampleLabel.setAlignmentX(0.0F);
          this.exampleLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
-         var6.add(this.breadcrumbLabel);
+         var6.add(this.breadcrumbBar);
          var6.add(Box.createVerticalStrut(5));
          var6.add(var3);
          var6.add(Box.createVerticalStrut(6));
@@ -4976,22 +5050,6 @@ public final class HxWorkbench {
       }
 
       private void wireEvents() {
-         this.chooserBreadcrumb.setCursor(Cursor.getPredefinedCursor(12));
-         this.chooserBreadcrumb.setToolTipText("返回上一层");
-         this.chooserBreadcrumb.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent var1) {
-               WorkbenchFrame.this.handleChooserBack();
-            }
-         });
-         this.breadcrumbLabel.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent var1) {
-               if (WorkbenchFrame.this.chooserReady) {
-                  WorkbenchFrame.this.changeMethodButton.doClick();
-               }
-            }
-         });
          this.categoryList.addListSelectionListener(var1x -> {
             if (!var1x.getValueIsAdjusting() && !this.rebuilding) {
                this.categoryChanged();
@@ -5381,7 +5439,7 @@ public final class HxWorkbench {
                String var3 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_title"));
                this.commandTitle.setText(var3);
                this.commandTitle.setToolTipText(var3);
-               this.breadcrumbLabel.setText(commandPath(var1));
+               this.setWorkspaceBreadcrumb(commandPath(var1));
                String var4 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_example1"));
                String var5 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_explain1"));
                this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(var4) + (var5.isBlank() ? "" : "　　" + html(var5)) + "</html>");
@@ -5426,7 +5484,7 @@ public final class HxWorkbench {
          this.commandTabs.setSelectedIndex(0);
          this.previewArea.setEditable(true);
          this.runButton.setText("运行回归");
-         this.breadcrumbLabel.setText("回归模型  ›  普通线性回归  ›  regress");
+         this.setWorkspaceBreadcrumb("回归模型  ›  普通线性回归  ›  regress");
          this.commandTitle.setText("regress - 普通线性回归");
          this.commandTitle.setToolTipText("Stata 官方普通最小二乘回归");
          this.exampleLabel.setText("<html><b>最简单：</b> 选择 Y、核心 X 和控制变量；底部会自动生成 regress 命令。</html>");
@@ -5868,7 +5926,7 @@ public final class HxWorkbench {
          this.previewArea.setEditable(true);
          this.runButton.setText("绘制图形");
          this.runButton.setEnabled(true);
-         this.breadcrumbLabel.setText(commandPath(var1));
+         this.setWorkspaceBreadcrumb(commandPath(var1));
          this.depvar.setSelectedItem(null);
          this.panel.setSelectedItem(null);
          this.time.setSelectedItem(null);
@@ -5981,7 +6039,7 @@ public final class HxWorkbench {
          this.previewArea.setEditable(true);
          this.runButton.setText("运行外部 OneClick");
          this.runButton.setEnabled(true);
-         this.breadcrumbLabel.setText(commandPath(var1));
+         this.setWorkspaceBreadcrumb(commandPath(var1));
          boolean var2 = "oneclick_robustness".equals(var1);
          String var3 = var2 ? "oneclick_robustness" : "oneclick";
          this.commandTitle.setText(var2 ? "控制变量组合稳健性 - 外部 oneclick_robustness" : "控制变量组合筛选 - 外部 oneclick");
@@ -6088,7 +6146,7 @@ public final class HxWorkbench {
          this.previewArea.setEditable(true);
          this.runButton.setText("运行当前步骤");
          this.runButton.setEnabled(true);
-         this.breadcrumbLabel.setText(commandPath("did_builder"));
+         this.setWorkspaceBreadcrumb(commandPath("did_builder"));
          this.commandTitle.setText("DID 与事件研究 - 统一政策时点 · 分步构建");
          this.exampleLabel.setText("<html><b>操作逻辑：</b> 先选当前要做的一步；页面只显示这一步真正需要的变量。</html>");
          this.insightArea
@@ -6404,7 +6462,7 @@ public final class HxWorkbench {
          this.runButton.setEnabled(false);
          int var2 = 0;
          if (var1.equals("test")) {
-            this.breadcrumbLabel.setText("测试数据");
+            this.setWorkspaceBreadcrumb("测试数据");
             this.commandTitle.setText("测试数据 - 载入或创建练习数据");
             this.exampleLabel.setText("选择一份练习数据，载入后右侧立即显示真实数据网格。");
             this.insightArea.setText("载入练习数据后，右侧数据表会自动刷新。载入操作会清除当前内存数据；请先保存正式数据。");
@@ -6427,7 +6485,7 @@ public final class HxWorkbench {
 
             this.addField(var2++, "选择练习数据", var3);
          } else {
-            this.breadcrumbLabel.setText("性能设置");
+            this.setWorkspaceBreadcrumb("性能设置");
             this.commandTitle.setText("性能设置 - 切换 Stata/MP 处理器");
             this.exampleLabel.setText("开启时使用许可证允许的处理器上限；关闭时使用 1 个处理器。");
             this.insightArea.setText("开启时动态使用当前许可证允许的最大处理器数；关闭时使用 1 个处理器。每次操作都会进入 Stata History。");
@@ -6466,7 +6524,7 @@ public final class HxWorkbench {
          this.previewArea.setEditable(false);
          this.commandTabs.setSelectedIndex(0);
          this.formPanel.removeAll();
-         this.breadcrumbLabel.setText("数据处理  ›  导入与转换  ›  转换为 DTA");
+         this.setWorkspaceBreadcrumb("数据处理  ›  导入与转换  ›  转换为 DTA");
          this.commandTitle.setText("转换为 Stata 数据（.dta）");
          this.exampleLabel.setText("最简单操作：选择 Excel / CSV → 查看预览 → 选择保存位置 → 转换为 DTA");
          this.insightArea
@@ -7334,7 +7392,7 @@ public final class HxWorkbench {
          this.rebuilding = true;
          this.commandTabs.setSelectedIndex(0);
          this.formPanel.removeAll();
-         this.breadcrumbLabel.setText("数据处理  ›  数据检查  ›  缺失值分析");
+         this.setWorkspaceBreadcrumb("数据处理  ›  数据检查  ›  缺失值分析");
          this.commandTitle.setText("缺失值分析");
          this.exampleLabel.setText("最简单操作：选择检查变量；面板数据可再选择 firm 和 year 分类查看。");
          this.insightArea
