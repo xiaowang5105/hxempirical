@@ -1,4 +1,4 @@
-*! hxpreview 1.1.0  10aug2026
+*! hxpreview 1.2.0  12aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -34,6 +34,8 @@ program define hxpreview, rclass
 
     local preview `"`command'"'
     if "`command'" == "lfit" local preview "twoway lfit"
+    if "`command'" == "misstable" local preview "misstable summarize"
+    if "`command'" == "duplicates" local preview "duplicates report"
     local opt ""
 
     if "`is_xtset'" == "1" {
