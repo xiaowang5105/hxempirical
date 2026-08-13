@@ -122,7 +122,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.2.5";
+   public static final String VERSION = "1.2.6";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -343,7 +343,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.2.5");
+      SFIToolkit.displayln("HxWorkbench 1.2.6");
       return 0;
    }
 
@@ -2069,6 +2069,114 @@ public final class HxWorkbench {
                return "merge_append";
             case "数据结构":
                return "data_structure";
+            case "汇总，表格和假设检验":
+               return "summary_tests";
+            case "线性模型及相关":
+               return "linear_related";
+            case "序数结果":
+               return "ordinal_outcomes";
+            case "分类结果":
+               return "categorical_outcomes";
+            case "计数结果":
+               return "count_outcomes";
+            case "分数结果":
+               return "fractional_outcomes";
+            case "广义线性模型":
+               return "glm_models";
+            case "选择模型":
+               return "selection_models";
+            case "时间序列":
+               return "time_series";
+            case "多元时间序列":
+               return "multivariate_ts";
+            case "空间自回归模型":
+               return "spatial_ar";
+            case "纵向/面板数据":
+               return "panel_longitudinal";
+            case "多层混合效应模型":
+               return "mixed_effects";
+            case "生存分析":
+               return "survival";
+            case "流行病学及相关":
+               return "epidemiology";
+            case "内生协变量":
+               return "endogenous_covariates";
+            case "样本选择模型":
+               return "sample_selection";
+            case "因果推断/处理效应":
+               return "causal_treatment";
+            case "结构方程模型(SEM)":
+               return "sem";
+            case "潜在类别分析(LCA)":
+               return "lca";
+            case "有限混合模型(FMM)":
+               return "fmm";
+            case "项目反应理论(IRT)":
+               return "irt";
+            case "多元分析":
+               return "multivariate";
+            case "调查数据分析":
+               return "survey";
+            case "Lasso回归":
+               return "lasso";
+            case "Meta分析":
+               return "meta";
+            case "多重插补":
+               return "mi";
+            case "非参数分析":
+               return "nonparametric";
+            case "精确统计":
+               return "exact_stats";
+            case "重抽样":
+               return "resampling";
+            case "效能，精度和样品含量":
+               return "power_precision";
+            case "贝叶斯分析":
+               return "bayes";
+            case "贝叶斯模型平均":
+               return "bma";
+            case "二维图(散点图，折线图等)":
+               return "twoway_graphs";
+            case "条形图":
+               return "bar_graph";
+            case "点图":
+               return "dot_graph";
+            case "饼图":
+               return "pie_graph";
+            case "直方图":
+               return "histogram_graph";
+            case "箱线图":
+               return "box_graph";
+            case "等高线图":
+               return "contour_graph";
+            case "散点图矩阵":
+               return "matrix_graph";
+            case "分布图":
+               return "distribution_graph";
+            case "平滑和密度":
+               return "smooth_density";
+            case "回归诊断图":
+               return "reg_diagnostic_graph";
+            case "时间序列图":
+               return "ts_graph";
+            case "面板数据折线图":
+               return "panel_line_graph";
+            case "生存分析图":
+               return "survival_graph";
+            case "ROC分析":
+               return "roc_graph";
+            case "多元分析图":
+               return "multivariate_graph";
+            case "质量控制":
+               return "quality_graph";
+            case "更多统计图形":
+               return "more_stat_graph";
+            case "图形组合":
+               return "graph_combine";
+            case "管理图形":
+               return "graph_manage";
+            case "更改方案/大小":
+               return "graph_scheme";
             case "描述统计":
                return "descriptive";
             case "相关分析":
@@ -2092,7 +2200,7 @@ public final class HxWorkbench {
             case "面板模型":
                return "panel";
             case "二元结果":
-               return "binary";
+               return "binary_outcomes";
             case "计数模型":
                return "count";
             case "工具变量":
@@ -2715,7 +2823,7 @@ public final class HxWorkbench {
          this.categoryModel.clear();
          this.categoryModel.addElement(new HxWorkbench.Category("开始", "home"));
          this.categoryModel.addElement(new HxWorkbench.Category("数据处理", "data"));
-         this.categoryModel.addElement(new HxWorkbench.Category("统计与检验", "stats"));
+         this.categoryModel.addElement(new HxWorkbench.Category("统计", "stats"));
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
@@ -3080,7 +3188,7 @@ public final class HxWorkbench {
          this.categoryModel.clear();
          this.categoryModel.addElement(new HxWorkbench.Category("开始", "home"));
          this.categoryModel.addElement(new HxWorkbench.Category("数据处理", "data"));
-         this.categoryModel.addElement(new HxWorkbench.Category("统计与检验", "stats"));
+         this.categoryModel.addElement(new HxWorkbench.Category("统计", "stats"));
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
@@ -3282,13 +3390,13 @@ public final class HxWorkbench {
          nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
          nav.add(this.sidebarButton("home", "◆", "工作台", this::showHomePage));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("data", "▤", "数据", () -> this.browseCategoryOverview("data")));
+         nav.add(this.sidebarButton("data", "", "数据", () -> this.browseCategoryOverview("data")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("reg", "↗", "回归", () -> this.browseMethod("reg", "线性模型")));
+         nav.add(this.sidebarButton("stats", "", "统计", () -> this.browseCategoryOverview("stats")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("stats", "✓", "检验", () -> this.browseCategoryOverview("stats")));
+         nav.add(this.sidebarButton("graph", "", "图形", () -> this.browseCategoryOverview("graph")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("oneclick", "◆", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         nav.add(this.sidebarButton("oneclick", "", "OneClick", () -> this.browseMethodCategory("oneclick")));
          nav.add(Box.createVerticalStrut(8));
          nav.add(this.sidebarButton("history", "◷", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
          nav.add(Box.createVerticalStrut(8));
@@ -3316,7 +3424,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.5");
+         JLabel version = new JLabel("版本：1.2.6");
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
@@ -5871,7 +5979,7 @@ public final class HxWorkbench {
          this.categoryModel.clear();
          this.categoryModel.addElement(new HxWorkbench.Category("开始", "home"));
          this.categoryModel.addElement(new HxWorkbench.Category("数据处理", "data"));
-         this.categoryModel.addElement(new HxWorkbench.Category("统计与检验", "stats"));
+         this.categoryModel.addElement(new HxWorkbench.Category("统计", "stats"));
          this.categoryModel.addElement(new HxWorkbench.Category("回归模型", "reg"));
          this.categoryModel.addElement(new HxWorkbench.Category("后估计", "post"));
          this.categoryModel.addElement(new HxWorkbench.Category("图形", "graph"));
@@ -10267,7 +10375,7 @@ public final class HxWorkbench {
             case "data":
                return "数据处理";
             case "stats":
-               return "统计与检验";
+               return "统计";
             case "reg":
                return "回归模型";
             case "post":
@@ -10305,23 +10413,23 @@ public final class HxWorkbench {
          } else if (Arrays.asList("reshape", "collapse", "xtset", "tsset").contains(var0)) {
             return "数据处理|数据结构";
          } else if (Arrays.asList("summarize", "tabstat").contains(var0)) {
-            return "统计与检验|描述统计";
+            return "统计|汇总，表格和假设检验";
          } else if (Arrays.asList("correlate", "pwcorr").contains(var0)) {
-            return "统计与检验|相关分析";
+            return "统计|线性模型及相关";
          } else if ("ttest".equals(var0)) {
-            return "统计与检验|均值检验";
+            return "统计|汇总，表格和假设检验";
          } else if ("tabulate".equals(var0)) {
-            return "统计与检验|频数列联";
+            return "统计|汇总，表格和假设检验";
          } else if (Arrays.asList("regress", "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais").contains(var0)) {
-            return "回归模型|线性模型";
+            return "统计|线性模型及相关";
          } else if (Arrays.asList("didregress", "xtdidregress").contains(var0)) {
-            return "回归模型|双重差分";
+            return "统计|因果推断/处理效应";
          } else if (Arrays.asList("xtreg", "xtlogit", "xtprobit").contains(var0)) {
-            return "回归模型|面板模型";
+            return "统计|纵向/面板数据";
          } else if (Arrays.asList("logit", "probit").contains(var0)) {
-            return "回归模型|二元结果";
+            return "统计|二元结果";
          } else if (Arrays.asList("poisson", "nbreg", "ppmlhdfe").contains(var0)) {
-            return "回归模型|计数模型";
+            return "统计|计数结果";
          } else if (Arrays.asList("ivregress", "ivreghdfe").contains(var0)) {
             return "回归模型|工具变量";
          } else if ("did_builder".equals(var0)) {
@@ -10331,13 +10439,13 @@ public final class HxWorkbench {
          } else if (Arrays.asList("predict", "margins").contains(var0)) {
             return "后估计|预测边际";
          } else if (Arrays.asList("histogram", "kdensity", "graph_box").contains(var0)) {
-            return "图形|数据分布";
+            return "图形|分布图";
          } else if (Arrays.asList("scatter", "lfit", "twoway").contains(var0)) {
-            return "图形|变量关系";
+            return "图形|二维图(散点图，折线图等)";
          } else if ("did_trends".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
          } else if (Arrays.asList("coefplot", "marginsplot").contains(var0)) {
-            return "图形|回归结果";
+            return "图形|更多统计图形";
          } else if ("event_plot".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
          } else if ("oneclick".equals(var0)) {
