@@ -11263,7 +11263,7 @@ public final class HxWorkbench {
          if (!var6) {
             this.selectRunView();
          } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
-            this.selectResultView("regresspost", true);
+            this.selectResultView("general", true);
          } else if ("__convert_dta__".equals(this.currentCommand)) {
             this.selectResultView("convert", true);
          } else if ("__missing_analysis__".equals(this.currentCommand)) {
