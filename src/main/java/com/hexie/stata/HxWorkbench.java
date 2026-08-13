@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.0";
+   public static final String VERSION = "1.4.1";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.0");
+      SFIToolkit.displayln("HxWorkbench 1.4.1");
       return 0;
    }
 
@@ -3327,8 +3327,20 @@ public final class HxWorkbench {
                this.commandDataSplit.setDividerLocation(Math.max(0, divider));
             }
             if (this.dataSummarySplit != null) {
-               int var2 = (int)Math.round(this.dataSummarySplit.getHeight() * 0.70);
-               this.dataSummarySplit.setDividerLocation(Math.max(170, var2));
+               int dataHeight = this.dataSummarySplit.getHeight();
+               if (dataHeight > 0) {
+                  int dataDivider = (int)Math.round(dataHeight * 0.28);
+                  dataDivider = Math.max(100, Math.min(dataDivider, Math.max(100, dataHeight - 240)));
+                  this.dataSummarySplit.setDividerLocation(dataDivider);
+               }
+            }
+            if (this.inspectorLowerSplit != null) {
+               int lowerHeight = this.inspectorLowerSplit.getHeight();
+               if (lowerHeight > 0) {
+                  int lowerDivider = (int)Math.round(lowerHeight * 0.52);
+                  lowerDivider = Math.max(90, Math.min(lowerDivider, Math.max(90, lowerHeight - 110)));
+                  this.inspectorLowerSplit.setDividerLocation(lowerDivider);
+               }
             }
          });
       }
@@ -6197,6 +6209,7 @@ public final class HxWorkbench {
          this.variableTabs.setMinimumSize(new Dimension(0, 0));
          var1.setMinimumSize(new Dimension(0, 0));
          this.currentDataCards.setBackground(SURFACE);
+         this.currentDataCards.setMinimumSize(new Dimension(0, 90));
          this.currentDataCards.add(var1, "table");
          this.currentDataCards.add(this.buildEmptyDataPanel(), "empty");
 
@@ -6700,6 +6713,32 @@ public final class HxWorkbench {
          }
       }
 
+      private void syncVariableWindowFromDataTable() {
+         int viewColumn = this.dataTable.getSelectedColumn();
+         if (viewColumn < 0) {
+            this.updateSelectedColumnSummary();
+            return;
+         }
+         String variable = this.dataTable.getColumnName(viewColumn);
+         if (!variable.equals(this.selectedInspectorVariable())) {
+            int matchedRow = -1;
+            for (int row = 0; row < this.inspectorVariableModel.getRowCount(); row++) {
+               if (variable.equals(Objects.toString(this.inspectorVariableModel.getValueAt(row, 0), ""))) {
+                  matchedRow = row;
+                  break;
+               }
+            }
+            if (matchedRow >= 0) {
+               this.inspectorVariableTable.setRowSelectionInterval(matchedRow, matchedRow);
+               Rectangle cell = this.inspectorVariableTable.getCellRect(matchedRow, 0, true);
+               this.inspectorVariableTable.scrollRectToVisible(cell);
+            } else {
+               this.inspectorVariableTable.clearSelection();
+            }
+         }
+         this.updateSelectedColumnSummary();
+      }
+
       private void installInspectorVariableDragSupport() {
          this.inspectorVariableTable.setTransferHandler(new TransferHandler() {
             @Override
@@ -6869,8 +6908,12 @@ public final class HxWorkbench {
          this.dataTabs.addChangeListener(var1x -> this.syncRightPaneTitle());
          this.runButton.addActionListener(var1x -> this.runCurrentCommand());
          this.copyCommandButton.addActionListener(var1x -> this.copyCurrentCommand());
-         this.dataTable.getSelectionModel().addListSelectionListener(var1x -> this.updateSelectedColumnSummary());
-         this.dataTable.getColumnModel().getSelectionModel().addListSelectionListener(var1x -> this.updateSelectedColumnSummary());
+         this.dataTable.getSelectionModel().addListSelectionListener(var1x -> {
+            if (!var1x.getValueIsAdjusting()) this.syncVariableWindowFromDataTable();
+         });
+         this.dataTable.getColumnModel().getSelectionModel().addListSelectionListener(var1x -> {
+            if (!var1x.getValueIsAdjusting()) this.syncVariableWindowFromDataTable();
+         });
          this.dataTable.getTableHeader().addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent var1) {
