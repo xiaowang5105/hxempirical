@@ -29,8 +29,6 @@ EOF
 javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
 jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
 test -s hxworkbench.jar
-grep -n 'inspectorDataSplit\|xtregCommandPreview\|syncXtregControlsFromCommand' src/main/java/com/hexie/stata/HxWorkbench.java | head -20
-javap -private '/tmp/classes/com/hexie/stata/HxWorkbench$WorkbenchFrame.class' | grep -E 'inspectorDataSplit|xtregCommandPreview|syncXtregControlsFromCommand' || true
 
 cat > /tmp/V145Audit.java <<'EOF'
 import java.awt.*; import java.lang.reflect.*; import java.util.*; import javax.swing.*;
@@ -46,16 +44,18 @@ public class V145Audit {
  public static void main(String[] z){try{run();System.out.println("V145_AUDIT_OK");System.exit(0);}catch(Throwable t){t.printStackTrace();System.exit(2);}}
  static void run()throws Exception{
    C=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Constructor<?> ct=C.getDeclaredConstructor(boolean.class);ct.setAccessible(true);
-   edt(()->{try{F=(JFrame)ct.newInstance(true);F.setSize(1672,901);F.addNotify();Method show=C.getDeclaredMethod("showXtregWizardPageV130");show.setAccessible(true);show.invoke(F);F.validate();lay(F.getContentPane());Method ap=C.getDeclaredMethod("applyDividerRatios");ap.setAccessible(true);ap.invoke(F);lay(F.getContentPane());}catch(Exception e){throw new RuntimeException(e);}});
+   edt(()->{try{F=(JFrame)ct.newInstance(true);F.setSize(1672,901);F.addNotify();Method show=C.getDeclaredMethod("showXtregWizardPageV130");show.setAccessible(true);show.invoke(F);F.validate();lay(F.getContentPane());Method ap=C.getDeclaredMethod("applyDividerRatios");ap.setAccessible(true);ap.invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
+   edt(()->{F.validate();lay(F.getContentPane());});
    JSplitPane outer=(JSplitPane)f("commandDataSplit").get(F); JSplitPane mid=(JSplitPane)f("inspectorDataSplit").get(F); JSplitPane vertical=(JSplitPane)f("inspectorLowerSplit").get(F);
    JTextArea cmd=(JTextArea)f("xtregCommandPreview").get(F); JComboBox<?> panel=(JComboBox<?>)f("xtregPanelVar").get(F); JComboBox<?> time=(JComboBox<?>)f("xtregTimeVar").get(F); JComboBox<?> dep=(JComboBox<?>)f("xtregDepVar").get(F); JList<?> xs=(JList<?>)f("xtregIndepList").get(F); JRadioButton fe=(JRadioButton)f("xtregFeButton").get(F); JRadioButton re=(JRadioButton)f("xtregReButton").get(F); JComboBox<?> se=(JComboBox<?>)f("xtregSeCombo").get(F); JTextArea preview=(JTextArea)f("previewArea").get(F);
-   edt(()->{ck(cmd.isEditable(),"command preview not editable");ck(mid.getLeftComponent().getWidth()>=205,"middle variable rail too narrow "+mid.getLeftComponent().getWidth());ck(mid.getRightComponent().getWidth()>=290,"far-right data pane too narrow "+mid.getRightComponent().getWidth());ck(vertical.getTopComponent().getHeight()>=115,"variable window collapsed");ck(vertical.getBottomComponent().getHeight()>=115,"property window collapsed");});
+   edt(()->{System.out.println("LAYOUT_1672 main="+outer.getLeftComponent().getWidth()+" composite="+outer.getRightComponent().getWidth()+" middle="+mid.getLeftComponent().getWidth()+" data="+mid.getRightComponent().getWidth());ck(cmd.isEditable(),"command preview not editable");ck(mid.getLeftComponent().getWidth()>=205,"middle variable rail too narrow "+mid.getLeftComponent().getWidth());ck(mid.getRightComponent().getWidth()>=290,"far-right data pane too narrow "+mid.getRightComponent().getWidth());ck(vertical.getTopComponent().getHeight()>=115,"variable window collapsed");ck(vertical.getBottomComponent().getHeight()>=115,"property window collapsed");});
    Method sync=m("syncXtregControlsFromCommand");
    edt(()->{try{cmd.setText("xtset rep78 turn\nxtreg price mpg weight, re vce(robust)");sync.invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
    edt(()->{ck("rep78".equals(sel(panel)),"panel sync failed "+sel(panel));ck("turn".equals(sel(time)),"time sync failed");ck("price".equals(sel(dep)),"Y sync failed");ck(listHas(xs,"mpg")&&listHas(xs,"weight"),"X sync failed "+xs.getSelectedValuesList());ck(re.isSelected(),"RE not selected");ck("稳健标准误".equals(sel(se)),"robust not selected "+sel(se));ck(preview.getText().contains("xtreg price mpg weight"),"run preview not synced");});
    edt(()->{try{cmd.setText("xtset rep78 turn\nxtreg price mpg length, fe vce(cluster rep78) noconstant");sync.invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
    edt(()->{ck(fe.isSelected(),"FE not selected");ck("按面板聚类".equals(sel(se)),"cluster not selected");ck(listHas(xs,"mpg")&&listHas(xs,"length"),"second X sync failed");ck(cmd.getText().contains("noconstant"),"unknown option was erased");ck(preview.getText().contains("noconstant"),"edited command not authoritative");});
-   edt(()->{F.setSize(1280,720);F.validate();lay(F.getContentPane());try{Method ap=C.getDeclaredMethod("applyDividerRatios");ap.setAccessible(true);ap.invoke(F);}catch(Exception e){throw new RuntimeException(e);}lay(F.getContentPane());ck(mid.getLeftComponent().getWidth()>=200,"middle rail collapsed at 1280");ck(mid.getRightComponent().getWidth()>=285,"data pane collapsed at 1280");ck(outer.getLeftComponent().getWidth()>=390,"main pane too narrow at 1280");F.dispose();});
+   edt(()->{F.setSize(1280,720);F.validate();lay(F.getContentPane());try{Method ap=C.getDeclaredMethod("applyDividerRatios");ap.setAccessible(true);ap.invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
+   edt(()->{F.validate();lay(F.getContentPane());System.out.println("LAYOUT_1280 main="+outer.getLeftComponent().getWidth()+" composite="+outer.getRightComponent().getWidth()+" middle="+mid.getLeftComponent().getWidth()+" data="+mid.getRightComponent().getWidth());ck(mid.getLeftComponent().getWidth()>=200,"middle rail collapsed at 1280");ck(mid.getRightComponent().getWidth()>=285,"data pane collapsed at 1280: "+mid.getRightComponent().getWidth());ck(outer.getLeftComponent().getWidth()>=390,"main pane too narrow at 1280");F.dispose();});
  }
 }
 EOF
