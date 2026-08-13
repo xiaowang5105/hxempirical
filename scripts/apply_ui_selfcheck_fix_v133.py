@@ -11,7 +11,7 @@ def rep(old, new, label):
         raise SystemExit(f'missing marker: {label}')
     s = s.replace(old, new, 1)
 
-# Version bump after a second UI audit found a real narrow-layout failure.
+# Version bump after a second UI audit found real narrow-layout failures.
 s = s.replace('public static final String VERSION = "1.3.2";', 'public static final String VERSION = "1.3.3";', 1)
 s = s.replace('SFIToolkit.displayln("HxWorkbench 1.3.2");', 'SFIToolkit.displayln("HxWorkbench 1.3.3");', 1)
 
@@ -28,6 +28,19 @@ rep(
     '         JPanel actions = new JPanel(new GridLayout(1, 3, 8, 0)); actions.setOpaque(false);\n',
     'xtreg action button responsive layout'
 )
+
+# GridBagLayout switches toward minimum sizes when the viewport is only a few
+# pixels narrower than the cards' preferred width. The old cards advertised
+# a minimum height of zero, so whole steps could collapse to 0x0 while the
+# vertical filler consumed the page. Preserve natural height while allowing
+# width to shrink to the viewport.
+for step in ('step1', 'step2', 'step3', 'step4'):
+    marker = f'         c.gridy++; this.formPanel.add({step}, c);\n'
+    replacement = (
+        f'         {step}.setMinimumSize(new Dimension(0, {step}.getPreferredSize().height));\n'
+        + marker
+    )
+    rep(marker, replacement, f'{step} minimum height')
 
 java.write_text(s, encoding='utf-8')
 
