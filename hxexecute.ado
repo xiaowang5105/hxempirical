@@ -1,4 +1,4 @@
-*! hxexecute 1.6.0  13aug2026
+*! hxexecute 1.6.1  13aug2026
 *! Execute one native command with monitor snapshots while preserving History.
 program define hxexecute, rclass
     version 16.0
@@ -32,6 +32,7 @@ program define hxexecute, rclass
     char _dta[hxtoolbox_native_refresh] "0"
     char _dta[hxtoolbox_last_native_command] `"`native'"'
     char _dta[hxtoolbox_history_status] "准备写入"
+    char _dta[hxtoolbox_last_results_file] ""
     capture window push `native'
     local history_rc = _rc
     if `history_rc' {

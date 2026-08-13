@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.5";
+   public static final String VERSION = "1.3.6";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.5");
+      SFIToolkit.displayln("HxWorkbench 1.3.6");
       return 0;
    }
 
@@ -2073,6 +2073,7 @@ public final class HxWorkbench {
       static void clearRunAudit() {
          execute("quietly char _dta[hxtoolbox_last_native_command] \"\"", false);
          execute("quietly char _dta[hxtoolbox_history_status] \"\"", false);
+         execute("quietly char _dta[hxtoolbox_last_results_file] \"\"", false);
       }
 
       static List<String> variableNames() {
@@ -6208,7 +6209,9 @@ public final class HxWorkbench {
          this.resultLayout.show(this.resultCards, "general");
          this.dataTabs.addTab("结果", this.resultCards);
          this.dataTabs.addTab("日志", this.buildRunMonitorPanel());
+         this.dataTabs.addChangeListener(var0 -> this.syncRightPaneTitle());
          this.dataTabs.setBackground(SURFACE);
+         this.syncRightPaneTitle();
       }
 
       private JComponent buildOneClickResultsPanel() {
@@ -6593,17 +6596,28 @@ public final class HxWorkbench {
          SwingUtilities.invokeLater(this::applyDividerRatios);
       }
 
+      private void syncRightPaneTitle() {
+         int index = this.dataTabs.getSelectedIndex();
+         if (index == 1) {
+            this.rightPaneTitle.setText("结果");
+         } else if (index == 2) {
+            this.rightPaneTitle.setText("运行日志");
+         } else {
+            this.rightPaneTitle.setText("当前数据");
+         }
+      }
+
       private void selectDataView() {
          this.dataTabs.setSelectedIndex(0);
-         this.rightPaneTitle.setText("当前数据");
+         this.syncRightPaneTitle();
       }
 
       private void selectResultView(String var1, boolean var2) {
          this.resultLayout.show(this.resultCards, var1);
-         this.rightPaneTitle.setText("当前数据");
          if (var2) {
             this.dataTabs.setSelectedIndex(1);
          }
+         this.syncRightPaneTitle();
       }
 
       private void selectRunView() {
