@@ -16,6 +16,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Patch source and prepare SFI stubs
         run: python3 scripts/apply_stata_taxonomy.py
+      - name: Complete compile-only SFI signatures
+        run: |
+          sed -i 's/public static String getFormattedValue(int i,long j){return "";}/public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";}/' /tmp/sfi/com/stata/sfi/Data.java
+          sed -i 's/public String getFormattedValue(int i,long j){return "";}/public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";}/' /tmp/sfi/com/stata/sfi/Frame.java
       - name: Compile Java 11 workbench
         run: |
           javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
