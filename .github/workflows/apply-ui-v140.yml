@@ -1,0 +1,123 @@
+name: Apply inspector UI v1.4.0
+
+on:
+  push:
+    branches: [ui-inspector-v140]
+    paths: ['.github/workflows/apply-ui-v140.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply UI patch
+        run: python3 scripts/apply_ui_v140.py
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sfi /tmp/classes
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getVarLabel(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Runtime inspector and xtreg audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/InspectorV140Audit.java <<'EOF'
+          import java.awt.*; import java.lang.reflect.*; import javax.swing.*; import javax.swing.table.*; import java.util.*;
+          public class InspectorV140Audit {
+            static Field f(Class<?> c,String n)throws Exception{Field x=c.getDeclaredField(n);x.setAccessible(true);return x;}
+            static Method m(Class<?> c,String n,Class<?>...a)throws Exception{Method x=c.getDeclaredMethod(n,a);x.setAccessible(true);return x;}
+            static void ck(boolean v,String s){if(!v)throw new AssertionError(s);}
+            static java.util.List<Component> all(Component c){java.util.List<Component> out=new ArrayList<>(); out.add(c); if(c instanceof Container) for(Component k:((Container)c).getComponents()) out.addAll(all(k)); return out;}
+            static <T> java.util.List<T> find(Component c,Class<T> k){java.util.List<T> out=new ArrayList<>(); for(Component x:all(c)) if(k.isInstance(x)) out.add(k.cast(x)); return out;}
+            static void layout(Container c){c.doLayout(); for(Component x:c.getComponents()) if(x instanceof Container) layout((Container)x);}
+            public static void main(String[] args)throws Exception{
+              final Throwable[] err={null};
+              SwingUtilities.invokeAndWait(()->{try{
+                Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Constructor<?> ct=c.getDeclaredConstructor(boolean.class); ct.setAccessible(true); JFrame fr=(JFrame)ct.newInstance(true);
+                Object dm=f(c,"dataModel").get(fr); Method load=dm.getClass().getDeclaredMethod("loadPreview"); load.setAccessible(true); load.invoke(dm);
+                Method show=m(c,"showXtregWizardPageV130"); show.invoke(fr);
+                Method refreshVars=m(c,"refreshInspectorVariables"); refreshVars.invoke(fr);
+                fr.setSize(1672,901); fr.addNotify(); fr.validate(); layout(fr.getContentPane());
+
+                JSplitPane top=(JSplitPane)f(c,"dataSummarySplit").get(fr); JSplitPane low=(JSplitPane)f(c,"inspectorLowerSplit").get(fr);
+                ck(top!=null&&low!=null,"inspector splits missing");
+                top.setDividerLocation(0.28); low.setDividerLocation(0.52); layout(fr.getContentPane());
+                ck(top.getTopComponent().getHeight()>80,"current data collapsed"); ck(low.getTopComponent().getHeight()>70,"variable window collapsed"); ck(low.getBottomComponent().getHeight()>70,"property window collapsed");
+
+                JTable vars=(JTable)f(c,"inspectorVariableTable").get(fr); JTextField filter=(JTextField)f(c,"inspectorVariableFilter").get(fr); JLabel role=(JLabel)f(c,"inspectorRoleLabel").get(fr);
+                ck(vars.getColumnCount()==2,"variable table columns"); ck(vars.getRowCount()>=5,"variable table not populated"); ck(vars.getTransferHandler()!=null,"variable drag handler missing");
+                String first=String.valueOf(vars.getValueAt(0,0)); filter.setText(first); refreshVars.invoke(fr); ck(vars.getRowCount()>=1,"filter removed exact variable"); filter.setText(""); refreshVars.invoke(fr);
+
+                @SuppressWarnings("unchecked") JComboBox<String> dep=(JComboBox<String>)f(c,"xtregDepVar").get(fr); @SuppressWarnings("unchecked") JList<String> xs=(JList<String>)f(c,"xtregIndepList").get(fr);
+                ck(dep.getItemCount()>2,"xtreg variables missing"); String y=dep.getItemAt(1); dep.setSelectedItem(y); if(xs.getModel().getSize()>2) xs.setSelectedIndices(new int[]{1,2});
+                refreshVars.invoke(fr); for(int r=0;r<vars.getRowCount();r++) if(y.equals(String.valueOf(vars.getValueAt(r,0)))) {vars.setRowSelectionInterval(r,r); break;}
+                Method sync=m(c,"syncInspectorSelectionFromVariableWindow"); sync.invoke(fr); ck(role.getText().contains("因变量 Y"),"role indicator did not follow Y: "+role.getText());
+
+                boolean chip=false; for(JButton b:find(fr,JButton.class)) if(b.getText()!=null&&b.getText().contains("×")){chip=true;break;} ck(chip,"X chips missing after multi-selection");
+                java.util.List<JRadioButton> radios=find(fr,JRadioButton.class); int models=0; for(JRadioButton r:radios) if(Arrays.asList("固定效应（FE）","随机效应（RE）","between","population-averaged").contains(r.getText())) {models++; ck(r.getWidth()>0&&r.getHeight()>0,"model option has zero bounds: "+r.getText());} ck(models==4,"model radios missing");
+
+                fr.setSize(1280,720); fr.validate(); layout(fr.getContentPane()); for(JRadioButton r:radios) if(Arrays.asList("固定效应（FE）","随机效应（RE）","between","population-averaged").contains(r.getText())) ck(r.getWidth()>0&&r.getHeight()>0,"narrow layout hides model: "+r.getText());
+                boolean variableTitle=false, propertyTitle=false; for(JLabel l:find(fr,JLabel.class)){if("变量窗口".equals(l.getText()))variableTitle=true;if("属性窗口".equals(l.getText()))propertyTitle=true;} ck(variableTitle&&propertyTitle,"right inspector section titles missing");
+                fr.dispose();
+              }catch(Throwable t){err[0]=t;}}); if(err[0]!=null) throw new RuntimeException(err[0]); System.out.println("INSPECTOR_V140_AUDIT_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/InspectorV140Audit.java
+          xvfb-run -a java -cp /tmp/classes InspectorV140Audit
+          grep -q 'public static final String VERSION = "1.4.0"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '变量窗口' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '属性窗口' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '当前模型角色' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.4.0' hxempirical.pkg
+
+      - name: Smoke render main pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in home regress monitor-details oneclick; do
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench --render-${mode}-preview /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit product changes and clean temporary audit files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-ui-v140.yml .github/workflows/inspect-v140.yml scripts/apply_ui_v140.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Adopt three-level data inspector and variable basket [v1.4.0]'
+          git push origin HEAD:ui-inspector-v140
