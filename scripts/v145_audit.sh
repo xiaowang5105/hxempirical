@@ -29,6 +29,8 @@ EOF
 javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
 jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
 test -s hxworkbench.jar
+grep -n 'inspectorDataSplit\|xtregCommandPreview\|syncXtregControlsFromCommand' src/main/java/com/hexie/stata/HxWorkbench.java | head -20
+javap -private '/tmp/classes/com/hexie/stata/HxWorkbench$WorkbenchFrame.class' | grep -E 'inspectorDataSplit|xtregCommandPreview|syncXtregControlsFromCommand' || true
 
 cat > /tmp/V145Audit.java <<'EOF'
 import java.awt.*; import java.lang.reflect.*; import java.util.*; import javax.swing.*;
@@ -60,11 +62,8 @@ EOF
 javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/V145Audit.java
 timeout 45s xvfb-run -a java -cp /tmp/classes V145Audit
 
-# Render evidence from real Swing UI.
 for mode in preview regress home graph did oneclick; do
-  case "$mode" in
-    preview) arg=--render-preview;; regress) arg=--render-regress-preview;; home) arg=--render-home-preview;; graph) arg=--render-graph-preview;; did) arg=--render-did-preview;; oneclick) arg=--render-oneclick-preview;;
-  esac
+  case "$mode" in preview) arg=--render-preview;; regress) arg=--render-regress-preview;; home) arg=--render-home-preview;; graph) arg=--render-graph-preview;; did) arg=--render-did-preview;; oneclick) arg=--render-oneclick-preview;; esac
   xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench "$arg" "audit-v145/$mode.png"
   test -s "audit-v145/$mode.png"
 done
@@ -73,5 +72,4 @@ grep -q 'VERSION = "1.4.5"' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -q 'commandPreview.setEditable(true)' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -q 'syncXtregControlsFromCommand' src/main/java/com/hexie/stata/HxWorkbench.java
 grep -q '^d Version 1.4.5$' hxempirical.pkg
-
 echo V145_ALL_OK
