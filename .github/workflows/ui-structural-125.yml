@@ -17,6 +17,13 @@ jobs:
       - name: Apply structural cleanup
         run: python tools/ui_structural_125.py
 
+      - name: Inspect SFI calls
+        run: |
+          for c in Data Frame Macro Missing SFIToolkit Scalar Characteristic; do
+            echo "=== $c ==="
+            grep -oE "$c\.[A-Za-z0-9_]+" src/main/java/com/hexie/stata/HxWorkbench.java | sort -u || true
+          done
+
       - name: Compile
         run: |
           rm -rf build/classes
