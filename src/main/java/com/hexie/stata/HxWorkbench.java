@@ -122,7 +122,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.2.4";
+   public static final String VERSION = "1.2.5";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -343,7 +343,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.2.4");
+      SFIToolkit.displayln("HxWorkbench 1.2.5");
       return 0;
    }
 
@@ -2671,7 +2671,7 @@ public final class HxWorkbench {
 
          this.sharedDataInspector = this.buildDataContainer();
          this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.buildCommandContainer(), this.sharedDataInspector);
-         this.commandDataSplit.setResizeWeight(0.68);
+         this.commandDataSplit.setResizeWeight(1.0);
          this.commandDataSplit.setContinuousLayout(true);
          this.commandDataSplit.setBorder(null);
          this.commandDataSplit.setDividerSize(8);
@@ -3140,8 +3140,11 @@ public final class HxWorkbench {
 
       void applyDividerRatios() {
          SwingUtilities.invokeLater(() -> {
-            int var1 = (int)Math.round(this.commandDataSplit.getWidth() * 0.68);
-            this.commandDataSplit.setDividerLocation(Math.max(540, var1));
+            int total = this.commandDataSplit.getWidth();
+            if (total > 0) {
+               int inspector = Math.max(360, Math.min(410, total / 3));
+               this.commandDataSplit.setDividerLocation(Math.max(560, total - inspector));
+            }
             if (this.dataSummarySplit != null) {
                int var2 = (int)Math.round(this.dataSummarySplit.getHeight() * 0.70);
                this.dataSummarySplit.setDividerLocation(Math.max(170, var2));
@@ -3331,7 +3334,7 @@ public final class HxWorkbench {
       }
 
       private JButton sidebarButton(String key, String glyph, String label, Runnable action) {
-         JButton button = new JButton("<html><div style='text-align:left'><span style='font-size:15px'>" + html(glyph) + "</span>&nbsp;&nbsp;<b>" + html(label) + "</b></div></html>");
+         JButton button = new JButton("<html><b>" + html(label) + "</b></html>");
          button.putClientProperty("hx.sidebar.key", key);
          button.setHorizontalAlignment(SwingConstants.LEFT);
          button.setBorder(new EmptyBorder(11, 14, 11, 14));
@@ -3431,7 +3434,7 @@ public final class HxWorkbench {
       }
 
       private JButton refTask(String glyph, String title, String subtitle, Color accent, Runnable action) {
-         JButton b = new JButton("<html><div style='text-align:left'><span style='font-size:21px;color:" + html(colorHex(accent)) + "'>" + html(glyph) + "</span>&nbsp;&nbsp;<b>" + html(title) + "</b><br><span style='font-size:9px;color:#6b7890'>" + html(subtitle) + "</span></div></html>");
+         JButton b = new JButton("<html><div style='text-align:left'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#6b7890'>" + html(subtitle) + "</span></div></html>");
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(249, 251, 254), new Color(240, 245, 252), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(11, 14, 11, 14));
          b.setHorizontalAlignment(SwingConstants.LEFT);
@@ -3443,7 +3446,7 @@ public final class HxWorkbench {
       }
 
       private JButton refQuick(String glyph, String title, Runnable action) {
-         JButton b = new JButton("<html><div style='text-align:center'><span style='font-size:20px;color:#2f76ed'>" + html(glyph) + "</span><br><b>" + html(title) + "</b></div></html>");
+         JButton b = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b></div></html>");
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 251, 255), new Color(239, 245, 253), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(8, 6, 8, 6));
          b.setFocusPainted(false);
@@ -3538,78 +3541,200 @@ public final class HxWorkbench {
       }
 
       private JComponent buildHomeContainer() {
-         JPanel root = new JPanel(null);
+         JPanel root = new JPanel(new BorderLayout(0, 14));
          root.setBackground(APP_BG);
-         root.setPreferredSize(new Dimension(1467, 840));
+         root.setBorder(new EmptyBorder(20, 24, 16, 24));
 
+         JPanel header = new JPanel(new BorderLayout());
+         header.setOpaque(false);
+         JPanel heading = new JPanel();
+         heading.setOpaque(false);
+         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
          JLabel title = new JLabel("实证工作台");
-         title.setForeground(TEXT); title.setFont(title.getFont().deriveFont(Font.BOLD, 26.0F));
-         title.setBounds(38, 25, 300, 38); root.add(title);
-         JLabel subtitle = new JLabel("从数据导入到结果分析，一站式完成您的实证研究。");
-         subtitle.setForeground(MUTED); subtitle.setFont(subtitle.getFont().deriveFont(11.5F));
-         subtitle.setBounds(38, 63, 520, 24); root.add(subtitle);
+         title.setForeground(TEXT);
+         title.setFont(title.getFont().deriveFont(Font.BOLD, 27.0F));
+         JLabel sub = new JLabel("选择任务或直接搜索 Stata 命令");
+         sub.setForeground(MUTED);
+         sub.setFont(sub.getFont().deriveFont(10.5F));
+         heading.add(title);
+         heading.add(Box.createVerticalStrut(3));
+         heading.add(sub);
+         header.add(heading, BorderLayout.WEST);
+         JPanel topActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+         topActions.setOpaque(false);
+         JButton openStata = this.refButton("打开 Stata", false);
+         openStata.addActionListener(e -> this.setState(JFrame.ICONIFIED));
+         JButton help = this.refButton("帮助", false);
+         help.addActionListener(e -> this.openHelp());
+         topActions.add(openStata);
+         topActions.add(help);
+         header.add(topActions, BorderLayout.EAST);
+         root.add(header, BorderLayout.NORTH);
 
-         JButton openStata = this.refButton("▣  打开 Stata", false);
-         openStata.setBounds(1240, 28, 120, 38); openStata.addActionListener(e -> this.setState(JFrame.ICONIFIED)); root.add(openStata);
-         JButton help = this.refButton("?", false); help.setBounds(1375, 28, 44, 38); help.addActionListener(e -> this.openHelp()); root.add(help);
+         JPanel body = new JPanel();
+         body.setOpaque(false);
+         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
-         JPanel hero = this.refCard(); hero.setLayout(null); hero.setBackground(new Color(246,250,255)); hero.setBounds(25, 120, 988, 210);
-         JLabel rocket = new JLabel("◆"); rocket.setForeground(new Color(53,116,239)); rocket.setFont(rocket.getFont().deriveFont(Font.BOLD, 31.0F)); rocket.setBounds(24, 20, 42, 42); hero.add(rocket);
-         JLabel start = new JLabel("开始分析"); start.setForeground(TEXT); start.setFont(start.getFont().deriveFont(Font.BOLD, 22.0F)); start.setBounds(72, 18, 190, 34); hero.add(start);
-         JLabel startHint = new JLabel("告诉我你想做什么"); startHint.setForeground(MUTED); startHint.setBounds(72, 50, 180, 22); hero.add(startHint);
-         styleTextField(this.searchField); this.searchField.setFont(this.searchField.getFont().deriveFont(12.0F)); this.searchField.setToolTipText("搜索功能或输入分析目的..."); this.searchField.setBounds(25, 86, 405, 42); hero.add(this.searchField);
-         JButton startBtn = this.refButton("开始", true); startBtn.setBounds(430, 86, 82, 42); startBtn.addActionListener(e -> this.smartHomeSearch()); hero.add(startBtn);
+         JPanel topRow = new JPanel(new GridBagLayout());
+         topRow.setOpaque(false);
+         topRow.setAlignmentX(0.0F);
+         topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 235));
+         GridBagConstraints gc = new GridBagConstraints();
+         gc.gridy = 0;
+         gc.fill = GridBagConstraints.BOTH;
+         gc.weighty = 1.0;
+
+         JPanel hero = this.refCard();
+         hero.setLayout(new GridLayout(1, 2, 18, 0));
+         hero.setBackground(new Color(246,250,255));
+         JPanel search = new JPanel();
+         search.setOpaque(false);
+         search.setLayout(new BoxLayout(search, BoxLayout.Y_AXIS));
+         JLabel start = new JLabel("开始分析");
+         start.setForeground(TEXT);
+         start.setFont(start.getFont().deriveFont(Font.BOLD, 20.0F));
+         search.add(start);
+         search.add(Box.createVerticalStrut(12));
+         JPanel searchLine = new JPanel(new BorderLayout(8,0));
+         searchLine.setOpaque(false);
+         styleTextField(this.searchField);
+         this.searchField.setToolTipText("搜索任务或命令");
+         JButton startBtn = this.refButton("开始", true);
+         startBtn.addActionListener(e -> this.smartHomeSearch());
          this.searchField.addActionListener(e -> this.smartHomeSearch());
-         JLabel tryIt = new JLabel("试试： 基准回归、固定效应、双重差分、相关分析、描述统计"); tryIt.setForeground(MUTED); tryIt.setFont(tryIt.getFont().deriveFont(10.0F)); tryIt.setBounds(25, 138, 490, 24); hero.add(tryIt);
-         JSeparatorLike divider = new JSeparatorLike(); divider.setBounds(545, 32, 1, 142); hero.add(divider);
-         JLabel quick = new JLabel("快速开始"); quick.setForeground(TEXT); quick.setFont(quick.getFont().deriveFont(Font.BOLD, 14.0F)); quick.setBounds(575, 20, 120, 26); hero.add(quick);
-         JPanel quickGrid = new JPanel(new GridLayout(1,5,10,0)); quickGrid.setOpaque(false); quickGrid.setBounds(575, 55, 375, 92);
-         quickGrid.add(this.refQuick("↗", "基准回归", this::openBaselineRegressionWorkspace));
-         quickGrid.add(this.refQuick("▱", "固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
-         quickGrid.add(this.refQuick("↗", "双重差分", () -> this.browseMethod("reg", "双重差分")));
-         quickGrid.add(this.refQuick("◕", "描述统计", () -> this.browseMethod("stats", "描述统计")));
-         quickGrid.add(this.refQuick("✦", "OneClick", () -> this.browseMethodCategory("oneclick")));
-         hero.add(quickGrid); root.add(hero);
+         searchLine.add(this.searchField, BorderLayout.CENTER);
+         searchLine.add(startBtn, BorderLayout.EAST);
+         search.add(searchLine);
+         hero.add(search);
 
-         JPanel data = this.refCard(); data.setLayout(null); data.setBounds(1030, 120, 410, 235);
-         JLabel dataTitle = new JLabel("当前数据"); dataTitle.setForeground(TEXT); dataTitle.setFont(dataTitle.getFont().deriveFont(Font.BOLD, 14.0F)); dataTitle.setBounds(20, 16, 120, 26); data.add(dataTitle);
-         JLabel folder = new JLabel("▰", SwingConstants.CENTER); folder.setForeground(new Color(128,171,241)); folder.setFont(folder.getFont().deriveFont(Font.BOLD, 48.0F)); folder.setBounds(135, 42, 150, 60); data.add(folder);
-         this.homeDatasetStatus.setHorizontalAlignment(SwingConstants.CENTER); this.homeDatasetStatus.setForeground(TEXT); this.homeDatasetStatus.setFont(this.homeDatasetStatus.getFont().deriveFont(Font.BOLD, 14.0F)); this.homeDatasetStatus.setBounds(50, 105, 325, 28); data.add(this.homeDatasetStatus);
-         this.homeDatasetDetail.setHorizontalAlignment(SwingConstants.CENTER); this.homeDatasetDetail.setForeground(MUTED); this.homeDatasetDetail.setFont(this.homeDatasetDetail.getFont().deriveFont(10.0F)); this.homeDatasetDetail.setBounds(35, 132, 355, 23); data.add(this.homeDatasetDetail);
-         JButton dta = this.refButton("打开 DTA 文件", true); dta.setBounds(20, 170, 118, 38); dta.addActionListener(e -> this.chooseAndLoadDta()); data.add(dta);
-         JButton excel = this.refButton("导入 Excel / CSV", false); excel.setBounds(145,170,138,38); excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert")); data.add(excel);
-         JButton auto = this.refButton("载入 auto 示例", false); auto.setBounds(290,170,115,38); auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true)); data.add(auto); root.add(data);
+         JPanel quick = new JPanel(new BorderLayout(0,10));
+         quick.setOpaque(false);
+         JLabel quickTitle = new JLabel("快速开始");
+         quickTitle.setForeground(TEXT);
+         quickTitle.setFont(quickTitle.getFont().deriveFont(Font.BOLD, 13.0F));
+         quick.add(quickTitle, BorderLayout.NORTH);
+         JPanel quickGrid = new JPanel(new GridLayout(1,5,8,0));
+         quickGrid.setOpaque(false);
+         quickGrid.add(this.refQuick("", "基准回归", this::openBaselineRegressionWorkspace));
+         quickGrid.add(this.refQuick("", "固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
+         quickGrid.add(this.refQuick("", "双重差分", () -> this.browseMethod("reg", "双重差分")));
+         quickGrid.add(this.refQuick("", "描述统计", () -> this.browseMethod("stats", "描述统计")));
+         quickGrid.add(this.refQuick("", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         quick.add(quickGrid, BorderLayout.CENTER);
+         hero.add(quick);
 
-         JPanel common = this.refCard(); common.setLayout(null); common.setBounds(25, 350, 988, 300);
-         JLabel commonTitle = new JLabel("常用任务"); commonTitle.setForeground(TEXT); commonTitle.setFont(commonTitle.getFont().deriveFont(Font.BOLD, 14.0F)); commonTitle.setBounds(16, 12, 120, 26); common.add(commonTitle);
-         JPanel taskGrid = new JPanel(new GridLayout(2,3,16,16)); taskGrid.setOpaque(false); taskGrid.setBounds(16, 48, 943, 225);
-         taskGrid.add(this.refTask("▤", "导入数据", "从 Excel / CSV / DTA 等文件导入数据", new Color(33,176,93), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
-         taskGrid.add(this.refTask("▥", "描述统计", "汇总统计、分组统计、变量分布等", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
-         taskGrid.add(this.refTask("◎", "基准回归（OLS）", "线性回归分析，快速估计模型", new Color(142,91,230), this::openBaselineRegressionWorkspace));
-         taskGrid.add(this.refTask("◉", "固定效应", "个体 / 时间 / 双向固定效应回归", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
-         taskGrid.add(this.refTask("DID", "双重差分（DID）", "政策评估的经典方法，简单易用", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
-         taskGrid.add(this.refTask("ϟ", "OneClick 分析", "一键完成常见分析流程，自动生成结果报告", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
-         common.add(taskGrid); root.add(common);
+         gc.gridx = 0;
+         gc.weightx = 0.72;
+         gc.insets = new Insets(0,0,0,12);
+         topRow.add(hero, gc);
 
-         JPanel recent = this.refCard(); recent.setLayout(new BorderLayout(0,8)); recent.setBounds(1030, 370, 410, 280);
-         JPanel recentHead = new JPanel(new BorderLayout()); recentHead.setOpaque(false); JLabel recentTitle = new JLabel("最近任务"); recentTitle.setForeground(TEXT); recentTitle.setFont(recentTitle.getFont().deriveFont(Font.BOLD,14.0F)); recentHead.add(recentTitle, BorderLayout.WEST); JLabel all = new JLabel("查看全部"); all.setForeground(ACCENT); all.setFont(all.getFont().deriveFont(10.0F)); recentHead.add(all, BorderLayout.EAST); recent.add(recentHead, BorderLayout.NORTH);
-         this.homeRecentPanel.setOpaque(false); this.homeRecentPanel.setLayout(new BoxLayout(this.homeRecentPanel, BoxLayout.Y_AXIS)); recent.add(this.homeRecentPanel, BorderLayout.CENTER);
-         JButton resume = this.refButton("◴  继续上次工作                       ›", false); resume.addActionListener(e -> { List<WorkSnapshot> snaps=this.loadRecentSnapshots(); if(!snaps.isEmpty()) this.restoreWorkSnapshot(snaps.get(0)); }); recent.add(resume, BorderLayout.SOUTH); root.add(recent);
+         JPanel data = this.refCard();
+         data.setLayout(new BorderLayout(0, 10));
+         JLabel dataTitle = new JLabel("当前数据");
+         dataTitle.setForeground(TEXT);
+         dataTitle.setFont(dataTitle.getFont().deriveFont(Font.BOLD, 14.0F));
+         data.add(dataTitle, BorderLayout.NORTH);
+         JPanel dataCenter = new JPanel();
+         dataCenter.setOpaque(false);
+         dataCenter.setLayout(new BoxLayout(dataCenter, BoxLayout.Y_AXIS));
+         this.homeDatasetStatus.setHorizontalAlignment(SwingConstants.CENTER);
+         this.homeDatasetStatus.setForeground(TEXT);
+         this.homeDatasetStatus.setFont(this.homeDatasetStatus.getFont().deriveFont(Font.BOLD, 14.0F));
+         this.homeDatasetStatus.setAlignmentX(0.5F);
+         this.homeDatasetDetail.setHorizontalAlignment(SwingConstants.CENTER);
+         this.homeDatasetDetail.setForeground(MUTED);
+         this.homeDatasetDetail.setFont(this.homeDatasetDetail.getFont().deriveFont(9.5F));
+         this.homeDatasetDetail.setAlignmentX(0.5F);
+         dataCenter.add(Box.createVerticalGlue());
+         dataCenter.add(this.homeDatasetStatus);
+         dataCenter.add(Box.createVerticalStrut(5));
+         dataCenter.add(this.homeDatasetDetail);
+         dataCenter.add(Box.createVerticalGlue());
+         data.add(dataCenter, BorderLayout.CENTER);
+         JPanel dataButtons = new JPanel(new GridLayout(1,3,7,0));
+         dataButtons.setOpaque(false);
+         JButton dta = this.refButton("打开 DTA", true);
+         dta.addActionListener(e -> this.chooseAndLoadDta());
+         JButton excel = this.refButton("导入 Excel/CSV", false);
+         excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         JButton auto = this.refButton("auto 示例", false);
+         auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true));
+         dataButtons.add(dta); dataButtons.add(excel); dataButtons.add(auto);
+         data.add(dataButtons, BorderLayout.SOUTH);
+         gc.gridx = 1;
+         gc.weightx = 0.28;
+         gc.insets = new Insets(0,0,0,0);
+         topRow.add(data, gc);
+         body.add(topRow);
+         body.add(Box.createVerticalStrut(14));
 
-         JPanel more = this.refCard(); more.setLayout(null); more.setBounds(25, 670, 1415, 166);
-         JLabel moreTitle = new JLabel("更多功能"); moreTitle.setForeground(TEXT); moreTitle.setFont(moreTitle.getFont().deriveFont(Font.BOLD,14.0F)); moreTitle.setBounds(16,10,120,25); more.add(moreTitle);
-         JPanel moreGrid = new JPanel(new GridLayout(1,9,10,0)); moreGrid.setOpaque(false); moreGrid.setBounds(16,43,1383,98);
-         moreGrid.add(this.refTask("↔", "导入与转换", "Excel / CSV / DTA 格式转换", new Color(87,140,245), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
-         moreGrid.add(this.refTask("◔", "数据检查", "缺失值、重复值、异常值", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
-         moreGrid.add(this.refTask("▣", "变量处理", "生成变量、编码、标签管理", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
-         moreGrid.add(this.refTask("♙", "样本处理", "筛选、子样本、随机抽样", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
-         moreGrid.add(this.refTask("▱", "合并与追加", "合并数据集、追加数据", new Color(73,125,242), () -> this.browseMethod("data", "合并与追加")));
-         moreGrid.add(this.refTask("▣", "数据结构", "reshape 长宽转换、面板设定", new Color(31,169,105), () -> this.browseMethod("data", "数据结构")));
-         moreGrid.add(this.refTask("⌕", "相关分析", "相关系数、协方差、相关矩阵", new Color(38,171,219), () -> this.browseMethod("stats", "相关分析")));
-         moreGrid.add(this.refTask("◒", "均值检验", "t 检验、方差分析、秩和检验", new Color(229,164,30), () -> this.browseMethod("stats", "均值检验")));
-         moreGrid.add(this.refTask("▦", "频数列联", "频数统计、交叉表、卡方检验", new Color(139,86,223), () -> this.browseMethod("stats", "频数列联")));
-         more.add(moreGrid); root.add(more);
-         SwingUtilities.invokeLater(this::refreshHomeContext);
+         JPanel middleRow = new JPanel(new GridBagLayout());
+         middleRow.setOpaque(false);
+         middleRow.setAlignmentX(0.0F);
+         middleRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 305));
+         GridBagConstraints gm = new GridBagConstraints();
+         gm.gridy = 0; gm.fill = GridBagConstraints.BOTH; gm.weighty = 1.0;
+         JPanel common = this.refCard();
+         common.setLayout(new BorderLayout(0,10));
+         JLabel commonTitle = new JLabel("常用任务");
+         commonTitle.setForeground(TEXT);
+         commonTitle.setFont(commonTitle.getFont().deriveFont(Font.BOLD, 14.0F));
+         common.add(commonTitle, BorderLayout.NORTH);
+         JPanel taskGrid = new JPanel(new GridLayout(2,3,12,12));
+         taskGrid.setOpaque(false);
+         taskGrid.add(this.refTask("", "导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         taskGrid.add(this.refTask("", "描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
+         taskGrid.add(this.refTask("", "基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
+         taskGrid.add(this.refTask("", "固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
+         taskGrid.add(this.refTask("", "双重差分", "didregress / xtdidregress", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
+         taskGrid.add(this.refTask("", "OneClick", "控制变量组合", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
+         common.add(taskGrid, BorderLayout.CENTER);
+         gm.gridx = 0; gm.weightx = 0.72; gm.insets = new Insets(0,0,0,12);
+         middleRow.add(common, gm);
+
+         JPanel recent = this.refCard();
+         recent.setLayout(new BorderLayout(0,8));
+         JLabel recentTitle = new JLabel("最近任务");
+         recentTitle.setForeground(TEXT);
+         recentTitle.setFont(recentTitle.getFont().deriveFont(Font.BOLD,14.0F));
+         recent.add(recentTitle, BorderLayout.NORTH);
+         this.homeRecentPanel.setOpaque(false);
+         this.homeRecentPanel.setLayout(new BoxLayout(this.homeRecentPanel, BoxLayout.Y_AXIS));
+         recent.add(this.homeRecentPanel, BorderLayout.CENTER);
+         JButton resume = this.refButton("继续上次工作", false);
+         resume.addActionListener(e -> { List<WorkSnapshot> snaps=this.loadRecentSnapshots(); if(!snaps.isEmpty()) this.restoreWorkSnapshot(snaps.get(0)); });
+         recent.add(resume, BorderLayout.SOUTH);
+         gm.gridx = 1; gm.weightx = 0.28; gm.insets = new Insets(0,0,0,0);
+         middleRow.add(recent, gm);
+         body.add(middleRow);
+         body.add(Box.createVerticalStrut(14));
+
+         JPanel more = this.refCard();
+         more.setLayout(new BorderLayout(0,10));
+         more.setAlignmentX(0.0F);
+         more.setMaximumSize(new Dimension(Integer.MAX_VALUE, 250));
+         JLabel moreTitle = new JLabel("更多功能");
+         moreTitle.setForeground(TEXT);
+         moreTitle.setFont(moreTitle.getFont().deriveFont(Font.BOLD,14.0F));
+         more.add(moreTitle, BorderLayout.NORTH);
+         JPanel moreGrid = new JPanel(new GridLayout(3,3,10,10));
+         moreGrid.setOpaque(false);
+         moreGrid.add(this.refTask("", "导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         moreGrid.add(this.refTask("", "数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
+         moreGrid.add(this.refTask("", "变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
+         moreGrid.add(this.refTask("", "样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
+         moreGrid.add(this.refTask("", "合并与追加", "merge / append", new Color(87,140,245), () -> this.browseMethod("data", "合并与追加")));
+         moreGrid.add(this.refTask("", "数据结构", "reshape / xtset / tsset", new Color(37,180,144), () -> this.browseMethod("data", "数据结构")));
+         moreGrid.add(this.refTask("", "相关分析", "correlate / pwcorr", new Color(57,125,242), () -> this.browseMethod("stats", "相关分析")));
+         moreGrid.add(this.refTask("", "均值检验", "ttest", new Color(245,138,45), () -> this.browseMethod("stats", "均值检验")));
+         moreGrid.add(this.refTask("", "频数列联", "tabulate", new Color(142,91,230), () -> this.browseMethod("stats", "频数列联")));
+         more.add(moreGrid, BorderLayout.CENTER);
+         body.add(more);
+
+         JScrollPane scroll = softScroll(body);
+         scroll.setBorder(null);
+         scroll.getVerticalScrollBar().setUnitIncrement(18);
+         root.add(scroll, BorderLayout.CENTER);
          return root;
       }
 
@@ -4173,43 +4298,151 @@ public final class HxWorkbench {
       }
 
       private JComponent exactLinearMainCard(String glyph, String command, String title, String desc, String example, Color accent) {
-         JPanel card=new JPanel(null); card.setBackground(SURFACE); card.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(220,228,239),9),new EmptyBorder(0,0,0,0)));
-         JLabel icon=new JLabel(glyph,SwingConstants.CENTER); icon.setOpaque(true); icon.setBackground(new Color(Math.min(255,accent.getRed()+210),Math.min(255,accent.getGreen()+210),Math.min(255,accent.getBlue()+210))); icon.setForeground(accent); icon.setFont(icon.getFont().deriveFont(Font.BOLD,24.0F)); icon.setBounds(16,13,66,64); card.add(icon);
-         JLabel cmd=new JLabel(command); cmd.setForeground(accent); cmd.setFont(new Font("Monospaced",Font.BOLD,12)); cmd.setBounds(98,12,220,20); card.add(cmd);
-         JLabel name=new JLabel(title); name.setForeground(TEXT); name.setFont(name.getFont().deriveFont(Font.BOLD,13.0F)); name.setBounds(98,32,250,22); card.add(name);
-         JLabel detail=new JLabel(desc); detail.setForeground(MUTED); detail.setFont(detail.getFont().deriveFont(9.5F)); detail.setBounds(98,55,300,20); card.add(detail);
-         JLabel ex=new JLabel("示例：  "+example); ex.setOpaque(true); ex.setBackground(new Color(Math.min(255,accent.getRed()+225),Math.min(255,accent.getGreen()+225),Math.min(255,accent.getBlue()+225))); ex.setForeground(accent); ex.setFont(new Font("Monospaced",Font.PLAIN,9)); ex.setBounds(98,78,325,23); card.add(ex);
-         JButton enter=this.refButton("进入设置",true); enter.setBounds(438,22,82,34); enter.addActionListener(e->this.openCommandPage(command)); card.add(enter);
+         JPanel card = new JPanel(new BorderLayout(12, 6));
+         card.setBackground(SURFACE);
+         card.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(220,228,239),9),
+            new EmptyBorder(14,16,14,16)
+         ));
+         JPanel text = new JPanel();
+         text.setOpaque(false);
+         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+         JLabel cmd = new JLabel(command);
+         cmd.setForeground(accent);
+         cmd.setFont(new Font("Monospaced", Font.BOLD, 12));
+         JLabel name = new JLabel(title);
+         name.setForeground(TEXT);
+         name.setFont(name.getFont().deriveFont(Font.BOLD, 13.0F));
+         text.add(cmd);
+         text.add(Box.createVerticalStrut(4));
+         text.add(name);
+         card.add(text, BorderLayout.CENTER);
+         JButton enter = this.refButton("进入设置", true);
+         enter.addActionListener(e -> this.openCommandPage(command));
+         card.add(enter, BorderLayout.EAST);
+         card.setPreferredSize(new Dimension(500, 82));
          return card;
       }
 
       private JComponent exactLinearGroup(String glyph, String title, String[][] entries, Color accent) {
-         JPanel card=new JPanel(null); card.setBackground(SURFACE); card.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(225,231,240),8),new EmptyBorder(0,0,0,0)));
-         JLabel icon=new JLabel(glyph,SwingConstants.CENTER); icon.setForeground(accent); icon.setFont(icon.getFont().deriveFont(Font.BOLD,18.0F)); icon.setBounds(13,9,30,28); card.add(icon);
-         JLabel h=new JLabel(title); h.setForeground(TEXT); h.setFont(h.getFont().deriveFont(Font.BOLD,11.0F)); h.setBounds(45,10,190,24); card.add(h);
-         int y=43;
-         for(String[] e:entries){ JButton b=new JButton("<html><b>"+html(e[0])+"</b>&nbsp;&nbsp;<span style='color:#6e7b91'>"+html(e[1])+"</span>&nbsp;›</html>"); b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE,new Color(249,251,254),new Color(242,246,251),TEXT,SURFACE)); b.setBorder(new EmptyBorder(2,5,2,5)); b.setHorizontalAlignment(SwingConstants.LEFT); b.setFocusPainted(false); b.setContentAreaFilled(false); b.setBounds(10,y,245,28); String cmd=e[0]; b.addActionListener(ev->this.openCommandPage(cmd)); card.add(b); y+=29; }
+         JPanel card = new JPanel(new BorderLayout(0, 8));
+         card.setBackground(SURFACE);
+         card.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(225,231,240),8),
+            new EmptyBorder(12,12,12,12)
+         ));
+         JLabel h = new JLabel(title);
+         h.setForeground(TEXT);
+         h.setFont(h.getFont().deriveFont(Font.BOLD, 11.0F));
+         card.add(h, BorderLayout.NORTH);
+         JPanel list = new JPanel();
+         list.setOpaque(false);
+         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+         for (String[] e : entries) {
+            JButton b = new JButton("<html><b>" + html(e[0]) + "</b>&nbsp;&nbsp;<span style='color:#6e7b91'>" + html(e[1]) + "</span></html>");
+            b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE,new Color(249,251,254),new Color(242,246,251),TEXT,SURFACE));
+            b.setBorder(new EmptyBorder(4,4,4,4));
+            b.setHorizontalAlignment(SwingConstants.LEFT);
+            b.setFocusPainted(false);
+            b.setContentAreaFilled(false);
+            b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+            String cmd = e[0];
+            b.addActionListener(ev -> this.openCommandPage(cmd));
+            list.add(b);
+         }
+         card.add(list, BorderLayout.CENTER);
          return card;
       }
 
       private JComponent buildExactLinearContainer() {
-         JPanel root=new JPanel(null); root.setBackground(APP_BG); root.setPreferredSize(new Dimension(1450,840));
-         JLabel crumb=new JLabel("首页   /   回归   /   线性模型"); crumb.setForeground(new Color(84,107,144)); crumb.setFont(crumb.getFont().deriveFont(10.5F)); crumb.setBounds(30,17,430,24); root.add(crumb);
-         JLabel title=new JLabel("线性模型"); title.setForeground(TEXT); title.setFont(title.getFont().deriveFont(Font.BOLD,27.0F)); title.setBounds(30,47,260,38); root.add(title);
-         JLabel sub=new JLabel("先选分析目的，再进入具体命令。常用命令优先展示，其余命令按类别收纳。"); sub.setForeground(MUTED); sub.setFont(sub.getFont().deriveFont(11.0F)); sub.setBounds(30,85,650,25); root.add(sub);
-         JButton back=this.refButton("←  返回上一级",false); back.setBounds(955,63,145,40); back.addActionListener(e->this.showHomePage()); root.add(back);
-         JButton home=this.refButton("⌂  首页",false); home.setBounds(1115,63,100,40); home.addActionListener(e->this.showHomePage()); root.add(home);
-         JButton help=this.refButton("?  帮助",false); help.setBounds(1230,63,100,40); help.addActionListener(e->this.openHelp()); root.add(help);
+         JPanel root = new JPanel(new BorderLayout(0, 12));
+         root.setBackground(APP_BG);
+         root.setBorder(new EmptyBorder(18, 24, 16, 24));
 
-         JPanel search=this.refCard(); search.setLayout(null); search.setBounds(30,143,1115,58); JTextField find=new JTextField(); styleTextField(find); find.setToolTipText("搜索命令或分析目的，如 固定效应、分位数、工具变量"); find.setBounds(16,10,675,38); search.add(find); JButton all=this.refButton("全部",true); all.setBounds(715,10,78,38); search.add(all); JButton common=this.refButton("常用",false); common.setBounds(798,10,78,38); search.add(common); JButton advanced=this.refButton("进阶",false); advanced.setBounds(881,10,78,38); search.add(advanced); JButton filter=this.refButton("▽  筛选排序",false); filter.setBounds(980,10,115,38); search.add(filter); root.add(search);
+         JPanel header = new JPanel(new BorderLayout());
+         header.setOpaque(false);
+         JPanel heading = new JPanel();
+         heading.setOpaque(false);
+         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+         JLabel crumb = new JLabel("首页 / 回归 / 线性模型");
+         crumb.setForeground(new Color(84,107,144));
+         crumb.setFont(crumb.getFont().deriveFont(10.5F));
+         JLabel title = new JLabel("线性模型");
+         title.setForeground(TEXT);
+         title.setFont(title.getFont().deriveFont(Font.BOLD,27.0F));
+         heading.add(crumb);
+         heading.add(Box.createVerticalStrut(5));
+         heading.add(title);
+         header.add(heading, BorderLayout.WEST);
+         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0));
+         actions.setOpaque(false);
+         JButton back=this.refButton("← 上一级",false); back.addActionListener(e->this.showHomePage());
+         JButton home=this.refButton("首页",false); home.addActionListener(e->this.showHomePage());
+         JButton help=this.refButton("帮助",false); help.addActionListener(e->this.openHelp());
+         actions.add(back); actions.add(home); actions.add(help);
+         header.add(actions, BorderLayout.EAST);
+         root.add(header, BorderLayout.NORTH);
 
-         JPanel recommend=this.refCard(); recommend.setLayout(new BoxLayout(recommend,BoxLayout.Y_AXIS)); recommend.setBounds(1165,146,240,640); JLabel rt=new JLabel("▥  推荐路径"); rt.setForeground(TEXT); rt.setFont(rt.getFont().deriveFont(Font.BOLD,14.0F)); rt.setAlignmentX(0.0F); recommend.add(rt); recommend.add(Box.createVerticalStrut(24)); recommend.add(this.exactLinearStep("1","先用常用命令","从常用命令入手，快速完成基础分析。",new Color(34,109,246))); recommend.add(Box.createVerticalStrut(28)); recommend.add(this.exactLinearStep("2","看示例与说明","查看示例与说明，理解命令用法与适用场景。",new Color(31,169,105))); recommend.add(Box.createVerticalStrut(28)); recommend.add(this.exactLinearStep("3","再进入进阶命令","根据需求选择进阶命令，满足更复杂的分析。",new Color(116,83,224))); recommend.add(Box.createVerticalGlue()); JPanel tip=new JPanel(new BorderLayout()); tip.setBackground(new Color(255,250,241)); tip.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(255,219,166),9),new EmptyBorder(13,13,13,13))); tip.add(new JLabel("<html><b><span style='color:#f59e0b'>☼ 小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法！</span></html>"),BorderLayout.CENTER); tip.setMaximumSize(new Dimension(Integer.MAX_VALUE,140)); recommend.add(tip); root.add(recommend);
+         JPanel body = new JPanel();
+         body.setOpaque(false);
+         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
-         JPanel choose=this.refCard(); choose.setLayout(null); choose.setBackground(new Color(246,250,255)); choose.setBounds(30,217,1115,56); JLabel how=new JLabel("●  怎么选？"); how.setForeground(TEXT); how.setFont(how.getFont().deriveFont(Font.BOLD,14.0F)); how.setBounds(16,9,120,36); choose.add(how); JButton c1=this.refButton("↗  普通 OLS  → regress",false); c1.setBounds(140,9,198,36); c1.addActionListener(e->this.openCommandPage("regress")); choose.add(c1); JButton c2=this.refButton("♟  单组固定效应  → areg",false); c2.setBounds(350,9,202,36); c2.addActionListener(e->this.openCommandPage("areg")); choose.add(c2); JButton c3=this.refButton("▱  多维固定效应  → reghdfe",false); c3.setBounds(565,9,220,36); c3.addActionListener(e->this.openCommandPage("reghdfe")); choose.add(c3); JButton c4=this.refButton("⌁  关注分布位置  → qreg",false); c4.setBounds(800,9,210,36); c4.addActionListener(e->this.openCommandPage("qreg")); choose.add(c4); root.add(choose);
+         JPanel search = this.refCard();
+         search.setLayout(new BorderLayout(8,0));
+         search.setAlignmentX(0.0F);
+         JTextField find = new JTextField();
+         styleTextField(find);
+         find.setToolTipText("搜索命令");
+         JButton searchButton = this.refButton("搜索", true);
+         ActionListener doSearch = e -> {
+            String q = find.getText().trim();
+            if (!q.isBlank()) {
+               this.searchField.setText(q);
+               this.smartHomeSearch();
+            }
+         };
+         find.addActionListener(doSearch);
+         searchButton.addActionListener(doSearch);
+         search.add(find, BorderLayout.CENTER);
+         search.add(searchButton, BorderLayout.EAST);
+         search.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+         body.add(search);
+         body.add(Box.createVerticalStrut(12));
 
-         JPanel commonCard=this.refCard(); commonCard.setLayout(null); commonCard.setBounds(30,282,1115,300); JLabel ct=new JLabel("常用命令"); ct.setForeground(TEXT); ct.setFont(ct.getFont().deriveFont(Font.BOLD,14.0F)); ct.setBounds(16,8,120,25); commonCard.add(ct); JComponent m1=this.exactLinearMainCard("↗","regress","普通线性回归","用 OLS 估计连续因变量与解释变量的线性关系。","regress y x c1 c2, vce(robust)",new Color(54,114,236)); m1.setBounds(16,42,525,112); commonCard.add(m1); JComponent m2=this.exactLinearMainCard("♟","areg","单组固定效应","在回归中吸收一组大量类别固定效应。","areg y x c, absorb(firm)",new Color(29,164,101)); m2.setBounds(557,42,525,112); commonCard.add(m2); JComponent m3=this.exactLinearMainCard("▱","reghdfe","高维固定效应回归","高效吸收多组固定效应并支持聚类标准误。","reghdfe y x c, absorb(firm year) vce(cluster firm)",new Color(245,125,30)); m3.setBounds(16,165,525,112); commonCard.add(m3); JComponent m4=this.exactLinearMainCard("⌁","qreg","分位数回归","估计解释变量对条件分布不同分位点的影响。","qreg y x c, quantile(.5)",new Color(134,84,225)); m4.setBounds(557,165,525,112); commonCard.add(m4); root.add(commonCard);
+         JPanel commonCard=this.refCard();
+         commonCard.setLayout(new BorderLayout(0,10));
+         commonCard.setAlignmentX(0.0F);
+         JLabel ct=new JLabel("常用命令"); ct.setForeground(TEXT); ct.setFont(ct.getFont().deriveFont(Font.BOLD,14.0F));
+         commonCard.add(ct, BorderLayout.NORTH);
+         JPanel commonGrid = new JPanel(new GridLayout(2,2,12,12));
+         commonGrid.setOpaque(false);
+         commonGrid.add(this.exactLinearMainCard("","regress","普通线性回归","","",new Color(54,114,236)));
+         commonGrid.add(this.exactLinearMainCard("","areg","单组固定效应","","",new Color(29,164,101)));
+         commonGrid.add(this.exactLinearMainCard("","reghdfe","高维固定效应回归","","",new Color(245,125,30)));
+         commonGrid.add(this.exactLinearMainCard("","qreg","分位数回归","","",new Color(134,84,225)));
+         commonCard.add(commonGrid, BorderLayout.CENTER);
+         commonCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
+         body.add(commonCard);
+         body.add(Box.createVerticalStrut(12));
 
-         JPanel more=this.refCard(); more.setLayout(null); more.setBounds(30,600,1115,218); JLabel mt=new JLabel("更多线性模型"); mt.setForeground(TEXT); mt.setFont(mt.getFont().deriveFont(Font.BOLD,14.0F)); mt.setBounds(16,6,150,25); more.add(mt); JComponent g1=this.exactLinearGroup("◆","稳健与异常值处理",new String[][]{{"rreg","稳健回归（M-估计）"},{"cnsreg","截面回归（修正离群影响）"},{"newey","Newey-West 标准误"}},new Color(47,104,213)); g1.setBounds(16,36,260,160); more.add(g1); JComponent g2=this.exactLinearGroup("⚖","加权与广义最小二乘",new String[][]{{"regressw","加权最小二乘"},{"vwls","可变加权最小二乘"},{"gls","广义最小二乘"},{"prais","可行广义最小二乘"}},new Color(37,172,92)); g2.setBounds(287,36,260,160); more.add(g2); JComponent g3=this.exactLinearGroup("⚑","工具变量与内生性",new String[][]{{"ivregress","工具变量回归"},{"ivreg","2SLS 回归"},{"ivprobit","工具变量 Probit"},{"control","控制函数法"}},new Color(245,128,30)); g3.setBounds(558,36,260,160); more.add(g3); JComponent g4=this.exactLinearGroup("▦","其他线性扩展",new String[][]{{"sureg","联立方程回归"},{"seemingly","似不相关回归"},{"seemingly2","似不相关回归（扩展）"},{"ml","最大似然回归"}},new Color(132,85,220)); g4.setBounds(829,36,260,160); more.add(g4); JLabel expand=new JLabel("展开更多命令类别⌄",SwingConstants.CENTER); expand.setForeground(ACCENT); expand.setFont(expand.getFont().deriveFont(10.0F)); expand.setBounds(430,196,250,20); more.add(expand); root.add(more);
+         JPanel more=this.refCard();
+         more.setLayout(new BorderLayout(0,10));
+         more.setAlignmentX(0.0F);
+         JLabel mt=new JLabel("更多线性模型"); mt.setForeground(TEXT); mt.setFont(mt.getFont().deriveFont(Font.BOLD,14.0F));
+         more.add(mt, BorderLayout.NORTH);
+         JPanel groups = new JPanel(new GridLayout(2,2,12,12));
+         groups.setOpaque(false);
+         groups.add(this.exactLinearGroup("","稳健与异常值处理",new String[][]{{"rreg","稳健回归"},{"cnsreg","约束线性回归"},{"newey","Newey-West"}},new Color(47,104,213)));
+         groups.add(this.exactLinearGroup("","加权与广义最小二乘",new String[][]{{"regressw","加权最小二乘"},{"vwls","可变权重"},{"gls","广义最小二乘"},{"prais","Prais-Winsten"}},new Color(37,172,92)));
+         groups.add(this.exactLinearGroup("","工具变量与内生性",new String[][]{{"ivregress","工具变量"},{"ivreg","2SLS"},{"ivprobit","IV Probit"},{"control","控制函数"}},new Color(245,128,30)));
+         groups.add(this.exactLinearGroup("","其他线性扩展",new String[][]{{"sureg","SUR"},{"seemingly","SUR"},{"seemingly2","SUR 扩展"},{"ml","最大似然"}},new Color(132,85,220)));
+         more.add(groups, BorderLayout.CENTER);
+         body.add(more);
+
+         JScrollPane scroll = softScroll(body);
+         scroll.setBorder(null);
+         scroll.getVerticalScrollBar().setUnitIncrement(18);
+         root.add(scroll, BorderLayout.CENTER);
          return root;
       }
 
@@ -4801,16 +5034,8 @@ public final class HxWorkbench {
          this.changeArea.setForeground(TEXT);
          this.advancedContent.setOpaque(false);
          this.advancedContent.setLayout(new BoxLayout(this.advancedContent, BoxLayout.Y_AXIS));
-         this.advancedContent.setVisible(false);
-         styleSecondaryButton(this.advancedToggle);
-         this.advancedToggle.setHorizontalAlignment(2);
-         this.advancedToggle.addActionListener(var1x -> {
-            boolean var2x = this.advancedToggle.isSelected();
-            this.advancedToggle.setText(var2x ? "收起设置  −" : "更多设置  +");
-            this.advancedContent.setVisible(var2x);
-            this.formPanel.revalidate();
-            this.formPanel.repaint();
-         });
+         this.advancedContent.setVisible(true);
+         this.advancedToggle.setVisible(false);
          styleSecondaryButton(this.copyCommandButton);
       }
 
@@ -6642,40 +6867,105 @@ public final class HxWorkbench {
       }
 
       private JComponent buildExactOneClickContainer() {
-         JPanel root = new JPanel(null); root.setBackground(APP_BG); root.setPreferredSize(new Dimension(1467,840)); this.exactOneClickRoot = root;
-         JLabel crumb = new JLabel("首页   /   OneClick 专区   /   控制变量组合筛选   /   oneclick"); crumb.setForeground(new Color(91,111,144)); crumb.setFont(crumb.getFont().deriveFont(10.5F)); crumb.setBounds(20,12,620,24); root.add(crumb);
-         JLabel title = new JLabel("控制变量组合筛选 · 外部 OneClick"); title.setForeground(TEXT); title.setFont(title.getFont().deriveFont(Font.BOLD,22.0F)); title.setBounds(20,42,520,32); root.add(title);
-         JLabel sub = new JLabel("本页用于调用外部 oneclick 命令。你只需选择 Y、核心 X、候选控制变量和模型方法，工具将自动为你组装命令。"); sub.setForeground(MUTED); sub.setFont(sub.getFont().deriveFont(10.0F)); sub.setBounds(20,75,720,24); root.add(sub);
-         JButton back = this.refButton("←  返回上一级", false); back.setBounds(995,20,140,38); back.addActionListener(e -> this.browseMethodCategory("oneclick")); root.add(back);
-         JButton home = this.refButton("⌂  首页", false); home.setBounds(1145,20,105,38); home.addActionListener(e -> this.showHomePage()); root.add(home);
-         JButton help = this.refButton("?  查看帮助", false); help.setBounds(1260,20,120,38); help.addActionListener(e -> this.openHelp()); root.add(help);
+         JPanel root = new JPanel(new BorderLayout(14,0));
+         root.setBackground(APP_BG);
+         root.setBorder(new EmptyBorder(16,20,16,18));
+         this.exactOneClickRoot = root;
 
-         JPanel scenario = this.refCard(); scenario.setLayout(new FlowLayout(FlowLayout.LEFT,12,0)); scenario.setBounds(16,115,745,49); JLabel sc = new JLabel("?  适合什么场景？"); sc.setForeground(TEXT); sc.setFont(sc.getFont().deriveFont(Font.BOLD,13.0F)); scenario.add(sc); scenario.add(this.refButton("控制变量筛选", false)); scenario.add(this.refButton("稳健性比较", false)); scenario.add(this.refButton("外部命令调用", false)); root.add(scenario);
+         JPanel left = new JPanel(new BorderLayout(0,12));
+         left.setOpaque(false);
+         JPanel header = new JPanel(new BorderLayout());
+         header.setOpaque(false);
+         JPanel heading = new JPanel();
+         heading.setOpaque(false);
+         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+         JLabel crumb = new JLabel("首页 / OneClick / oneclick");
+         crumb.setForeground(new Color(91,111,144));
+         crumb.setFont(crumb.getFont().deriveFont(10.5F));
+         JLabel title = new JLabel("OneClick");
+         title.setForeground(TEXT);
+         title.setFont(title.getFont().deriveFont(Font.BOLD,22.0F));
+         heading.add(crumb);
+         heading.add(Box.createVerticalStrut(5));
+         heading.add(title);
+         header.add(heading, BorderLayout.WEST);
+         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0));
+         actions.setOpaque(false);
+         JButton back = this.refButton("← 上一级", false); back.addActionListener(e -> this.browseMethodCategory("oneclick"));
+         JButton home = this.refButton("首页", false); home.addActionListener(e -> this.showHomePage());
+         JButton help = this.refButton("帮助", false); help.addActionListener(e -> this.openHelp());
+         actions.add(back); actions.add(home); actions.add(help);
+         header.add(actions, BorderLayout.EAST);
+         left.add(header, BorderLayout.NORTH);
 
-         JPanel quick = this.refCard(); quick.setLayout(null); quick.setBounds(16,174,745,130); JLabel qt = new JLabel("快速理解 OneClick"); qt.setForeground(TEXT); qt.setFont(qt.getFont().deriveFont(Font.BOLD,13.0F)); qt.setBounds(14,8,200,22); quick.add(qt);
-         String[][] q = {{"01","选择核心变量：Y、核心 X","确定因变量与核心解释变量。"},{"02","添加候选控制变量","从当前数据中选择候选控制变量。"},{"03","选择模型方法并运行","工具组装命令并运行外部 oneclick。"}};
-         for(int i=0;i<3;i++){ int x=14+i*238; JPanel step=new JPanel(new BorderLayout(8,0)); step.setBackground(SURFACE); step.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(220,228,239),8),new EmptyBorder(10,10,10,10))); step.setBounds(x,38,220,70); JComponent n=this.exactNumberBadge(q[i][0],new Color(34,109,246)); JPanel txt=new JPanel(); txt.setOpaque(false); txt.setLayout(new BoxLayout(txt,BoxLayout.Y_AXIS)); JLabel a=new JLabel(q[i][1]); a.setForeground(TEXT); a.setFont(a.getFont().deriveFont(Font.BOLD,10.5F)); JLabel d=new JLabel("<html><span style='font-size:8px;color:#718096'>"+html(q[i][2])+"</span></html>"); txt.add(a); txt.add(Box.createVerticalStrut(4)); txt.add(d); step.add(n,BorderLayout.WEST); step.add(txt,BorderLayout.CENTER); quick.add(step); if(i<2){ JLabel ar=new JLabel("→",SwingConstants.CENTER); ar.setForeground(new Color(170,188,215)); ar.setFont(ar.getFont().deriveFont(Font.BOLD,20.0F)); ar.setBounds(x+218,55,20,25); quick.add(ar);} }
-         JLabel history = new JLabel("ⓘ  运行后命令会写入 Stata History。"); history.setForeground(MUTED); history.setFont(history.getFont().deriveFont(9.0F)); history.setBounds(14,108,300,18); quick.add(history); root.add(quick);
+         JPanel form = new JPanel();
+         form.setOpaque(false);
+         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+         JPanel settings = this.refCard();
+         settings.setLayout(new BoxLayout(settings, BoxLayout.Y_AXIS));
+         JLabel st = new JLabel("参数设置");
+         st.setForeground(TEXT);
+         st.setFont(st.getFont().deriveFont(Font.BOLD,13.0F));
+         st.setAlignmentX(0.0F);
+         settings.add(st);
+         settings.add(Box.createVerticalStrut(10));
 
-         JPanel settings = this.refCard(); settings.setLayout(null); settings.setBounds(16,312,745,270); JLabel st = new JLabel("⚙  参数设置"); st.setForeground(TEXT); st.setFont(st.getFont().deriveFont(Font.BOLD,13.0F)); st.setBounds(14,8,150,22); settings.add(st);
-         styleCombo(this.oneClickY); styleCombo(this.oneClickX); styleTextField(this.exactOneClickModelOptions); styleTextField(this.exactOneClickOtherOptions); styleTextField(this.exactOneClickCandidatesDisplay); styleTextField(this.exactOneClickRequiredDisplay); this.exactOneClickCandidatesDisplay.setEditable(false); this.exactOneClickRequiredDisplay.setEditable(false);
-         JLabel ly=new JLabel("因变量  Y"); ly.setForeground(TEXT); ly.setBounds(14,42,100,22); settings.add(ly); this.oneClickY.setBounds(145,40,220,32); settings.add(this.oneClickY);
-         JLabel lx=new JLabel("核心解释变量  X"); lx.setForeground(TEXT); lx.setBounds(385,42,120,22); settings.add(lx); this.oneClickX.setBounds(505,40,220,32); settings.add(this.oneClickX);
-         JLabel lc=new JLabel("候选控制变量"); lc.setForeground(TEXT); lc.setBounds(14,82,110,22); settings.add(lc); this.exactOneClickCandidatesDisplay.setBounds(145,80,545,32); settings.add(this.exactOneClickCandidatesDisplay); JButton cp=this.refButton("⌄",false); cp.setBounds(694,80,31,32); cp.addActionListener(e->this.chooseExactOneClickValues(this.oneClickCandidates,this.exactOneClickCandidatesDisplay,"选择候选控制变量")); settings.add(cp);
-         JLabel lr=new JLabel("固定变量 fix(x) required"); lr.setForeground(TEXT); lr.setBounds(14,121,130,22); settings.add(lr); this.exactOneClickRequiredDisplay.setBounds(145,119,545,32); settings.add(this.exactOneClickRequiredDisplay); JButton rp=this.refButton("⌄",false); rp.setBounds(694,119,31,32); rp.addActionListener(e->this.chooseExactOneClickValues(this.oneClickRequired,this.exactOneClickRequiredDisplay,"选择固定变量")); settings.add(rp);
-         JLabel lp=new JLabel("显著性水平 p(#)"); lp.setForeground(TEXT); lp.setBounds(14,162,120,22); settings.add(lp); JPanel pButtons=new JPanel(new GridLayout(1,3,0,0)); pButtons.setOpaque(false); pButtons.setBounds(145,158,190,34); ButtonGroup pGroup=new ButtonGroup(); String[] pv={"0.01","0.05","0.10"}; for(int i=0;i<3;i++){ final int idx=i; JToggleButton b=new JToggleButton(pv[i]); styleSecondaryButton(b); b.setSelected(i==1); b.addActionListener(e->{this.oneClickP.setSelectedIndex(idx);this.updateOneClickPreview();}); pGroup.add(b); pButtons.add(b);} settings.add(pButtons);
-         JLabel lm=new JLabel("模型方法 m(method)"); lm.setForeground(TEXT); lm.setBounds(385,162,130,22); settings.add(lm); JPanel mButtons=new JPanel(new GridLayout(1,4,5,0)); mButtons.setOpaque(false); mButtons.setBounds(505,158,220,34); ButtonGroup mGroup=new ButtonGroup(); String[] mv={"reg","reghdfe","logit","probit"}; String[] internal={"regress","reghdfe","logit","probit"}; for(int i=0;i<4;i++){ final int idx=i; JToggleButton b=new JToggleButton(mv[i]); b.setFont(b.getFont().deriveFont(8.5F)); b.setMargin(new Insets(0,2,0,2)); styleSecondaryButton(b); if(i==0) b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(new Color(34,109,246), new Color(28,94,222), new Color(24,82,198), Color.WHITE, new Color(34,109,246))); b.setSelected(i==0); b.addActionListener(e->{this.oneClickEstimator.setSelectedItem(internal[idx]);this.updateOneClickConditionalFields();this.updateOneClickPreview();}); mGroup.add(b); mButtons.add(b);} settings.add(mButtons);
-         JLabel lo=new JLabel("可选模型附加项  [o]"); lo.setForeground(TEXT); lo.setBounds(14,202,130,22); settings.add(lo); this.exactOneClickModelOptions.setBounds(145,199,220,32); settings.add(this.exactOneClickModelOptions);
-         JLabel lz=new JLabel("其他选项  [z]"); lz.setForeground(TEXT); lz.setBounds(385,202,110,22); settings.add(lz); this.exactOneClickOtherOptions.setBounds(505,199,220,32); settings.add(this.exactOneClickOtherOptions);
-         JLabel info=new JLabel("ⓘ  候选控制变量应先由理论、文献和识别设计确定，组合检验用于稳健性比较。"); info.setOpaque(true); info.setBackground(new Color(240,246,255)); info.setForeground(new Color(73,101,151)); info.setFont(info.getFont().deriveFont(9.0F)); info.setBounds(14,237,711,24); settings.add(info); root.add(settings);
+         styleCombo(this.oneClickY); styleCombo(this.oneClickX); styleCombo(this.oneClickP); styleCombo(this.oneClickEstimator);
+         styleTextField(this.exactOneClickModelOptions); styleTextField(this.exactOneClickOtherOptions);
+         styleTextField(this.exactOneClickCandidatesDisplay); styleTextField(this.exactOneClickRequiredDisplay);
+         this.exactOneClickCandidatesDisplay.setEditable(false); this.exactOneClickRequiredDisplay.setEditable(false);
 
-         JPanel explain = this.refCard(); explain.setLayout(new BorderLayout(12,0)); explain.setBounds(16,595,745,96); JLabel ex = new JLabel("<html><b>◉  方法说明</b><br><br>• 本工具通过外部 oneclick 命令完成控制变量组合筛选。<br>• 运行后，工具会自动读取生成的 subset.dta，用于在右侧查看数据与结果。</html>"); ex.setForeground(TEXT); explain.add(ex,BorderLayout.CENTER); JTextArea syntax=new JTextArea("oneclick y candidates, fix(x required) p(#) m(method)\n[o(model_options)] [z]"); syntax.setEditable(false); syntax.setBackground(CODE_BG); syntax.setForeground(TEXT); syntax.setFont(new Font("Monospaced",Font.PLAIN,10)); syntax.setBorder(new EmptyBorder(8,10,8,10)); syntax.setPreferredSize(new Dimension(350,68)); explain.add(syntax,BorderLayout.EAST); root.add(explain);
+         JPanel yx = new JPanel(new GridLayout(1,4,10,0)); yx.setOpaque(false);
+         yx.add(new JLabel("Y")); yx.add(this.oneClickY); yx.add(new JLabel("X")); yx.add(this.oneClickX);
+         yx.setMaximumSize(new Dimension(Integer.MAX_VALUE,34)); settings.add(yx); settings.add(Box.createVerticalStrut(10));
 
-         JPanel command = this.refCard(); command.setLayout(null); command.setBounds(16,704,745,106); JLabel ctitle=new JLabel("即将执行的 Stata 命令"); ctitle.setForeground(TEXT); ctitle.setFont(ctitle.getFont().deriveFont(Font.BOLD,12.0F)); ctitle.setBounds(14,6,190,22); command.add(ctitle); this.exactOneClickCommand.setEditable(false); this.exactOneClickCommand.setLineWrap(true); this.exactOneClickCommand.setWrapStyleWord(true); this.exactOneClickCommand.setBackground(new Color(244,248,255)); this.exactOneClickCommand.setForeground(TEXT); this.exactOneClickCommand.setFont(new Font("Monospaced",Font.PLAIN,10)); this.exactOneClickCommand.setBorder(new EmptyBorder(9,10,9,10)); JScrollPane cs=softScroll(this.exactOneClickCommand); cs.setBounds(14,32,420,55); command.add(cs); JButton copy=this.refButton("▣  复制命令",false); copy.setBounds(450,39,110,38); copy.addActionListener(e->{ Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(this.exactOneClickCommand.getText()),null); }); command.add(copy); JButton run=this.refButton("▶  运行外部 OneClick",true); run.setBounds(570,39,155,38); run.addActionListener(e->this.runOneClick()); command.add(run); root.add(command);
+         JPanel candidates = new JPanel(new BorderLayout(10,0)); candidates.setOpaque(false);
+         JLabel lc = new JLabel("Candidates"); lc.setPreferredSize(new Dimension(110,28)); candidates.add(lc,BorderLayout.WEST);
+         candidates.add(this.exactOneClickCandidatesDisplay,BorderLayout.CENTER);
+         JButton cp=this.refButton("选择",false); cp.addActionListener(e->this.chooseExactOneClickValues(this.oneClickCandidates,this.exactOneClickCandidatesDisplay,"选择候选控制变量")); candidates.add(cp,BorderLayout.EAST);
+         candidates.setMaximumSize(new Dimension(Integer.MAX_VALUE,34)); settings.add(candidates); settings.add(Box.createVerticalStrut(10));
+
+         JPanel required = new JPanel(new BorderLayout(10,0)); required.setOpaque(false);
+         JLabel lr = new JLabel("fix()" ); lr.setPreferredSize(new Dimension(110,28)); required.add(lr,BorderLayout.WEST);
+         required.add(this.exactOneClickRequiredDisplay,BorderLayout.CENTER);
+         JButton rp=this.refButton("选择",false); rp.addActionListener(e->this.chooseExactOneClickValues(this.oneClickRequired,this.exactOneClickRequiredDisplay,"选择固定变量")); required.add(rp,BorderLayout.EAST);
+         required.setMaximumSize(new Dimension(Integer.MAX_VALUE,34)); settings.add(required); settings.add(Box.createVerticalStrut(10));
+
+         JPanel pm = new JPanel(new GridLayout(1,4,10,0)); pm.setOpaque(false);
+         pm.add(new JLabel("p()")); pm.add(this.oneClickP); pm.add(new JLabel("method")); pm.add(this.oneClickEstimator);
+         pm.setMaximumSize(new Dimension(Integer.MAX_VALUE,34)); settings.add(pm); settings.add(Box.createVerticalStrut(10));
+
+         JPanel opts = new JPanel(new GridLayout(1,4,10,0)); opts.setOpaque(false);
+         opts.add(new JLabel("o()")); opts.add(this.exactOneClickModelOptions); opts.add(new JLabel("z")); opts.add(this.exactOneClickOtherOptions);
+         opts.setMaximumSize(new Dimension(Integer.MAX_VALUE,34)); settings.add(opts);
+         settings.setAlignmentX(0.0F);
+         settings.setMaximumSize(new Dimension(Integer.MAX_VALUE, 250));
+         form.add(settings);
+         form.add(Box.createVerticalStrut(12));
+
+         JPanel command = this.refCard();
+         command.setLayout(new BorderLayout(10,8));
+         JLabel ctitle=new JLabel("Stata 命令"); ctitle.setForeground(TEXT); ctitle.setFont(ctitle.getFont().deriveFont(Font.BOLD,12.0F)); command.add(ctitle,BorderLayout.NORTH);
+         this.exactOneClickCommand.setEditable(false); this.exactOneClickCommand.setLineWrap(true); this.exactOneClickCommand.setWrapStyleWord(true);
+         this.exactOneClickCommand.setBackground(new Color(244,248,255)); this.exactOneClickCommand.setForeground(TEXT); this.exactOneClickCommand.setFont(new Font("Monospaced",Font.PLAIN,11)); this.exactOneClickCommand.setBorder(new EmptyBorder(9,10,9,10));
+         JScrollPane cs=softScroll(this.exactOneClickCommand); cs.setPreferredSize(new Dimension(100,70)); command.add(cs,BorderLayout.CENTER);
+         JPanel ca = new JPanel(new FlowLayout(FlowLayout.RIGHT,7,0)); ca.setOpaque(false);
+         JButton copy=this.refButton("复制命令",false); copy.addActionListener(e->{ Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(this.exactOneClickCommand.getText()),null); });
+         JButton run=this.refButton("运行 OneClick",true); run.addActionListener(e->this.runOneClick()); ca.add(copy); ca.add(run); command.add(ca,BorderLayout.SOUTH);
+         command.setAlignmentX(0.0F); command.setMaximumSize(new Dimension(Integer.MAX_VALUE,145)); form.add(command);
+
+         HxWorkbench.SimpleDocumentListener exactListener = new HxWorkbench.SimpleDocumentListener(() -> this.updateOneClickPreview());
+         this.exactOneClickModelOptions.getDocument().addDocumentListener(exactListener);
+         this.exactOneClickOtherOptions.getDocument().addDocumentListener(exactListener);
+
+         JScrollPane formScroll = softScroll(form); formScroll.setBorder(null); formScroll.getVerticalScrollBar().setUnitIncrement(18);
+         left.add(formScroll, BorderLayout.CENTER);
+         root.add(left, BorderLayout.CENTER);
+
          this.exactOneClickInspectorHost.removeAll();
          this.exactOneClickInspectorHost.setOpaque(false);
-         this.exactOneClickInspectorHost.setBounds(780,115,660,695);
-         root.add(this.exactOneClickInspectorHost);
+         this.exactOneClickInspectorHost.setPreferredSize(new Dimension(410,0));
+         root.add(this.exactOneClickInspectorHost, BorderLayout.EAST);
          return root;
       }
 
@@ -6999,7 +7289,9 @@ public final class HxWorkbench {
             this.addField(var4++, this.usingLabel.getText(), this.usingChooser());
          }
 
-         if (this.flag("needs_panel")) {
+         if (this.flag("needs_panel") && !Arrays.asList(
+            "reghdfe", "ppmlhdfe", "ivreghdfe", "xtreg", "xtlogit", "xtprobit", "xtpoisson"
+         ).contains(this.currentCommand)) {
             this.addField(var4++, this.sem("panel_label"), this.panel);
             this.addField(var4++, this.sem("time_label"), this.time);
          }
@@ -9827,22 +10119,20 @@ public final class HxWorkbench {
 
       private void addAdvancedSettings(int var1, boolean var2, boolean var3, boolean var4) {
          this.rebuildGenericAdvancedContent(var2, var3, var4);
-         this.advancedToggle.setSelected(false);
-         this.advancedToggle.setText("更多设置  +");
-         this.advancedContent.setVisible(false);
+         this.advancedContent.setVisible(true);
          JPanel var5 = new JPanel();
          var5.setOpaque(false);
          var5.setLayout(new BoxLayout(var5, BoxLayout.Y_AXIS));
-         this.advancedToggle.setAlignmentX(0.0F);
+         JLabel title = sectionCaption("其他设置");
+         title.setAlignmentX(0.0F);
          this.advancedContent.setAlignmentX(0.0F);
-         var5.add(this.advancedToggle);
+         var5.add(title);
          var5.add(Box.createVerticalStrut(7));
          var5.add(this.advancedContent);
          GridBagConstraints var6 = this.constraints(0, var1);
          var6.gridwidth = 2;
          var6.weightx = 1.0;
-         var6.fill = 2;
-         var6.insets = new Insets(0, 0, 13, 0);
+         var6.fill = GridBagConstraints.HORIZONTAL;
          this.formPanel.add(var5, var6);
       }
 
