@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.1";
+   public static final String VERSION = "1.4.2";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.1");
+      SFIToolkit.displayln("HxWorkbench 1.4.2");
       return 0;
    }
 
@@ -2871,6 +2871,12 @@ public final class HxWorkbench {
          shell.add(this.buildSidebar(), BorderLayout.WEST);
          shell.add(center, BorderLayout.CENTER);
          this.add(shell, BorderLayout.CENTER);
+         this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+               SwingUtilities.invokeLater(() -> WorkbenchFrame.this.clampInspectorDividers());
+            }
+         });
 
          stylePrimaryButton(this.runButton);
          SwingUtilities.invokeLater(this::applyDividerRatios);
@@ -3315,6 +3321,35 @@ public final class HxWorkbench {
          this.rebuilding = false;
       }
 
+      private void clampInspectorDividers() {
+         if (this.dataSummarySplit != null) {
+            int height = this.dataSummarySplit.getHeight();
+            if (height > 0) {
+               int dividerSize = Math.max(0, this.dataSummarySplit.getDividerSize());
+               int minData = 90;
+               int minLower = 160;
+               int current = this.dataSummarySplit.getDividerLocation();
+               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.28);
+               int max = Math.max(minData, height - minLower - dividerSize);
+               int target = Math.max(minData, Math.min(current, max));
+               if (target != this.dataSummarySplit.getDividerLocation()) this.dataSummarySplit.setDividerLocation(target);
+            }
+         }
+         if (this.inspectorLowerSplit != null) {
+            int height = this.inspectorLowerSplit.getHeight();
+            if (height > 0) {
+               int dividerSize = Math.max(0, this.inspectorLowerSplit.getDividerSize());
+               int minVariable = 75;
+               int minProperty = 75;
+               int current = this.inspectorLowerSplit.getDividerLocation();
+               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.52);
+               int max = Math.max(minVariable, height - minProperty - dividerSize);
+               int target = Math.max(minVariable, Math.min(current, max));
+               if (target != this.inspectorLowerSplit.getDividerLocation()) this.inspectorLowerSplit.setDividerLocation(target);
+            }
+         }
+      }
+
       void applyDividerRatios() {
          SwingUtilities.invokeLater(() -> {
             int total = this.commandDataSplit.getWidth();
@@ -3326,22 +3361,7 @@ public final class HxWorkbench {
                divider = Math.min(divider, Math.max(minCommand, total - 250));
                this.commandDataSplit.setDividerLocation(Math.max(0, divider));
             }
-            if (this.dataSummarySplit != null) {
-               int dataHeight = this.dataSummarySplit.getHeight();
-               if (dataHeight > 0) {
-                  int dataDivider = (int)Math.round(dataHeight * 0.28);
-                  dataDivider = Math.max(100, Math.min(dataDivider, Math.max(100, dataHeight - 240)));
-                  this.dataSummarySplit.setDividerLocation(dataDivider);
-               }
-            }
-            if (this.inspectorLowerSplit != null) {
-               int lowerHeight = this.inspectorLowerSplit.getHeight();
-               if (lowerHeight > 0) {
-                  int lowerDivider = (int)Math.round(lowerHeight * 0.52);
-                  lowerDivider = Math.max(90, Math.min(lowerDivider, Math.max(90, lowerHeight - 110)));
-                  this.inspectorLowerSplit.setDividerLocation(lowerDivider);
-               }
-            }
+            this.clampInspectorDividers();
          });
       }
 
@@ -6215,10 +6235,12 @@ public final class HxWorkbench {
 
          JComponent variableWindow = this.buildVariableInspectorPanel();
          JComponent propertyWindow = this.buildPropertyInspectorPanel();
+         variableWindow.setMinimumSize(new Dimension(0, 75));
+         propertyWindow.setMinimumSize(new Dimension(0, 75));
          this.inspectorLowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, variableWindow, propertyWindow);
          this.inspectorLowerSplit.setResizeWeight(0.52);
          this.inspectorLowerSplit.setContinuousLayout(true);
-         this.inspectorLowerSplit.setMinimumSize(new Dimension(0, 0));
+         this.inspectorLowerSplit.setMinimumSize(new Dimension(0, 155));
          this.inspectorLowerSplit.setBorder(null);
          this.inspectorLowerSplit.setDividerSize(5);
 
