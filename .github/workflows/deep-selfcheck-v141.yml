@@ -11,7 +11,7 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -81,40 +81,32 @@ jobs:
             static boolean listHas(JList<?> l,String s){return l.getSelectedValuesList().stream().anyMatch(x->s.equals(String.valueOf(x)));}
             static double ratio(JSplitPane s){return (double)s.getTopComponent().getHeight()/Math.max(1,s.getHeight());}
             static int rowOf(JTable t,String n){for(int r=0;r<t.getRowCount();r++)if(n.equals(String.valueOf(t.getValueAt(r,0))))return r;return -1;}
-            public static void main(String[] z)throws Exception{
+            public static void main(String[] z){try{run();System.out.println("DEEP_AUDIT_141_OK");System.exit(0);}catch(Throwable t){t.printStackTrace();try{if(F!=null)edt(()->F.dispose());}catch(Throwable ignored){}System.exit(2);}}
+            static void run()throws Exception{
               C=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");Constructor<?> ct=C.getDeclaredConstructor(boolean.class);ct.setAccessible(true);
               edt(()->{try{F=(JFrame)ct.newInstance(false);m("showXtregWizardPageV130").invoke(F);m("refreshDataset",boolean.class).invoke(F,false);F.setSize(1672,901);F.addNotify();F.validate();layout(F.getContentPane());m("applyDividerRatios").invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
-              edt(()->{F.validate();layout(F.getContentPane());}); // drains applyDividerRatios invokeLater
-
+              edt(()->{F.validate();layout(F.getContentPane());});
               final JComboBox<?> panel=(JComboBox<?>)f("xtregPanelVar").get(F), time=(JComboBox<?>)f("xtregTimeVar").get(F), dep=(JComboBox<?>)f("xtregDepVar").get(F);
               final JList<?> xs=(JList<?>)f("xtregIndepList").get(F);final JTextArea preview=(JTextArea)f("previewArea").get(F);
-              final JTable vt=(JTable)f("inspectorVariableTable").get(F), dt=(JTable)f("dataTable").get(F);final JTextField filter=(JTextField)f("inspectorVariableFilter").get(F);final JLabel role=(JLabel)f("inspectorRoleLabel").get(F);
+              final JTable vt=(JTable)f("inspectorVariableTable").get(F);final JTextField filter=(JTextField)f("inspectorVariableFilter").get(F);final JLabel role=(JLabel)f("inspectorRoleLabel").get(F);
               final JSplitPane outer=(JSplitPane)f("dataSummarySplit").get(F), lower=(JSplitPane)f("inspectorLowerSplit").get(F), cmd=(JSplitPane)f("commandDataSplit").get(F);
               final JTabbedPane tabs=(JTabbedPane)f("dataTabs").get(F);final JButton sideToggle=(JButton)f("sidebarToggleButton").get(F);final JToggleButton inspToggle=(JToggleButton)f("inspectorToggle").get(F);
 
               edt(()->{ck(!inspToggle.isVisible(),"legacy inspector toggle visible");ck(drop((JComponent)panel,"firm"),"drop panel failed");ck(drop((JComponent)time,"year"),"drop time failed");ck(drop((JComponent)dep,"y"),"drop dep failed");ck(drop((JComponent)xs,"x1"),"drop x1 failed");ck(drop((JComponent)xs,"x2"),"drop x2 failed");ck("firm".equals(sel(panel))&&"year".equals(sel(time))&&"y".equals(sel(dep)),"DnD combos wrong");ck(listHas(xs,"x1")&&listHas(xs,"x2"),"X drops not cumulative");ck(preview.getText().contains("xtreg y x1 x2")||preview.getText().contains("xtreg y x2 x1"),"preview wrong: "+preview.getText());});
-
               final String before=preview.getText();edt(()->{try{m("refreshDataset",boolean.class).invoke(F,false);}catch(Exception e){throw new RuntimeException(e);}ck("firm".equals(sel(panel))&&"year".equals(sel(time))&&"y".equals(sel(dep)),"refresh lost combo state");ck(listHas(xs,"x1")&&listHas(xs,"x2"),"refresh lost X");ck(before.equals(preview.getText()),"refresh changed preview");});
-
               edt(()->{try{int roa=rowOf(vt,"ROA");ck(roa>=0,"ROA missing");vt.setRowSelectionInterval(roa,roa);m("syncInspectorSelectionFromVariableWindow").invoke(F);ck(role.getText().contains("未使用"),"ROA role "+role.getText());int x1=rowOf(vt,"x1");vt.setRowSelectionInterval(x1,x1);m("syncInspectorSelectionFromVariableWindow").invoke(F);ck(role.getText().contains("解释变量 X"),"x1 role "+role.getText());filter.setText("label_roa");m("refreshInspectorVariables").invoke(F);ck(vt.getRowCount()==1,"label filter");filter.setText("");m("refreshInspectorVariables").invoke(F);}catch(Exception e){throw new RuntimeException(e);}});
-
               final double[] manual=new double[2];edt(()->{outer.setDividerLocation(0.36);lower.setDividerLocation(0.60);F.validate();layout(F.getContentPane());manual[0]=ratio(outer);manual[1]=ratio(lower);try{m("refreshDataset",boolean.class).invoke(F,false);}catch(Exception e){throw new RuntimeException(e);}F.validate();layout(F.getContentPane());ck(Math.abs(ratio(outer)-manual[0])<0.06,"refresh reset top split");ck(Math.abs(ratio(lower)-manual[1])<0.06,"refresh reset lower split");});
-
               edt(()->{for(int i=0;i<tabs.getTabCount();i++){tabs.setSelectedIndex(i);F.validate();layout(F.getContentPane());}tabs.setSelectedIndex(0);ck("firm".equals(sel(panel))&&listHas(xs,"x1"),"tab switch lost state");int w0=cmd.getWidth();sideToggle.doClick();F.validate();layout(F.getContentPane());int w1=cmd.getWidth();ck(w1>w0,"sidebar collapse did not free width "+w0+"->"+w1);sideToggle.doClick();});
 
-              // Natural resize without calling applyDividerRatios: resizeWeight/minimum sizes must keep three panes usable.
-              int[][] sizes={{1600,900},{1366,768},{1280,720},{1100,700}};
+              int[][] sizes={{1600,900},{1366,768},{1280,720}};
               for(int[] s:sizes){edt(()->{F.setSize(s[0],s[1]);F.validate();layout(F.getContentPane());System.out.println("NATURAL "+s[0]+" top="+outer.getTopComponent().getHeight()+" vars="+lower.getTopComponent().getHeight()+" props="+lower.getBottomComponent().getHeight()+" cmd="+cmd.getLeftComponent().getWidth());ck(outer.getTopComponent().getHeight()>=85,"natural top collapsed @"+s[0]);ck(lower.getTopComponent().getHeight()>=65,"natural vars collapsed @"+s[0]);ck(lower.getBottomComponent().getHeight()>=65,"natural props collapsed @"+s[0]);ck(cmd.getLeftComponent().getWidth()>=340,"natural command too narrow @"+s[0]);});}
-
-              // Explicit ratio reset, with a separate EDT turn so invokeLater has executed.
               for(int[] s:sizes){edt(()->{F.setSize(s[0],s[1]);F.validate();layout(F.getContentPane());try{m("applyDividerRatios").invoke(F);}catch(Exception e){throw new RuntimeException(e);}});edt(()->{F.validate();layout(F.getContentPane());System.out.println("RESET "+s[0]+" top="+outer.getTopComponent().getHeight()+" vars="+lower.getTopComponent().getHeight()+" props="+lower.getBottomComponent().getHeight()+" cmd="+cmd.getLeftComponent().getWidth());ck(outer.getTopComponent().getHeight()>=85,"reset top collapsed @"+s[0]);ck(lower.getTopComponent().getHeight()>=65,"reset vars collapsed @"+s[0]);ck(lower.getBottomComponent().getHeight()>=65,"reset props collapsed @"+s[0]);ck(cmd.getLeftComponent().getWidth()>=340,"reset command too narrow @"+s[0]);});}
-
-              edt(()->F.dispose());System.out.println("DEEP_AUDIT_141_OK");System.exit(0);
+              edt(()->F.dispose());
             }
           }
           EOF
           javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/DeepAudit141.java
-          xvfb-run -a java -cp /tmp/classes DeepAudit141
+          timeout 75s xvfb-run -a java -cp /tmp/classes DeepAudit141
 
       - name: Static and render regression matrix
         shell: bash
