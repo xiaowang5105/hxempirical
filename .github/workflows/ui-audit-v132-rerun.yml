@@ -1,0 +1,45 @@
+name: UI audit v1.3.2 rerun
+
+on:
+  push:
+    branches: [ui-audit-v132]
+    paths:
+      - '.github/workflows/ui-audit-v132-rerun.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply corrected audited patch
+        run: python3 scripts/apply_ui_audit_v132_wrapper.py
+
+      - name: Compile, functional-audit, and render
+        run: bash scripts/run_ui_audit_v132.sh
+
+      - name: Upload audit previews
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-audit-v132
+          path: |
+            /tmp/xtreg-expanded.png
+            /tmp/xtreg-collapsed.png
+          if-no-files-found: error
+
+      - name: Commit clean audited result to branch
+        shell: bash
+        run: |
+          rm -f scripts/apply_ui_audit_v132.py \
+                scripts/apply_ui_audit_v132_wrapper.py \
+                scripts/run_ui_audit_v132.sh \
+                .github/workflows/ui-audit-v132.yml \
+                .github/workflows/ui-audit-v132-rerun.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar hxempirical.ado hxempirical.pkg scripts .github/workflows
+          git commit -m 'Fix responsive xtreg interactions and sidebar [ui-audit]' || exit 0
+          git push
