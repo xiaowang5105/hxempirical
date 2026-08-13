@@ -1,4 +1,4 @@
 v 3
 d HX empirical workbench for Stata 17 and later
-d Launcher-style workbench with task search, parameter restore, visual regress builder, safe DID/event study, external OneClick, and History integration
+d Launcher-style workbench with task search, parameter restore, visual regression tools, official DID commands, external OneClick, and History integration
 p hxempirical HX empirical workbench
