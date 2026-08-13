@@ -26,7 +26,9 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -101,6 +103,7 @@ import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.TransferHandler;
 import javax.swing.ListModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
@@ -122,7 +125,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.0";
+   public static final String VERSION = "1.3.1";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -343,7 +346,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.0");
+      SFIToolkit.displayln("HxWorkbench 1.3.1");
       return 0;
    }
 
@@ -2350,6 +2353,11 @@ public final class HxWorkbench {
       private final JLabel homeDatasetDetail = new JLabel("载入数据后显示样本数与变量数");
       private final JPanel homeAllFunctionsPanel = new JPanel();
       private final Map<String, JButton> sidebarButtons = new LinkedHashMap<>();
+      private JPanel sidebarPanel;
+      private JPanel sidebarBottomPanel;
+      private JButton sidebarToggleButton;
+      private boolean sidebarCollapsed = false;
+      private String draggedDataVariable = "";
       private String activeSidebarKey = "home";
       private final JTextArea exactOneClickCommand = new JTextArea();
       private final JTextField exactOneClickModelOptions = new JTextField();
@@ -2778,9 +2786,13 @@ public final class HxWorkbench {
          this.wireEvents();
 
          this.sharedDataInspector = this.buildDataContainer();
-         this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.buildCommandContainer(), this.sharedDataInspector);
-         this.commandDataSplit.setResizeWeight(1.0);
+         this.sharedDataInspector.setMinimumSize(new Dimension(260, 0));
+         JComponent commandPane = this.buildCommandContainer();
+         commandPane.setMinimumSize(new Dimension(0, 0));
+         this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, commandPane, this.sharedDataInspector);
+         this.commandDataSplit.setResizeWeight(0.60);
          this.commandDataSplit.setContinuousLayout(true);
+         this.commandDataSplit.setOneTouchExpandable(true);
          this.commandDataSplit.setBorder(null);
          this.commandDataSplit.setDividerSize(8);
          this.commandDataSplit.setBackground(APP_BG);
@@ -3250,8 +3262,12 @@ public final class HxWorkbench {
          SwingUtilities.invokeLater(() -> {
             int total = this.commandDataSplit.getWidth();
             if (total > 0) {
-               int inspector = Math.max(360, Math.min(410, total / 3));
-               this.commandDataSplit.setDividerLocation(Math.max(560, total - inspector));
+               int minInspector = total < 980 ? 270 : 320;
+               int inspector = Math.max(minInspector, Math.min(520, (int)Math.round(total * 0.43)));
+               int minCommand = total < 980 ? 390 : 480;
+               int divider = Math.max(minCommand, total - inspector);
+               divider = Math.min(divider, Math.max(minCommand, total - 250));
+               this.commandDataSplit.setDividerLocation(Math.max(0, divider));
             }
             if (this.dataSummarySplit != null) {
                int var2 = (int)Math.round(this.dataSummarySplit.getHeight() * 0.70);
@@ -3382,6 +3398,7 @@ public final class HxWorkbench {
          JPanel sidebar = new JPanel(new BorderLayout());
          sidebar.setBackground(SURFACE);
          sidebar.setPreferredSize(new Dimension(205, 0));
+         this.sidebarPanel = sidebar;
          sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(226, 232, 240)));
 
          JPanel nav = new JPanel();
@@ -3401,7 +3418,22 @@ public final class HxWorkbench {
          nav.add(this.sidebarButton("history", "◷", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
          nav.add(Box.createVerticalStrut(8));
          nav.add(this.sidebarButton("settings", "⚙", "设置", () -> this.openHomeTask("special", "performance")));
-         sidebar.add(nav, BorderLayout.NORTH);
+         JPanel sidebarTop = new JPanel(new BorderLayout());
+         sidebarTop.setOpaque(false);
+         JPanel collapseLine = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 6));
+         collapseLine.setOpaque(false);
+         this.sidebarToggleButton = new JButton("«");
+         this.sidebarToggleButton.setToolTipText("收起左侧导航");
+         this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, SURFACE));
+         this.sidebarToggleButton.setBorder(new EmptyBorder(5, 9, 5, 9));
+         this.sidebarToggleButton.setFocusPainted(false);
+         this.sidebarToggleButton.setContentAreaFilled(false);
+         this.sidebarToggleButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+         this.sidebarToggleButton.addActionListener(e -> this.toggleSidebarCollapsed());
+         collapseLine.add(this.sidebarToggleButton);
+         sidebarTop.add(collapseLine, BorderLayout.NORTH);
+         sidebarTop.add(nav, BorderLayout.CENTER);
+         sidebar.add(sidebarTop, BorderLayout.NORTH);
 
          JPanel bottom = new JPanel();
          bottom.setOpaque(false);
@@ -3424,7 +3456,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.7");
+         JLabel version = new JLabel("版本：" + VERSION);
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
@@ -3435,14 +3467,49 @@ public final class HxWorkbench {
          policy.setFont(policy.getFont().deriveFont(10.0F));
          policy.setAlignmentX(0.0F);
          bottom.add(policy);
+         this.sidebarBottomPanel = bottom;
          sidebar.add(bottom, BorderLayout.SOUTH);
          this.setSidebarActive("home");
+         this.applySidebarCollapsedState();
          return sidebar;
+      }
+
+      private void toggleSidebarCollapsed() {
+         this.sidebarCollapsed = !this.sidebarCollapsed;
+         this.applySidebarCollapsedState();
+      }
+
+      private void applySidebarCollapsedState() {
+         if (this.sidebarPanel == null) return;
+         int width = this.sidebarCollapsed ? 58 : 205;
+         this.sidebarPanel.setPreferredSize(new Dimension(width, 0));
+         this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
+         if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
+         if (this.sidebarToggleButton != null) {
+            this.sidebarToggleButton.setText(this.sidebarCollapsed ? "»" : "«");
+            this.sidebarToggleButton.setToolTipText(this.sidebarCollapsed ? "展开左侧导航" : "收起左侧导航");
+         }
+         for (JButton button : this.sidebarButtons.values()) {
+            String label = Objects.toString(button.getClientProperty("hx.sidebar.label"), "");
+            String glyph = Objects.toString(button.getClientProperty("hx.sidebar.glyph"), "");
+            String compact = glyph.isBlank() ? (label.isBlank() ? "•" : label.substring(0, 1)) : glyph;
+            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(label) + "</b></html>");
+            button.setHorizontalAlignment(this.sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
+            button.setBorder(new EmptyBorder(11, this.sidebarCollapsed ? 6 : 14, 11, this.sidebarCollapsed ? 6 : 14));
+            button.setToolTipText(this.sidebarCollapsed ? label : null);
+         }
+         this.sidebarPanel.revalidate();
+         this.sidebarPanel.repaint();
+         Container parent = this.sidebarPanel.getParent();
+         if (parent != null) { parent.revalidate(); parent.repaint(); }
+         SwingUtilities.invokeLater(this::applyDividerRatios);
       }
 
       private JButton sidebarButton(String key, String glyph, String label, Runnable action) {
          JButton button = new JButton("<html><b>" + html(label) + "</b></html>");
          button.putClientProperty("hx.sidebar.key", key);
+         button.putClientProperty("hx.sidebar.label", label);
+         button.putClientProperty("hx.sidebar.glyph", glyph);
          button.setHorizontalAlignment(SwingConstants.LEFT);
          button.setBorder(new EmptyBorder(11, 14, 11, 14));
          button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
@@ -6048,7 +6115,7 @@ public final class HxWorkbench {
          this.dataTable.setCellSelectionEnabled(true);
          this.dataTable.setSelectionMode(0);
          this.dataTable.setDefaultRenderer(Object.class, new HxWorkbench.WorkbenchFrame.ChangeRenderer());
-         this.dataTable.getTableHeader().setReorderingAllowed(true);
+         this.dataTable.getTableHeader().setReorderingAllowed(false);
          this.dataTable.setFillsViewportHeight(true);
          this.dataTable.setShowVerticalLines(false);
          this.dataTable.setShowHorizontalLines(true);
@@ -6059,6 +6126,7 @@ public final class HxWorkbench {
          this.dataTable.getTableHeader().setForeground(TEXT);
          this.dataTable.getTableHeader().setFont(this.dataTable.getTableHeader().getFont().deriveFont(1, 11.0F));
          this.dataTable.getTableHeader().setPreferredSize(new Dimension(0, 28));
+         this.installDataHeaderDragSupport();
          JScrollPane var1 = softScroll(this.dataTable);
          var1.getVerticalScrollBar().setUnitIncrement(20);
          var1.setColumnHeaderView(this.dataTable.getTableHeader());
@@ -7661,6 +7729,115 @@ public final class HxWorkbench {
          return strip;
       }
 
+      private void installDataHeaderDragSupport() {
+         final javax.swing.table.JTableHeader header = this.dataTable.getTableHeader();
+         header.setReorderingAllowed(false);
+         header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+         header.setToolTipText("拖动变量名到左侧变量输入框，可直接完成选择");
+         header.setTransferHandler(new TransferHandler() {
+            @Override
+            protected Transferable createTransferable(JComponent c) {
+               return WorkbenchFrame.this.draggedDataVariable == null || WorkbenchFrame.this.draggedDataVariable.isBlank()
+                  ? null : new StringSelection(WorkbenchFrame.this.draggedDataVariable);
+            }
+
+            @Override
+            public int getSourceActions(JComponent c) {
+               return COPY;
+            }
+         });
+
+         MouseAdapter dragger = new MouseAdapter() {
+            private boolean started;
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+               int viewColumn = header.columnAtPoint(e.getPoint());
+               this.started = false;
+               if (viewColumn >= 0) {
+                  WorkbenchFrame.this.draggedDataVariable = WorkbenchFrame.this.dataTable.getColumnName(viewColumn);
+                  WorkbenchFrame.this.dataTable.setColumnSelectionInterval(viewColumn, viewColumn);
+               } else {
+                  WorkbenchFrame.this.draggedDataVariable = "";
+               }
+            }
+
+            @Override
+            public void mouseDragged(MouseEvent e) {
+               if (!this.started && WorkbenchFrame.this.draggedDataVariable != null && !WorkbenchFrame.this.draggedDataVariable.isBlank()) {
+                  this.started = true;
+                  header.getTransferHandler().exportAsDrag(header, e, TransferHandler.COPY);
+               }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+               this.started = false;
+               WorkbenchFrame.this.draggedDataVariable = "";
+            }
+         };
+         header.addMouseListener(dragger);
+         header.addMouseMotionListener(dragger);
+      }
+
+      private void enableVariableDrop(JComboBox<String> target, String role) {
+         target.setToolTipText("可从右侧数据表表头拖入变量：" + role);
+         target.setTransferHandler(new TransferHandler() {
+            @Override
+            public boolean canImport(TransferSupport support) {
+               return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+               if (!canImport(support)) return false;
+               try {
+                  String variable = ((String)support.getTransferable().getTransferData(DataFlavor.stringFlavor)).trim();
+                  for (int i = 0; i < target.getItemCount(); i++) {
+                     if (variable.equals(target.getItemAt(i))) {
+                        target.setSelectedIndex(i);
+                        WorkbenchFrame.this.statusLabel.setText("已将变量 " + variable + " 拖入“" + role + "”。");
+                        return true;
+                     }
+                  }
+               } catch (Exception ex) {
+                  WorkbenchFrame.this.statusLabel.setText("拖入变量失败：" + ex.getMessage());
+               }
+               return false;
+            }
+         });
+      }
+
+      private void enableVariableDrop(JList<String> target, String role) {
+         target.setToolTipText("可从右侧数据表表头拖入变量：" + role);
+         target.setTransferHandler(new TransferHandler() {
+            @Override
+            public boolean canImport(TransferSupport support) {
+               return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+               if (!canImport(support)) return false;
+               try {
+                  String variable = ((String)support.getTransferable().getTransferData(DataFlavor.stringFlavor)).trim();
+                  ListModel<String> model = target.getModel();
+                  for (int i = 0; i < model.getSize(); i++) {
+                     if (variable.equals(model.getElementAt(i))) {
+                        target.addSelectionInterval(i, i);
+                        target.ensureIndexIsVisible(i);
+                        WorkbenchFrame.this.statusLabel.setText("已将变量 " + variable + " 拖入“" + role + "”。");
+                        return true;
+                     }
+                  }
+               } catch (Exception ex) {
+                  WorkbenchFrame.this.statusLabel.setText("拖入变量失败：" + ex.getMessage());
+               }
+               return false;
+            }
+         });
+      }
+
       private void showXtregWizardPageV130() {
          this.regressWorkspaceActive = false;
          this.baselineTaskActive = false;
@@ -7699,8 +7876,13 @@ public final class HxWorkbench {
          JList<String> indep = new JList<>(indepModel);
          indep.setSelectionMode(2);
          indep.setVisibleRowCount(4);
+         this.enableVariableDrop(panelVar, "个体变量（面板 ID）");
+         this.enableVariableDrop(timeVar, "时间变量");
+         this.enableVariableDrop(dep, "因变量（Y）");
+         this.enableVariableDrop(indep, "解释变量（X，可多选）");
          JScrollPane indepScroll = new JScrollPane(indep);
-         indepScroll.setPreferredSize(new Dimension(420, 82));
+         indepScroll.setPreferredSize(new Dimension(220, 82));
+         indepScroll.setMinimumSize(new Dimension(0, 82));
          indepScroll.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 8));
 
          JRadioButton fe = new JRadioButton("固定效应（FE）", true);
@@ -7757,7 +7939,7 @@ public final class HxWorkbench {
          step1.add(s1Fields, BorderLayout.CENTER);
          JPanel advice1 = new JPanel(); advice1.setBackground(new Color(246, 250, 255)); advice1.setBorder(new EmptyBorder(8, 10, 8, 10));
          advice1.add(new JLabel("建议：企业面板常见设置为 firm + year。"));
-         step1.add(advice1, BorderLayout.EAST);
+         step1.add(advice1, BorderLayout.SOUTH);
          c.gridy++; this.formPanel.add(step1, c);
 
          JPanel step2 = this.xtregWizardCardV130(2, "选择变量", "选择因变量和一个或多个解释变量。");
@@ -7768,12 +7950,12 @@ public final class HxWorkbench {
          step2.add(s2Fields, BorderLayout.CENTER);
          JPanel tip2 = new JPanel(); tip2.setBackground(new Color(244, 252, 248)); tip2.setBorder(new EmptyBorder(8, 10, 8, 10));
          tip2.add(new JLabel("提示：按 Ctrl / Shift 可多选解释变量。"));
-         step2.add(tip2, BorderLayout.EAST);
+         step2.add(tip2, BorderLayout.SOUTH);
          c.gridy++; this.formPanel.add(step2, c);
 
          JPanel step3 = this.xtregWizardCardV130(3, "估计选项", "选择模型类型与标准误方式，并按需要继续调整高级选项。");
          JPanel s3 = new JPanel(); s3.setOpaque(false); s3.setLayout(new BoxLayout(s3, BoxLayout.Y_AXIS));
-         JPanel models = new JPanel(new GridLayout(1, 4, 8, 0)); models.setOpaque(false);
+         JPanel models = new JPanel(new GridLayout(2, 2, 8, 6)); models.setOpaque(false);
          models.add(fe); models.add(re); models.add(be); models.add(pa);
          s3.add(models); s3.add(Box.createVerticalStrut(10));
          JPanel seLine = new JPanel(new BorderLayout(12, 0)); seLine.setOpaque(false); seLine.add(new JLabel("标准误方式"), BorderLayout.WEST); seLine.add(se, BorderLayout.CENTER);
@@ -7781,15 +7963,15 @@ public final class HxWorkbench {
          step3.add(s3, BorderLayout.CENTER);
          JPanel tip3 = new JPanel(); tip3.setBackground(new Color(255, 249, 236)); tip3.setBorder(new EmptyBorder(8, 10, 8, 10));
          tip3.add(new JLabel("小贴士：不确定时可先用 FE + 稳健标准误。"));
-         step3.add(tip3, BorderLayout.EAST);
+         step3.add(tip3, BorderLayout.SOUTH);
          c.gridy++; this.formPanel.add(step3, c);
 
          JPanel step4 = this.xtregWizardCardV130(4, "预览并运行", "查看将要执行的命令，确认无误后运行模型。");
          JPanel previewWrap = new JPanel(new BorderLayout(10, 0)); previewWrap.setOpaque(false);
          JPanel previewLeft = new JPanel(new BorderLayout(0, 5)); previewLeft.setOpaque(false); previewLeft.add(new JLabel("命令预览"), BorderLayout.NORTH); previewLeft.add(commandPreviewScroll, BorderLayout.CENTER);
          JTextArea syntax = readonlyArea(); syntax.setRows(3); syntax.setText("语法说明\n• xtset：声明面板结构\n• fe / re：固定效应或随机效应\n• vce(robust)：稳健标准误");
-         JScrollPane syntaxScroll = softScroll(syntax); syntaxScroll.setPreferredSize(new Dimension(310, 72));
-         previewWrap.add(previewLeft, BorderLayout.CENTER); previewWrap.add(syntaxScroll, BorderLayout.EAST);
+         JScrollPane syntaxScroll = softScroll(syntax); syntaxScroll.setPreferredSize(new Dimension(0, 72));
+         previewWrap.add(previewLeft, BorderLayout.CENTER); previewWrap.add(syntaxScroll, BorderLayout.SOUTH);
          step4.add(previewWrap, BorderLayout.CENTER);
          JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0)); actions.setOpaque(false);
          JButton prev = this.refButton("上一步", false); prev.addActionListener(e -> this.formScroll.getVerticalScrollBar().setValue(0));
