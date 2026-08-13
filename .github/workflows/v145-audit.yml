@@ -1,0 +1,24 @@
+name: v1.4.5 middle inspector and command sync audit
+on:
+  push:
+    branches: [ui-middle-command-sync-v145]
+    paths: ['.github/workflows/v145-audit.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run functional audit
+        shell: bash
+        run: bash scripts/v145_audit.sh
+      - name: Commit audited candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp hxworkbench.jar src/main/java/com/hexie/stata/HxWorkbench.java audit-v145
+          git commit -m 'Restore middle variable rail and editable xtreg sync [v1.4.5]'
+          git push origin HEAD:ui-middle-command-sync-v145
