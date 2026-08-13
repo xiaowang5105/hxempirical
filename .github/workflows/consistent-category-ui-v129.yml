@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Fix temporary patch runner
+        run: python3 scripts/fix_consistent_category_ui_v129_runner.py
+
       - name: Apply category UI patch
         run: python3 scripts/apply_consistent_category_ui_v129.py
 
