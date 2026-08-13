@@ -11,6 +11,19 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Repair patch writer for audit branch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/v145_patch.py')
+          s=p.read_text(encoding='utf-8')
+          needle='# Release metadata.'
+          assert needle in s
+          if "p.write_text(s, encoding='utf-8')" not in s:
+              s=s.replace(needle, "p.write_text(s, encoding='utf-8')\n\n"+needle, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Run functional audit
         shell: bash
         run: bash scripts/v145_audit.sh
@@ -22,4 +35,4 @@ jobs:
           git add README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp hxworkbench.jar src/main/java/com/hexie/stata/HxWorkbench.java audit-v145
           git commit -m 'Restore middle variable rail and editable xtreg sync [v1.4.5]'
           git push origin HEAD:ui-middle-command-sync-v145
-# rerun 2
+# rerun 3
