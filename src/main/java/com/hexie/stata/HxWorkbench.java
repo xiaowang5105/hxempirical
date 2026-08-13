@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.2";
+   public static final String VERSION = "1.3.3";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.2");
+      SFIToolkit.displayln("HxWorkbench 1.3.3");
       return 0;
    }
 
@@ -8014,6 +8014,7 @@ public final class HxWorkbench {
          JPanel advice1 = new JPanel(); advice1.setBackground(new Color(246, 250, 255)); advice1.setBorder(new EmptyBorder(8, 10, 8, 10));
          advice1.add(new JLabel("建议：企业面板常见设置为 firm + year。"));
          step1.add(advice1, BorderLayout.SOUTH);
+         step1.setMinimumSize(new Dimension(0, step1.getPreferredSize().height));
          c.gridy++; this.formPanel.add(step1, c);
 
          JPanel step2 = this.xtregWizardCardV130(2, "选择变量", "选择因变量和一个或多个解释变量。");
@@ -8036,11 +8037,12 @@ public final class HxWorkbench {
          JPanel tip2 = new JPanel(); tip2.setBackground(new Color(244, 252, 248)); tip2.setBorder(new EmptyBorder(8, 10, 8, 10));
          tip2.add(new JLabel("提示：可直接把右侧数据表表头拖入；列表仍支持 Ctrl / Shift 多选。"));
          step2.add(tip2, BorderLayout.SOUTH);
+         step2.setMinimumSize(new Dimension(0, step2.getPreferredSize().height));
          c.gridy++; this.formPanel.add(step2, c);
 
          JPanel step3 = this.xtregWizardCardV130(3, "估计选项", "选择模型类型与标准误方式，并按需要继续调整高级选项。");
          JPanel s3 = new JPanel(); s3.setOpaque(false); s3.setLayout(new BoxLayout(s3, BoxLayout.Y_AXIS));
-         JPanel models = new JPanel(new GridLayout(2, 2, 8, 6)); models.setOpaque(false);
+         JPanel models = new JPanel(new GridLayout(4, 1, 0, 4)); models.setOpaque(false);
          models.add(fe); models.add(re); models.add(be); models.add(pa);
          s3.add(models); s3.add(Box.createVerticalStrut(10));
          JPanel seLine = new JPanel(new BorderLayout(12, 0)); seLine.setOpaque(false); seLine.add(new JLabel("标准误方式"), BorderLayout.WEST); seLine.add(se, BorderLayout.CENTER);
@@ -8049,6 +8051,7 @@ public final class HxWorkbench {
          JPanel tip3 = new JPanel(); tip3.setBackground(new Color(255, 249, 236)); tip3.setBorder(new EmptyBorder(8, 10, 8, 10));
          tip3.add(new JLabel("小贴士：不确定时可先用 FE + 稳健标准误。"));
          step3.add(tip3, BorderLayout.SOUTH);
+         step3.setMinimumSize(new Dimension(0, step3.getPreferredSize().height));
          c.gridy++; this.formPanel.add(step3, c);
 
          JPanel step4 = this.xtregWizardCardV130(4, "预览并运行", "查看将要执行的命令，确认无误后运行模型。");
@@ -8058,7 +8061,7 @@ public final class HxWorkbench {
          JScrollPane syntaxScroll = softScroll(syntax); syntaxScroll.setPreferredSize(new Dimension(0, 72));
          previewWrap.add(previewLeft, BorderLayout.CENTER); previewWrap.add(syntaxScroll, BorderLayout.SOUTH);
          step4.add(previewWrap, BorderLayout.CENTER);
-         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0)); actions.setOpaque(false);
+         JPanel actions = new JPanel(new GridLayout(1, 3, 8, 0)); actions.setOpaque(false);
          JButton prev = this.refButton("上一步", false); prev.addActionListener(e -> this.formScroll.getVerticalScrollBar().setValue(0));
          JButton clear = this.refButton("清空设置", false); clear.addActionListener(e -> { panelVar.setSelectedIndex(0); timeVar.setSelectedIndex(0); dep.setSelectedIndex(0); indep.clearSelection(); fe.setSelected(true); se.setSelectedIndex(0); update.run(); });
          JButton run = this.refButton("运行 xtreg", true);
@@ -8080,6 +8083,7 @@ public final class HxWorkbench {
          });
          actions.add(prev); actions.add(clear); actions.add(run);
          step4.add(actions, BorderLayout.SOUTH);
+         step4.setMinimumSize(new Dimension(0, step4.getPreferredSize().height));
          c.gridy++; this.formPanel.add(step4, c);
 
          c.gridy++; c.weighty = 1.0; c.fill = GridBagConstraints.BOTH;
