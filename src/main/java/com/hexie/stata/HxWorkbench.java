@@ -3172,8 +3172,7 @@ public final class HxWorkbench {
          JLabel var5 = new JLabel("完整命令会写入 Stata History");
          var5.setForeground(MUTED);
          var5.setFont(var5.getFont().deriveFont(11.0F));
-         styleSecondaryButton(this.inspectorToggle);
-         this.inspectorToggle.addActionListener(var1x -> this.toggleInspector());
+         this.inspectorToggle.setVisible(false);
          JPanel var6 = new JPanel(new FlowLayout(2, 10, 0));
          var6.setOpaque(false);
          var6.add(var5);
@@ -3300,7 +3299,7 @@ public final class HxWorkbench {
          bottom.setOpaque(false);
          bottom.setBorder(new EmptyBorder(8, 18, 20, 18));
          bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-         JButton guide = new JButton("<html><div style='text-align:left'><span style='font-size:22px;color:#2f76ed'>▣ ◕</span><br><b>新手指引</b><br><span style='font-size:9px;color:#718096'>5 分钟快速上手</span><br><span style='font-size:9px;color:#226df6'>立即查看  →</span></div></html>");
+         JButton guide = new JButton("<html><div style='text-align:left'><b>新手指引</b><br><span style='font-size:9px;color:#718096'>5 分钟快速上手</span><br><span style='font-size:9px;color:#226df6'>立即查看  →</span></div></html>");
          guide.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(new Color(248, 251, 255), new Color(242, 247, 255), new Color(234, 242, 255), TEXT, new Color(210, 225, 248)));
          guide.setBorder(new EmptyBorder(12, 14, 12, 14));
          guide.setHorizontalAlignment(SwingConstants.LEFT);
@@ -3317,7 +3316,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.4");
+         JLabel version = new JLabel("版本：1.2.5");
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
@@ -3739,9 +3738,8 @@ public final class HxWorkbench {
       }
 
       private JButton homeLauncherButton(String var1, String var2, Runnable var3, boolean var4) {
-         String glyph = taskGlyph(var1);
          JButton var5 = new JButton(
-            "<html><div style='text-align:left'><span style='font-size:16px;color:" + (var4 ? "#2563d9" : "#2f855a") + "'>" + html(glyph) + "</span>&nbsp;&nbsp;<b>" + html(var1) + "</b><br><span style='font-size:9px;color:#637083'>" + html(var2) + "</span><span style='float:right;color:#7b8798'>&nbsp;&nbsp;›</span></div></html>"
+            "<html><div style='text-align:left'><b>" + html(var1) + "</b><br><span style='font-size:9px;color:#637083'>" + html(var2) + "</span></div></html>"
          );
          Color var6 = SURFACE;
          Color var7 = var4 ? new Color(244, 248, 255) : new Color(249, 251, 253);
