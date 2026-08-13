@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.2";
+   public static final String VERSION = "1.4.3";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.2");
+      SFIToolkit.displayln("HxWorkbench 1.4.3");
       return 0;
    }
 
@@ -2863,6 +2863,7 @@ public final class HxWorkbench {
 
          JPanel center = new JPanel(new BorderLayout());
          center.setBackground(APP_BG);
+         center.add(this.buildSidebarToggleBar(), BorderLayout.NORTH);
          center.add(this.stageCards, BorderLayout.CENTER);
          center.add(this.buildStatusBar(), BorderLayout.SOUTH);
 
@@ -3482,6 +3483,24 @@ public final class HxWorkbench {
       }
 
 
+      private JComponent buildSidebarToggleBar() {
+         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+         bar.setOpaque(false);
+         bar.setPreferredSize(new Dimension(0, 46));
+         bar.setMinimumSize(new Dimension(0, 46));
+         this.sidebarToggleButton = new JButton("☰");
+         this.sidebarToggleButton.setToolTipText("隐藏左侧导航");
+         this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, new Color(226, 232, 240)));
+         this.sidebarToggleButton.setBorder(new EmptyBorder(7, 11, 7, 11));
+         this.sidebarToggleButton.setFocusPainted(false);
+         this.sidebarToggleButton.setContentAreaFilled(false);
+         this.sidebarToggleButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+         this.sidebarToggleButton.setPreferredSize(new Dimension(42, 32));
+         this.sidebarToggleButton.addActionListener(e -> this.toggleSidebarCollapsed());
+         bar.add(this.sidebarToggleButton);
+         return bar;
+      }
+
       private JComponent buildSidebar() {
          this.sidebarButtons.clear();
          JPanel sidebar = new JPanel(new BorderLayout());
@@ -3507,22 +3526,7 @@ public final class HxWorkbench {
          nav.add(this.sidebarButton("history", "◷", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
          nav.add(Box.createVerticalStrut(8));
          nav.add(this.sidebarButton("settings", "⚙", "设置", () -> this.openHomeTask("special", "performance")));
-         JPanel sidebarTop = new JPanel(new BorderLayout());
-         sidebarTop.setOpaque(false);
-         JPanel collapseLine = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 6));
-         collapseLine.setOpaque(false);
-         this.sidebarToggleButton = new JButton("«");
-         this.sidebarToggleButton.setToolTipText("收起左侧导航");
-         this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, SURFACE));
-         this.sidebarToggleButton.setBorder(new EmptyBorder(5, 9, 5, 9));
-         this.sidebarToggleButton.setFocusPainted(false);
-         this.sidebarToggleButton.setContentAreaFilled(false);
-         this.sidebarToggleButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-         this.sidebarToggleButton.addActionListener(e -> this.toggleSidebarCollapsed());
-         collapseLine.add(this.sidebarToggleButton);
-         sidebarTop.add(collapseLine, BorderLayout.NORTH);
-         sidebarTop.add(nav, BorderLayout.CENTER);
-         sidebar.add(sidebarTop, BorderLayout.NORTH);
+         sidebar.add(nav, BorderLayout.NORTH);
 
          JPanel bottom = new JPanel();
          bottom.setOpaque(false);
@@ -3570,23 +3574,23 @@ public final class HxWorkbench {
 
       private void applySidebarCollapsedState() {
          if (this.sidebarPanel == null) return;
-         int width = this.sidebarCollapsed ? 56 : 205;
+         this.sidebarPanel.setVisible(!this.sidebarCollapsed);
+         int width = this.sidebarCollapsed ? 0 : 205;
          this.sidebarPanel.setPreferredSize(new Dimension(width, 0));
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
          if (this.sidebarToggleButton != null) {
-            this.sidebarToggleButton.setText(this.sidebarCollapsed ? "»" : "«");
-            this.sidebarToggleButton.setToolTipText(this.sidebarCollapsed ? "展开左侧导航" : "收起左侧导航");
+            this.sidebarToggleButton.setText("☰");
+            this.sidebarToggleButton.setToolTipText(this.sidebarCollapsed ? "打开左侧导航" : "隐藏左侧导航");
          }
          for (JButton button : this.sidebarButtons.values()) {
             String label = Objects.toString(button.getClientProperty("hx.sidebar.label"), "");
             String glyph = Objects.toString(button.getClientProperty("hx.sidebar.glyph"), "");
-            String compact = glyph.isBlank() ? (label.isBlank() ? "•" : label.substring(0, 1)) : glyph;
             String expanded = glyph.isBlank() ? label : glyph + "   " + label;
-            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(expanded) + "</b></html>");
-            button.setHorizontalAlignment(this.sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
-            button.setBorder(new EmptyBorder(11, this.sidebarCollapsed ? 6 : 14, 11, this.sidebarCollapsed ? 6 : 14));
-            button.setToolTipText(this.sidebarCollapsed ? label : null);
+            button.setText("<html><b>" + html(expanded) + "</b></html>");
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+            button.setBorder(new EmptyBorder(11, 14, 11, 14));
+            button.setToolTipText(null);
          }
          this.sidebarPanel.revalidate();
          this.sidebarPanel.repaint();
