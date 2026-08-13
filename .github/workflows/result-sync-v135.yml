@@ -1,0 +1,147 @@
+name: Result synchronization v1.3.5
+
+on:
+  push:
+    branches: [result-sync-v135]
+    paths: ['.github/workflows/result-sync-v135.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply result synchronization fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # 1) Capture native Stata Results output to a stable temp log path.
+          p=Path('hxexecute.ado')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('*! hxexecute 1.5.0  11aug2026','*! hxexecute 1.6.0  13aug2026',1)
+          old='''    capture noisily `native'\n    local rc = _rc\n    /* use/clear may replace dataset characteristics; restore audit fields. */\n    char _dta[hxtoolbox_last_native_command] `"`native'"'\n'''
+          new='''    /* Mirror the command's visible Stata Results into a text log that Java can read. */\n    local hx_result_file `"`c(tmpdir)'/hxempirical_last_results.txt"'\n    capture erase `"`hx_result_file'"'\n    capture log close HXEMPIRICAL_RESULT\n    capture log using `"`hx_result_file'"', text replace name(HXEMPIRICAL_RESULT)\n    local hx_log_rc = _rc\n    capture noisily `native'\n    local rc = _rc\n    if !`hx_log_rc' capture log close HXEMPIRICAL_RESULT\n    /* use/clear may replace dataset characteristics; restore audit fields. */\n    char _dta[hxtoolbox_last_results_file] `"`hx_result_file'"'\n    char _dta[hxtoolbox_last_native_command] `"`native'"'\n'''
+          assert old in s, 'hxexecute native execution block not found'
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          # 2) String variables such as auto.make must be valid in monitor sample marking.
+          p=Path('hxmonitor.ado')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('*! hxmonitor 1.1.0  09aug2026','*! hxmonitor 1.1.1  13aug2026',1)
+          old="    if \"`checkedvars'\" != \"\" quietly markout `touse' `checkedvars'"
+          new="    if \"`checkedvars'\" != \"\" quietly markout `touse' `checkedvars', strok"
+          assert old in s, 'hxmonitor markout block not found'
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          # 3) Java: read the captured Stata text log and show it in the Results tab.
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('public static final String VERSION = "1.3.4";', 'public static final String VERSION = "1.3.5";', 1)
+          s=s.replace('SFIToolkit.displayln("HxWorkbench 1.3.4");', 'SFIToolkit.displayln("HxWorkbench 1.3.5");', 1)
+
+          old='''         this.resultSummaryArea.setBackground(SURFACE);\n         this.resultCards.setBackground(SURFACE);'''
+          new='''         this.resultSummaryArea.setBackground(SURFACE);\n         this.resultSummaryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));\n         this.resultCards.setBackground(SURFACE);'''
+          assert old in s, 'resultSummaryArea setup block not found'
+          s=s.replace(old,new,1)
+
+          old='''         this.monitorOutcome.setText(var7);\n         this.monitorOutcome.setCaretPosition(0);\n         this.resultSummaryArea.setText(var7);\n         this.resultSummaryArea.setCaretPosition(0);'''
+          new='''         this.monitorOutcome.setText(var7);\n         this.monitorOutcome.setCaretPosition(0);\n         String nativeOutput = HxWorkbench.StataBridge.lastNativeOutput();\n         if (nativeOutput.isBlank()) {\n            this.resultSummaryArea.setText(var7);\n         } else {\n            this.resultSummaryArea.setText("Stata 原始输出\\n\\n" + nativeOutput + "\\n\\n—— 执行摘要 ——\\n" + var7);\n         }\n         this.resultSummaryArea.setCaretPosition(0);'''
+          assert old in s, 'finishMonitoredRun result block not found'
+          s=s.replace(old,new,1)
+
+          old='''            String setup = "xtset " + pv + (tv.isBlank() ? "" : " " + tv);\n            String cmd = this.previewArea.getText().trim();\n            int rc = HxWorkbench.StataBridge.execute(setup, false);\n            if (rc == 0) rc = HxWorkbench.StataBridge.execute(cmd, true);\n            this.refreshDataset(false);\n            this.statusLabel.setText(rc == 0 ? "xtreg 已运行。右侧可查看结果与日志。" : "xtreg 运行失败，返回码：" + rc);'''
+          new='''            String setup = "xtset " + pv + (tv.isBlank() ? "" : " " + tv);\n            String cmd = this.previewArea.getText().trim();\n            int setupRc = HxWorkbench.StataBridge.execute(setup, false);\n            if (setupRc != 0) {\n               this.statusLabel.setText("xtset 失败，返回码：" + setupRc);\n               return;\n            }\n            this.executeMonitoredCommand(\n               cmd,\n               "hxexecute, command(" + HxWorkbench.StataBridge.quote(cmd) + ")",\n               false,\n               result -> this.statusLabel.setText(\n                  result.rc == 0 ? "xtreg 已运行；右侧‘结果’已同步 Stata Results。" : "xtreg 运行失败，返回码：" + result.rc\n               )\n            );'''
+          assert old in s, 'xtreg direct run block not found'
+          s=s.replace(old,new,1)
+
+          marker='''      static String characteristic(String var0) {\n         try {\n            String var1 = Characteristic.getDtaChar(var0);'''
+          helper='''      static String lastNativeOutput() {\n         String path = characteristic("hxtoolbox_last_results_file");\n         if (path == null || path.isBlank()) {\n            return "";\n         }\n\n         try {\n            byte[] bytes = Files.readAllBytes(Paths.get(path));\n            if (bytes.length == 0) {\n               return "";\n            }\n\n            String text;\n            try {\n               text = StandardCharsets.UTF_8\n                  .newDecoder()\n                  .onMalformedInput(CodingErrorAction.REPORT)\n                  .onUnmappableCharacter(CodingErrorAction.REPORT)\n                  .decode(ByteBuffer.wrap(bytes))\n                  .toString();\n            } catch (CharacterCodingException var3) {\n               text = new String(bytes, Charset.defaultCharset());\n            }\n\n            text = text.replace("\\r\\n", "\\n").replace('\\r', '\\n').trim();\n            return text.length() > 120000 ? text.substring(text.length() - 120000) : text;\n         } catch (Throwable var4) {\n            return "";\n         }\n      }\n\n'''+marker
+          assert marker in s, 'StataBridge characteristic marker not found'
+          s=s.replace(marker,helper,1)
+          p.write_text(s,encoding='utf-8')
+
+          # 4) Public package version metadata.
+          p=Path('hxempirical.ado'); s=p.read_text(encoding='utf-8')
+          s=s.replace('*! hxempirical 1.3.4  13aug2026','*! hxempirical 1.3.5  13aug2026',1).replace('"1.3.4"','"1.3.5"')
+          p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.pkg'); s=p.read_text(encoding='utf-8').replace('d Version 1.3.4','d Version 1.3.5',1); p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.sthlp'); s=p.read_text(encoding='utf-8').replace('version 1.3.4','version 1.3.5').replace('The 1.3.4 interface','The 1.3.5 interface'); p.write_text(s,encoding='utf-8')
+          p=Path('README.md'); s=p.read_text(encoding='utf-8').replace('**当前发布版本：1.3.4**','**当前发布版本：1.3.5**',1).replace('**上次修改时间：2026-08-13 13:39（UTC+8）**','**上次修改时间：2026-08-13 14:08（UTC+8）**',1); p.write_text(s,encoding='utf-8')
+          print('PATCH_OK')
+          PY
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Audit output bridge and xtreg integration
+        shell: bash
+        run: |
+          grep -q 'hxtoolbox_last_results_file' hxexecute.ado
+          grep -q 'name(HXEMPIRICAL_RESULT)' hxexecute.ado
+          grep -q "markout .*strok" hxmonitor.ado
+          grep -q 'lastNativeOutput()' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q "右侧‘结果’已同步 Stata Results" src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'executeMonitoredCommand' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'public static final String VERSION = "1.3.5"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.3.5' hxempirical.pkg
+
+          cat > /tmp/ResultBridgeAudit.java <<'EOF'
+          import java.lang.reflect.*; import java.nio.file.*; import com.stata.sfi.Characteristic;
+          public class ResultBridgeAudit {
+            public static void main(String[] args) throws Exception {
+              Path p=Paths.get("/tmp/hx_result_sample.txt");
+              Files.writeString(p,"Regression output\nregress price mpg weight\nNumber of obs = 74\n");
+              Characteristic.setDtaChar("hxtoolbox_last_results_file",p.toString());
+              Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$StataBridge");
+              Method m=c.getDeclaredMethod("lastNativeOutput"); m.setAccessible(true);
+              String out=(String)m.invoke(null);
+              if(!out.contains("regress price mpg weight") || !out.contains("74")) throw new AssertionError(out);
+              System.out.println("RESULT_BRIDGE_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/ResultBridgeAudit.java
+          java -cp /tmp/classes ResultBridgeAudit
+
+      - name: Commit audited product changes
+        shell: bash
+        run: |
+          rm -f .github/workflows/result-sync-v135.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hxexecute.ado hxmonitor.ado hxempirical.ado hxempirical.pkg hxempirical.sthlp README.md src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar .github/workflows/result-sync-v135.yml
+          git commit -m 'Synchronize Stata Results with workbench result pane [v1.3.5]'
+          git push origin HEAD:result-sync-v135
