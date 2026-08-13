@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.6";
+   public static final String VERSION = "1.3.7";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.6");
+      SFIToolkit.displayln("HxWorkbench 1.3.7");
       return 0;
    }
 
@@ -2986,7 +2986,7 @@ public final class HxWorkbench {
 
       private void populateMonitorDetailsPreviewState() {
          this.dataTabs.setSelectedIndex(2);
-         this.rightPaneTitle.setText("当前数据");
+         this.syncRightPaneTitle();
       }
 
       private void populateGraphPreviewState() {
@@ -6209,7 +6209,6 @@ public final class HxWorkbench {
          this.resultLayout.show(this.resultCards, "general");
          this.dataTabs.addTab("结果", this.resultCards);
          this.dataTabs.addTab("日志", this.buildRunMonitorPanel());
-         this.dataTabs.addChangeListener(var0 -> this.syncRightPaneTitle());
          this.dataTabs.setBackground(SURFACE);
          this.syncRightPaneTitle();
       }
@@ -6622,7 +6621,7 @@ public final class HxWorkbench {
 
       private void selectRunView() {
          this.dataTabs.setSelectedIndex(2);
-         this.rightPaneTitle.setText("当前数据");
+         this.syncRightPaneTitle();
       }
 
       private JComponent buildStatusBar() {
@@ -6659,7 +6658,7 @@ public final class HxWorkbench {
             }
          });
          this.refreshButton.addActionListener(var1x -> this.refreshDataset(false));
-         this.dataTabs.addChangeListener(var1x -> this.rightPaneTitle.setText("当前数据"));
+         this.dataTabs.addChangeListener(var1x -> this.syncRightPaneTitle());
          this.runButton.addActionListener(var1x -> this.runCurrentCommand());
          this.copyCommandButton.addActionListener(var1x -> this.copyCurrentCommand());
          this.dataTable.getSelectionModel().addListSelectionListener(var1x -> this.updateSelectedColumnSummary());
