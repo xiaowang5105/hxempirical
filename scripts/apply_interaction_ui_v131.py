@@ -11,9 +11,11 @@ def replace_once(old: str, new: str, label: str):
         raise SystemExit(f'missing marker: {label}')
     s = s.replace(old, new, 1)
 
+# Version.
 s = s.replace('public static final String VERSION = "1.3.0";', 'public static final String VERSION = "1.3.1";', 1)
 s = s.replace('SFIToolkit.displayln("HxWorkbench 1.3.0");', 'SFIToolkit.displayln("HxWorkbench 1.3.1");', 1)
 
+# Imports for drag and drop.
 replace_once(
     'import java.awt.datatransfer.StringSelection;\n',
     'import java.awt.datatransfer.DataFlavor;\nimport java.awt.datatransfer.StringSelection;\nimport java.awt.datatransfer.Transferable;\n',
@@ -25,6 +27,7 @@ replace_once(
     'TransferHandler import'
 )
 
+# Sidebar state and drag state fields.
 replace_once(
     '      private final Map<String, JButton> sidebarButtons = new LinkedHashMap<>();\n',
     '      private final Map<String, JButton> sidebarButtons = new LinkedHashMap<>();\n'
@@ -36,6 +39,7 @@ replace_once(
     'sidebar fields'
 )
 
+# Responsive main split pane. Keep both sides shrinkable and one-touch-expandable.
 replace_once(
     '         this.sharedDataInspector = this.buildDataContainer();\n'
     '         this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.buildCommandContainer(), this.sharedDataInspector);\n'
@@ -58,6 +62,7 @@ replace_once(
     'responsive split pane'
 )
 
+# Sidebar host + collapsible top row.
 replace_once(
     '         sidebar.setPreferredSize(new Dimension(205, 0));\n',
     '         sidebar.setPreferredSize(new Dimension(205, 0));\n'
@@ -135,8 +140,10 @@ replace_once(
     'sidebar collapse behavior'
 )
 
+# Fix stale hard-coded sidebar version label.
 s = s.replace('JLabel version = new JLabel("版本：1.2.7");', 'JLabel version = new JLabel("版本：" + VERSION);', 1)
 
+# Make data headers a deliberate drag source rather than column-reorder handles.
 s = s.replace('this.dataTable.getTableHeader().setReorderingAllowed(true);', 'this.dataTable.getTableHeader().setReorderingAllowed(false);', 1)
 replace_once(
     '         this.dataTable.getTableHeader().setPreferredSize(new Dimension(0, 28));\n',
@@ -145,6 +152,7 @@ replace_once(
     'header drag hook'
 )
 
+# Drag-and-drop helpers, inserted immediately before the xtreg wizard implementation.
 marker = '      private void showXtregWizardPageV130() {\n'
 if marker not in s:
     raise SystemExit('missing marker: xtreg wizard')
@@ -260,15 +268,16 @@ helpers = r'''      private void installDataHeaderDragSupport() {
 '''
 s = s.replace(marker, helpers + marker, 1)
 
+# Enable drag targets in xtreg and remove layout widths that forced horizontal overflow.
 replace_once(
     '         JList<String> indep = new JList<>(indepModel);\n'
-    '         indep.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);\n'
+    '         indep.setSelectionMode(2);\n'
     '         indep.setVisibleRowCount(4);\n'
     '         JScrollPane indepScroll = new JScrollPane(indep);\n'
     '         indepScroll.setPreferredSize(new Dimension(420, 82));\n'
     '         indepScroll.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 8));\n',
     '         JList<String> indep = new JList<>(indepModel);\n'
-    '         indep.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);\n'
+    '         indep.setSelectionMode(2);\n'
     '         indep.setVisibleRowCount(4);\n'
     '         this.enableVariableDrop(panelVar, "个体变量（面板 ID）");\n'
     '         this.enableVariableDrop(timeVar, "时间变量");\n'
@@ -281,12 +290,16 @@ replace_once(
     'xtreg drop targets'
 )
 
+# Put help/tip panels below the fields so resizing never places an invisible EAST region over controls.
 s = s.replace('step1.add(advice1, BorderLayout.EAST);', 'step1.add(advice1, BorderLayout.SOUTH);', 1)
 s = s.replace('step2.add(tip2, BorderLayout.EAST);', 'step2.add(tip2, BorderLayout.SOUTH);', 1)
 s = s.replace('step3.add(tip3, BorderLayout.EAST);', 'step3.add(tip3, BorderLayout.SOUTH);', 1)
+
+# More responsive model choices.
 s = s.replace('JPanel models = new JPanel(new GridLayout(1, 4, 8, 0)); models.setOpaque(false);',
               'JPanel models = new JPanel(new GridLayout(2, 2, 8, 6)); models.setOpaque(false);', 1)
 
+# Stack syntax help below command preview rather than forcing a fixed right-side width.
 replace_once(
     '         JScrollPane syntaxScroll = softScroll(syntax); syntaxScroll.setPreferredSize(new Dimension(310, 72));\n'
     '         previewWrap.add(previewLeft, BorderLayout.CENTER); previewWrap.add(syntaxScroll, BorderLayout.EAST);\n',
@@ -295,6 +308,7 @@ replace_once(
     'xtreg preview responsive'
 )
 
+# Ensure the form itself can shrink inside the split pane.
 replace_once(
     '         this.formPanel.revalidate(); this.formPanel.repaint(); this.formScroll.getVerticalScrollBar().setValue(0);\n'
     '         this.rebuilding = false;\n'
@@ -306,6 +320,7 @@ replace_once(
     'xtreg form shrink'
 )
 
+# Responsive divider placement instead of hard-coding a 560px command pane.
 replace_once(
     '            if (total > 0) {\n'
     '               int inspector = Math.max(360, Math.min(410, total / 3));\n'
@@ -324,6 +339,7 @@ replace_once(
 
 java.write_text(s, encoding='utf-8')
 
+# Package-visible version strings.
 for path in [root / 'hxempirical.ado', root / 'hxempirical.pkg']:
     text = path.read_text(encoding='utf-8')
     text = text.replace('1.3.0', '1.3.1')
