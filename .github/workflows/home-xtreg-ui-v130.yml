@@ -1,0 +1,116 @@
+name: Apply home and xtreg UI v1.3.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/home-xtreg-ui-v130.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply UI patch
+        run: python3 scripts/apply_home_xtreg_ui_v130.py
+
+      - name: Create compile-only Stata SFI stubs
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit {
+            public static int executeCommand(String s, boolean b){return 0;}
+            public static void errorln(String s){}
+            public static void displayln(String s){}
+            public static String stackTraceToString(Throwable t){return "";}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro {
+            public static String getGlobal(String s){return "";}
+            public static String getLocal(String s){return "";}
+            public static void setGlobal(String s,String v){}
+            public static void setLocal(String s,String v){}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0L;}
+            public static int getVarCount(){return 0;}
+            public static String getVarName(int i){return "";}
+            public static String getVarLabel(int i){return "";}
+            public static String getVarFormat(int i){return "";}
+            public static int getVarIndex(String s){return -1;}
+            public static boolean isVarTypeString(int i){return false;}
+            public static double getNum(int i,long j){return Double.NaN;}
+            public static String getStr(int i,long j){return "";}
+            public static String getFormattedValue(int i,long j){return "";}
+            public static String getFormattedValue(int i,long j,boolean b){return "";}
+            public static void storeNum(int i,long j,double d){}
+            public static void storeStr(int i,long j,String s){}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame {
+            public static Frame create(String s){return new Frame();}
+            public static Frame connect(String s){return new Frame();}
+            public void drop(){}
+            public long getObsTotal(){return 0L;}
+            public int getVarCount(){return 0;}
+            public String getVarName(int i){return "";}
+            public int getVarIndex(String s){return -1;}
+            public boolean isVarTypeString(int i){return false;}
+            public double getNum(int i,long j){return Double.NaN;}
+            public String getStr(int i,long j){return "";}
+            public String getFormattedValue(int i,long j){return "";}
+            public String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+
+      - name: Compile Java 11 workbench
+        shell: bash
+        run: |
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Validate home and xtreg redesign
+        shell: bash
+        run: |
+          grep -q 'VERSION = "1.3.0"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'homeQuickTileV130' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '搜索功能或直接输入 Stata 命令' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'showXtregWizardPageV130' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'xtreg · 面板数据回归' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '面板设定（xtset）' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.3.0' hxempirical.pkg
+
+      - name: Commit generated workbench
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar hxempirical.ado hxempirical.pkg hxworkbench.ado
+          git commit -m 'Redesign workbench home and xtreg wizard [generated-ui]' || exit 0
+          git push
