@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.3  12aug2026}{...}
+{* *! version 1.2.4  12aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -26,11 +26,10 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.2.3 interface follows the supplied 1672x941 reference layouts directly.
-The start page uses a fixed left navigation rail, a Start Analysis card, five
-quick actions, current-data status, a 2-by-3 common-task area, recent work, and a
-single row of additional functions. The linear-model directory and OneClick
-workspace use the same fixed card proportions and right-side guidance structure.
+The 1.2.4 interface uses a stable desktop-workbench layout: a fixed left
+navigation rail, a task-focused main workspace, and one shared right-side
+Current Data inspector. OneClick and ordinary command pages reuse that same
+inspector instead of maintaining separate look-alike data/result panels.
 
 {pstd}
 Research tasks can open a task workspace directly. The baseline-regression
@@ -46,7 +45,7 @@ Detailed examples and limitations are kept in the command page. Breadcrumbs,
 {bf:上一级}, {bf:首页}, and command help use fixed positions.
 
 {pstd}
-The right side has three stable tabs: {bf:数据}, {bf:结果}, and {bf:运行}.
+The right side has three stable tabs: {bf:数据}, {bf:结果}, and {bf:日志}.
 The content inside {bf:结果} changes with the active task. Missing-value,
 conversion, graph, DID, and OneClick pages therefore expose only their relevant
 outputs instead of a permanent row of unrelated tabs.
@@ -67,7 +66,7 @@ common multi-concept requests such as enterprise-and-year fixed effects or
 control-variable robustness are routed to the relevant method. The page also
 shows the current Stata dataset status. {bf:继续工作} stores the last three model
 specifications locally and restores their parameters without automatically
-running them. The complete catalog is available through {bf:展开全部功能}. Methods
+running them. Methods
 that contain only one command open that command directly, avoiding an extra
 chooser click. The full regression category remains available under
 {bf:回归模型}; it separates ordinary OLS, fixed-effects linear regression, robust
@@ -120,9 +119,10 @@ and reports the current run state and elapsed time without scrolling away.
 The right-side {bf:运行} tab records the command, start and end times,
 elapsed time, Stata return code, History-write status, processor status, data
 shape before and after the run, and available estimation results such as
-{cmd:e(N)} and {cmd:e(r2)}. The detailed section contains a timestamped log and
-run queue. Ordinary Stata estimation commands use an indeterminate progress
-state because their internal percentage is unavailable. Batch file conversion
+{cmd:e(N)} and {cmd:e(r2)}. The {bf:日志} tab keeps the timestamped execution log and run queue visible in
+one fixed scrollable view; there is no expand/collapse details control. Ordinary
+Stata estimation commands use an indeterminate progress state because their
+internal percentage is unavailable. Batch file conversion
 uses the actual number of completed files and displays a real percentage.
 
 {title:Installation}
@@ -261,4 +261,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.1.0.
+HX empirical workbench, package version 1.2.4.
