@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.8";
+   public static final String VERSION = "1.3.9";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.8");
+      SFIToolkit.displayln("HxWorkbench 1.3.9");
       return 0;
    }
 
@@ -2037,26 +2037,36 @@ public final class HxWorkbench {
          }
 
          try {
-            byte[] bytes = Files.readAllBytes(Paths.get(path));
-            if (bytes.length == 0) {
+            Path resultPath = Paths.get(path);
+            if (!Files.isRegularFile(resultPath)) {
                return "";
             }
 
-            String text;
-            try {
-               text = StandardCharsets.UTF_8
-                  .newDecoder()
-                  .onMalformedInput(CodingErrorAction.REPORT)
-                  .onUnmappableCharacter(CodingErrorAction.REPORT)
-                  .decode(ByteBuffer.wrap(bytes))
-                  .toString();
-            } catch (CharacterCodingException var3) {
-               text = new String(bytes, Charset.defaultCharset());
+            final int maxBytes = 2 * 1024 * 1024;
+            long fileSize = Files.size(resultPath);
+            byte[] bytes;
+            try (InputStream in = Files.newInputStream(resultPath)) {
+               bytes = in.readNBytes(maxBytes);
             }
 
-            text = text.replace("\r\n", "\n").replace('\r', '\n').trim();
-            return text.length() > 120000 ? text.substring(text.length() - 120000) : text;
-         } catch (Throwable var4) {
+            Charset charset = StandardCharsets.UTF_8;
+            int offset = 0;
+            if (bytes.length >= 3 && (bytes[0] & 255) == 0xEF && (bytes[1] & 255) == 0xBB && (bytes[2] & 255) == 0xBF) {
+               offset = 3;
+            } else if (bytes.length >= 2 && (bytes[0] & 255) == 0xFF && (bytes[1] & 255) == 0xFE) {
+               charset = StandardCharsets.UTF_16LE;
+               offset = 2;
+            } else if (bytes.length >= 2 && (bytes[0] & 255) == 0xFE && (bytes[1] & 255) == 0xFF) {
+               charset = StandardCharsets.UTF_16BE;
+               offset = 2;
+            }
+
+            String text = new String(bytes, offset, Math.max(0, bytes.length - offset), charset).replace("\u0000", "").stripTrailing();
+            if (fileSize > bytes.length) {
+               text += "\n\n[输出过长：工具箱仅显示前 2 MB；完整内容仍保留在 Stata Results。]";
+            }
+            return text;
+         } catch (Throwable var2) {
             return "";
          }
       }
@@ -6602,10 +6612,20 @@ public final class HxWorkbench {
          int index = this.dataTabs.getSelectedIndex();
          if (index == 1) {
             this.rightPaneTitle.setText("结果");
+            this.refreshButton.setVisible(false);
+            String command = this.lastExecutedCommand == null ? "" : this.lastExecutedCommand.trim();
+            this.dataLabel.setText(command.isBlank() ? "运行命令后显示 Stata 原始输出与执行摘要" : "最近命令：" + shortenCommand(command));
          } else if (index == 2) {
             this.rightPaneTitle.setText("运行日志");
+            this.refreshButton.setVisible(false);
+            this.dataLabel.setText(this.runInProgress ? "命令执行中 · 查看实时计时与状态" : "执行状态、耗时、Return code 与 History");
          } else {
             this.rightPaneTitle.setText("当前数据");
+            this.refreshButton.setVisible(true);
+            long n = Data.getObsTotal();
+            int k = Data.getVarCount();
+            String dataHint = "xtreg".equals(this.currentCommand) ? " | 拖动表头变量可直接填入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+            this.dataLabel.setText(n != 0L && k != 0 ? n + " 行 × " + k + " 列" + dataHint : "尚未载入数据");
          }
       }
 
@@ -11453,6 +11473,7 @@ public final class HxWorkbench {
                   + "　"
                   + HxWorkbench.StataBridge.characteristic("hxtoolbox_status_cpu")
             );
+         this.syncRightPaneTitle();
          this.refreshHomeContext();
       }
 
