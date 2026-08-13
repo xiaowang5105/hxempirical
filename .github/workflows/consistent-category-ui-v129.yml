@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
 
+# rerun after fixing the temporary patch runner
 jobs:
   patch-build:
     runs-on: ubuntu-latest
