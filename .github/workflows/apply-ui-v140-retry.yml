@@ -1,0 +1,106 @@
+name: Retry inspector UI v1.4.0
+
+on:
+  push:
+    branches: [ui-inspector-v140]
+    paths: ['.github/workflows/apply-ui-v140-retry.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  build-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fix patch script and apply
+        run: |
+          python3 scripts/fix_ui_v140_compile.py
+          python3 scripts/apply_ui_v140.py
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sfi /tmp/classes
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getVarLabel(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Runtime inspector and xtreg audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/InspectorV140Audit.java <<'EOF'
+          import java.awt.*; import java.lang.reflect.*; import javax.swing.*; import java.util.*;
+          public class InspectorV140Audit {
+            static Field f(Class<?> c,String n)throws Exception{Field x=c.getDeclaredField(n);x.setAccessible(true);return x;}
+            static Method m(Class<?> c,String n,Class<?>...a)throws Exception{Method x=c.getDeclaredMethod(n,a);x.setAccessible(true);return x;}
+            static void ck(boolean v,String s){if(!v)throw new AssertionError(s);}
+            static void layout(Container c){c.doLayout(); for(Component x:c.getComponents())if(x instanceof Container)layout((Container)x);}
+            static java.util.List<Component> all(Component c){java.util.List<Component> z=new ArrayList<>();z.add(c);if(c instanceof Container)for(Component x:((Container)c).getComponents())z.addAll(all(x));return z;}
+            public static void main(String[] a)throws Exception{
+              final Throwable[] e={null}; SwingUtilities.invokeAndWait(()->{try{
+                Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Constructor<?> ct=c.getDeclaredConstructor(boolean.class);ct.setAccessible(true);JFrame fr=(JFrame)ct.newInstance(true);
+                Object dm=f(c,"dataModel").get(fr);Method lp=dm.getClass().getDeclaredMethod("loadPreview");lp.setAccessible(true);lp.invoke(dm);
+                m(c,"showXtregWizardPageV130").invoke(fr);m(c,"refreshInspectorVariables").invoke(fr);
+                fr.setSize(1672,901);fr.addNotify();fr.validate();layout(fr.getContentPane());
+                JSplitPane s1=(JSplitPane)f(c,"dataSummarySplit").get(fr),s2=(JSplitPane)f(c,"inspectorLowerSplit").get(fr);ck(s1!=null&&s2!=null,"splits");s1.setDividerLocation(.28);s2.setDividerLocation(.52);layout(fr.getContentPane());ck(s1.getTopComponent().getHeight()>60,"data collapsed");ck(s2.getTopComponent().getHeight()>60,"variables collapsed");ck(s2.getBottomComponent().getHeight()>60,"properties collapsed");
+                JTable vt=(JTable)f(c,"inspectorVariableTable").get(fr);JTextField q=(JTextField)f(c,"inspectorVariableFilter").get(fr);JLabel role=(JLabel)f(c,"inspectorRoleLabel").get(fr);ck(vt.getColumnCount()==2&&vt.getRowCount()>=5,"variable window");ck(vt.getTransferHandler()!=null,"drag source");String n=String.valueOf(vt.getValueAt(0,0));q.setText(n);m(c,"refreshInspectorVariables").invoke(fr);ck(vt.getRowCount()>=1,"filter");q.setText("");m(c,"refreshInspectorVariables").invoke(fr);
+                JComboBox<?> dep=(JComboBox<?>)f(c,"xtregDepVar").get(fr);JList<?> xs=(JList<?>)f(c,"xtregIndepList").get(fr);String y=String.valueOf(dep.getItemAt(1));dep.setSelectedIndex(1);if(xs.getModel().getSize()>2)xs.setSelectedIndices(new int[]{1,2});m(c,"refreshInspectorVariables").invoke(fr);for(int r=0;r<vt.getRowCount();r++)if(y.equals(String.valueOf(vt.getValueAt(r,0)))){vt.setRowSelectionInterval(r,r);break;}m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("因变量 Y"),"role "+role.getText());
+                int chips=0, radios=0;boolean vtitle=false,ptitle=false;for(Component x:all(fr)){if(x instanceof JButton&&((JButton)x).getText()!=null&&((JButton)x).getText().contains("×"))chips++;if(x instanceof JRadioButton&&Arrays.asList("固定效应（FE）","随机效应（RE）","between","population-averaged").contains(((JRadioButton)x).getText())){radios++;ck(x.getWidth()>0&&x.getHeight()>0,"radio bounds");}if(x instanceof JLabel){if("变量窗口".equals(((JLabel)x).getText()))vtitle=true;if("属性窗口".equals(((JLabel)x).getText()))ptitle=true;}}
+                ck(chips>=1,"chips");ck(radios==4,"radios");ck(vtitle&&ptitle,"titles");fr.setSize(1280,720);fr.validate();layout(fr.getContentPane());for(Component x:all(fr))if(x instanceof JRadioButton&&Arrays.asList("固定效应（FE）","随机效应（RE）","between","population-averaged").contains(((JRadioButton)x).getText()))ck(x.getWidth()>0&&x.getHeight()>0,"narrow radio");fr.dispose();
+              }catch(Throwable t){e[0]=t;}});if(e[0]!=null)throw new RuntimeException(e[0]);System.out.println("INSPECTOR_V140_AUDIT_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/InspectorV140Audit.java
+          xvfb-run -a java -cp /tmp/classes InspectorV140Audit
+          grep -q 'public static final String VERSION = "1.4.0"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '变量窗口' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '属性窗口' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '当前模型角色' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.4.0' hxempirical.pkg
+
+      - name: Smoke render main pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in home regress monitor-details oneclick; do
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench --render-${mode}-preview /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit product changes and clean temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-ui-v140.yml .github/workflows/apply-ui-v140-retry.yml .github/workflows/inspect-v140.yml scripts/apply_ui_v140.py scripts/fix_ui_v140_compile.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Adopt three-level data inspector and variable basket [v1.4.0]'
+          git push origin HEAD:ui-inspector-v140
