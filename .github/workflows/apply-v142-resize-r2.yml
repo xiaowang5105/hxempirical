@@ -1,0 +1,56 @@
+name: Apply v1.4.2 resize fix retry
+on:
+  push:
+    branches: [selfcheck-v141-deep-20260813]
+    paths: ['.github/workflows/apply-v142-resize-r2.yml']
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: python3 scripts/fix_v142_resize.py
+      - name: Compile
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sfi /tmp/classes; mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          echo 'package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }' > /tmp/sfi/com/stata/sfi/SFIToolkit.java
+          echo 'package com.stata.sfi; public class Characteristic { public static String getDtaChar(String s){return "";} public static void setDtaChar(String s,String v){} }' > /tmp/sfi/com/stata/sfi/Characteristic.java
+          echo 'package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }' > /tmp/sfi/com/stata/sfi/Macro.java
+          echo 'package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }' > /tmp/sfi/com/stata/sfi/Missing.java
+          echo 'package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }' > /tmp/sfi/com/stata/sfi/Scalar.java
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { static final String[] N={"firm","year","y","x1","x2","Size","Lev","ROA"}; public static long getObsTotal(){return 20;} public static int getVarCount(){return N.length;} public static String getVarName(int i){return i>0&&i<=N.length?N[i-1]:"";} public static String getVarLabel(int i){return i>0&&i<=N.length?"label_"+N[i-1]:"";} public static String getVarFormat(int i){return "%9.0g";} public static int getVarIndex(String s){for(int i=0;i<N.length;i++)if(N[i].equals(s))return i+1;return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return i*100+j;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return String.valueOf(getNum(i,j));} public static String getFormattedValue(int i,long j,boolean b){return getFormattedValue(i,j);} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          echo 'package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getVarLabel(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Frame.java
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+      - name: Resize runtime audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/ResizeAudit.java <<'EOF'
+          import java.awt.*; import java.lang.reflect.*; import javax.swing.*;
+          public class ResizeAudit { static Class<?> C; static JFrame F; static Throwable E; static Field f(String n)throws Exception{Field x=C.getDeclaredField(n);x.setAccessible(true);return x;} static Method m(String n,Class<?>...a)throws Exception{Method x=C.getDeclaredMethod(n,a);x.setAccessible(true);return x;} static void lay(Container c){c.doLayout();for(Component x:c.getComponents())if(x instanceof Container)lay((Container)x);} static void ck(boolean v,String s){if(!v)throw new AssertionError(s);} static void edt(Runnable r)throws Exception{SwingUtilities.invokeAndWait(()->{try{r.run();}catch(Throwable t){E=t;}});if(E!=null){Throwable t=E;E=null;throw new RuntimeException(t);}} public static void main(String[] a){try{run();System.out.println("RESIZE_AUDIT_OK");System.exit(0);}catch(Throwable t){t.printStackTrace();System.exit(2);}} static void run()throws Exception{C=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");Constructor<?> ct=C.getDeclaredConstructor(boolean.class);ct.setAccessible(true);edt(()->{try{F=(JFrame)ct.newInstance(false);m("showXtregWizardPageV130").invoke(F);m("refreshDataset",boolean.class).invoke(F,false);F.setSize(1672,901);F.addNotify();F.validate();lay(F.getContentPane());m("applyDividerRatios").invoke(F);}catch(Exception e){throw new RuntimeException(e);}});edt(()->{F.validate();lay(F.getContentPane());});JSplitPane o=(JSplitPane)f("dataSummarySplit").get(F),l=(JSplitPane)f("inspectorLowerSplit").get(F),c=(JSplitPane)f("commandDataSplit").get(F);int[][] ss={{1600,900},{1366,768},{1280,720}};for(int[] s:ss){edt(()->{F.setSize(s[0],s[1]);F.validate();lay(F.getContentPane());});edt(()->{F.validate();lay(F.getContentPane());});edt(()->{F.validate();lay(F.getContentPane());System.out.println(s[0]+": data="+o.getTopComponent().getHeight()+" vars="+l.getTopComponent().getHeight()+" props="+l.getBottomComponent().getHeight()+" command="+c.getLeftComponent().getWidth());ck(o.getTopComponent().getHeight()>=85,"data collapse "+s[0]);ck(l.getTopComponent().getHeight()>=70,"vars collapse "+s[0]);ck(l.getBottomComponent().getHeight()>=70,"props collapse "+s[0]);ck(c.getLeftComponent().getWidth()>=340,"command collapse "+s[0]);});}edt(()->F.dispose());} }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/ResizeAudit.java
+          timeout 45s xvfb-run -a java -cp /tmp/classes ResizeAudit
+      - name: Regression smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'VERSION = "1.4.2"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '^\*! hxempirical 1.4.2' hxempirical.ado
+          grep -q '^d Version 1.4.2$' hxempirical.pkg
+          for mode in preview home regress monitor-details oneclick graph did; do if [ "$mode" = preview ]; then arg=--render-preview; else arg=--render-${mode}-preview; fi; xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench "$arg" /tmp/$mode.png; test -s /tmp/$mode.png; done
+      - name: Commit clean fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/deep-selfcheck-v141.yml .github/workflows/apply-v142-resize.yml .github/workflows/apply-v142-resize-r2.yml scripts/fix_v142_resize.py
+          git config user.name 'github-actions[bot]'; git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A; git commit -m 'Prevent inspector collapse during window resize [v1.4.2]'; git push origin HEAD:selfcheck-v141-deep-20260813
