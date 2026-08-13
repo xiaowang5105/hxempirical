@@ -53,8 +53,8 @@ new_method = '''      private void clampInspectorDividers() {
             int height = this.dataSummarySplit.getHeight();
             if (height > 0) {
                int dividerSize = Math.max(0, this.dataSummarySplit.getDividerSize());
-               int minData = Math.min(95, Math.max(60, height / 5));
-               int minLower = Math.min(170, Math.max(130, height / 3));
+               int minData = 90;
+               int minLower = 160;
                int current = this.dataSummarySplit.getDividerLocation();
                if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.28);
                int max = Math.max(minData, height - minLower - dividerSize);
@@ -66,8 +66,8 @@ new_method = '''      private void clampInspectorDividers() {
             int height = this.inspectorLowerSplit.getHeight();
             if (height > 0) {
                int dividerSize = Math.max(0, this.inspectorLowerSplit.getDividerSize());
-               int minVariable = Math.min(75, Math.max(55, height / 4));
-               int minProperty = Math.min(75, Math.max(55, height / 4));
+               int minVariable = 75;
+               int minProperty = 75;
                int current = this.inspectorLowerSplit.getDividerLocation();
                if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.52);
                int max = Math.max(minVariable, height - minProperty - dividerSize);
@@ -104,8 +104,7 @@ a = a.replace('return local version "1.4.1"', 'return local version "1.4.2"', 1)
 ado.write_text(a, encoding='utf-8')
 
 pkg = Path('hxempirical.pkg')
-p = pkg.read_text(encoding='utf-8').replace('d Version 1.4.1', 'd Version 1.4.2', 1)
-pkg.write_text(p, encoding='utf-8')
+pkg.write_text(pkg.read_text(encoding='utf-8').replace('d Version 1.4.1', 'd Version 1.4.2', 1), encoding='utf-8')
 
 hlp = Path('hxempirical.sthlp')
 h = hlp.read_text(encoding='utf-8').replace('version 1.4.1', 'version 1.4.2', 1).replace('The 1.4.1 interface', 'The 1.4.2 interface', 1)
