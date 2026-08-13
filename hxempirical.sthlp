@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.4  13aug2026}{...}
+{* *! version 1.2.5  13aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -26,7 +26,7 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.2.4 interface uses a stable desktop-workbench layout: a fixed left
+The 1.2.5 interface uses a stable desktop-workbench layout: a fixed left
 navigation rail, a task-focused main workspace, and one shared right-side
 Current Data inspector. OneClick and ordinary command pages reuse that same
 inspector instead of maintaining separate look-alike data/result panels.
@@ -111,7 +111,7 @@ builds a page from the installed command's syntax and help.
 {title:Command dock and run monitor}
 
 {pstd}
-The command-settings page ends with a fixed command dock. It shows the complete
+The command-settings page ends with a fixed command dock; low-frequency options remain in the normal scroll flow instead of an expand/collapse section. It shows the complete
 editable Stata command in a monospaced field, provides one primary run action,
 and reports the current run state and elapsed time without scrolling away.
 
@@ -261,4 +261,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.2.4.
+HX empirical workbench, package version 1.2.5.
