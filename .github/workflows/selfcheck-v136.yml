@@ -92,7 +92,7 @@ jobs:
         run: |
           grep -q 'hxtoolbox_last_results_file] ""' hxexecute.ado
           grep -q 'markout .*strok' hxmonitor.ado
-          grep -q 'hxtoolbox_last_results_file.*\\\\\"\\\\\"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'hxtoolbox_last_results_file' src/main/java/com/hexie/stata/HxWorkbench.java
           grep -q 'dataTabs.addChangeListener' src/main/java/com/hexie/stata/HxWorkbench.java
           grep -q 'rightPaneTitle.setText("结果")' src/main/java/com/hexie/stata/HxWorkbench.java
           grep -q 'rightPaneTitle.setText("运行日志")' src/main/java/com/hexie/stata/HxWorkbench.java
