@@ -18,7 +18,15 @@ jobs:
           java-version: '11'
 
       - name: Apply structural cleanup
-        run: python tools/ui_structural_125.py
+        run: |
+          python tools/ui_structural_125.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('HxWorkbench.SimpleDocumentListener exactListener = () -> this.updateOneClickPreview();','HxWorkbench.SimpleDocumentListener exactListener = new HxWorkbench.SimpleDocumentListener(() -> this.updateOneClickPreview());')
+          p.write_text(s,encoding='utf-8')
+          PY
 
       - name: Create SFI validation stubs
         run: python tools/make_sfi_stubs.py
