@@ -2248,8 +2248,6 @@ public final class HxWorkbench {
       private final JTextField exactOneClickOtherOptions = new JTextField();
       private final JTextField exactOneClickCandidatesDisplay = new JTextField();
       private final JTextField exactOneClickRequiredDisplay = new JTextField();
-      private final JLabel exactOneClickDataStatus = new JLabel("尚未载入数据", SwingConstants.CENTER);
-      private final JLabel exactOneClickDataDetail = new JLabel("选择一种方式开始，载入后这里会显示可滚动的只读数据表。", SwingConstants.CENTER);
       private JPanel exactOneClickRoot;
       private final JPanel exactOneClickInspectorHost = new JPanel(new BorderLayout());
       private JComponent sharedDataInspector;
@@ -6695,8 +6693,6 @@ public final class HxWorkbench {
             HxWorkbench.StataBridge.execute("quietly hxresolve " + var1, false);
             this.offerOptionalDependency(var1);
          }
-         this.exactOneClickDataStatus.setText(Data.getObsTotal() > 0 ? Data.getObsTotal() + " 行 × " + Data.getVarCount() + " 变量" : "尚未载入数据");
-         this.exactOneClickDataDetail.setText(Data.getObsTotal() > 0 ? "当前 Stata 内存数据已连接。" : "选择一种方式开始，载入后这里会显示可滚动的只读数据表。");
          this.stageLayout.show(this.stageCards, "oneclick_exact");
          this.attachSharedInspectorToOneClick();
          this.selectDataView();

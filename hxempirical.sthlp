@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.2.4  12aug2026}{...}
+{* *! version 1.2.4  13aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -116,7 +116,7 @@ editable Stata command in a monospaced field, provides one primary run action,
 and reports the current run state and elapsed time without scrolling away.
 
 {pstd}
-The right-side {bf:运行} tab records the command, start and end times,
+The right-side {bf:日志} tab records the command, start and end times,
 elapsed time, Stata return code, History-write status, processor status, data
 shape before and after the run, and available estimation results such as
 {cmd:e(N)} and {cmd:e(r2)}. The {bf:日志} tab keeps the timestamped execution log and run queue visible in
