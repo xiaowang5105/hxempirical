@@ -1,4 +1,4 @@
-*! hxempirical 1.2.3  12aug2026
+*! hxempirical 1.2.4  13aug2026
 *! Public entry point for the HX empirical workbench
 program define hxempirical, rclass
     version 13.0
@@ -49,12 +49,12 @@ program define hxempirical, rclass
 
     if `"`action'"' == "about" {
         display as text _newline "hxempirical：我的实证工具箱"
-        display as text "版本：" as result "1.2.3"
+        display as text "版本：" as result "1.2.4"
         display as text "Stata：" as result "`c(stata_version)' (`c(os)')"
         display as text "最低支持：" as result "Stata 17"
         display as text "界面：" as result "Java 单窗口工作台；经典 .dlg 自动后备"
         return local package "hxempirical"
-        return local version "1.2.3"
+        return local version "1.2.4"
         return local os "`c(os)'"
         return scalar stata_version = c(stata_version)
         exit

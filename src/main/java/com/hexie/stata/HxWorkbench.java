@@ -122,7 +122,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.2.3";
+   public static final String VERSION = "1.2.4";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -343,7 +343,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.2.3");
+      SFIToolkit.displayln("HxWorkbench 1.2.4");
       return 0;
    }
 
@@ -2248,9 +2248,9 @@ public final class HxWorkbench {
       private final JTextField exactOneClickOtherOptions = new JTextField();
       private final JTextField exactOneClickCandidatesDisplay = new JTextField();
       private final JTextField exactOneClickRequiredDisplay = new JTextField();
-      private final JLabel exactOneClickDataStatus = new JLabel("尚未载入数据", SwingConstants.CENTER);
-      private final JLabel exactOneClickDataDetail = new JLabel("选择一种方式开始，载入后这里会显示可滚动的只读数据表。", SwingConstants.CENTER);
       private JPanel exactOneClickRoot;
+      private final JPanel exactOneClickInspectorHost = new JPanel(new BorderLayout());
+      private JComponent sharedDataInspector;
       private static final Preferences PREFS = Preferences.userRoot().node("com/hexie/stata/hxempirical");
       private static final String PREF_RECENT_COUNT = "recent.count";
       private static final int MAX_RECENT_SNAPSHOTS = 3;
@@ -2669,7 +2669,8 @@ public final class HxWorkbench {
          this.oneClickP.setSelectedIndex(1);
          this.wireEvents();
 
-         this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.buildCommandContainer(), this.buildDataContainer());
+         this.sharedDataInspector = this.buildDataContainer();
+         this.commandDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, this.buildCommandContainer(), this.sharedDataInspector);
          this.commandDataSplit.setResizeWeight(0.68);
          this.commandDataSplit.setContinuousLayout(true);
          this.commandDataSplit.setBorder(null);
@@ -3313,7 +3314,7 @@ public final class HxWorkbench {
          });
          bottom.add(guide);
          bottom.add(Box.createVerticalStrut(22));
-         JLabel version = new JLabel("版本：1.2.3");
+         JLabel version = new JLabel("版本：1.2.4");
          version.setForeground(MUTED);
          version.setFont(version.getFont().deriveFont(10.0F));
          version.setAlignmentX(0.0F);
@@ -4409,6 +4410,7 @@ public final class HxWorkbench {
       }
 
       private void showWorkspacePage() {
+         this.attachSharedInspectorToWorkspace();
          this.homeButton.setVisible(true);
          this.homeButton.setEnabled(true);
          this.inspectorToggle.setVisible(false);
@@ -5223,6 +5225,18 @@ public final class HxWorkbench {
          var11.setPreferredSize(new Dimension(100, 210));
          var11.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
          var2.add(var11);
+         var2.add(Box.createVerticalStrut(12));
+         JLabel queueTitle = sectionCaption("运行队列");
+         queueTitle.setAlignmentX(0.0F);
+         var2.add(queueTitle);
+         var2.add(Box.createVerticalStrut(7));
+         this.styleResultTable(this.runQueueTable);
+         this.runQueueTable.setFillsViewportHeight(true);
+         JScrollPane queueScroll = softScroll(this.runQueueTable);
+         queueScroll.setAlignmentX(0.0F);
+         queueScroll.setPreferredSize(new Dimension(100, 150));
+         queueScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 170));
+         var2.add(queueScroll);
          this.monitorCommand.setText("尚未执行命令");
          this.monitorOutcome.setText("运行后显示数据变化、回归样本和核心估计结果。\n普通 Stata 命令使用不确定进度，不显示虚假百分比。");
          var1.add(softScroll(var2), "Center");
@@ -5323,6 +5337,39 @@ public final class HxWorkbench {
          card.add(this.dataTabs, BorderLayout.CENTER);
          root.add(card, BorderLayout.CENTER);
          return root;
+      }
+
+      private void attachSharedInspectorToOneClick() {
+         if (this.sharedDataInspector == null) {
+            return;
+         }
+         Container parent = this.sharedDataInspector.getParent();
+         if (parent != null) {
+            parent.remove(this.sharedDataInspector);
+         }
+         this.exactOneClickInspectorHost.removeAll();
+         this.exactOneClickInspectorHost.add(this.sharedDataInspector, BorderLayout.CENTER);
+         this.sharedDataInspector.setVisible(true);
+         this.exactOneClickInspectorHost.revalidate();
+         this.exactOneClickInspectorHost.repaint();
+      }
+
+      private void attachSharedInspectorToWorkspace() {
+         if (this.sharedDataInspector == null || this.commandDataSplit == null) {
+            return;
+         }
+         if (this.commandDataSplit.getRightComponent() != this.sharedDataInspector) {
+            Container parent = this.sharedDataInspector.getParent();
+            if (parent != null) {
+               parent.remove(this.sharedDataInspector);
+            }
+            this.commandDataSplit.setRightComponent(this.sharedDataInspector);
+         }
+         this.sharedDataInspector.setVisible(true);
+         this.commandDataSplit.setDividerSize(8);
+         this.commandDataSplit.revalidate();
+         this.commandDataSplit.repaint();
+         SwingUtilities.invokeLater(this::applyDividerRatios);
       }
 
       private void selectDataView() {
@@ -6625,8 +6672,10 @@ public final class HxWorkbench {
          JPanel explain = this.refCard(); explain.setLayout(new BorderLayout(12,0)); explain.setBounds(16,595,745,96); JLabel ex = new JLabel("<html><b>◉  方法说明</b><br><br>• 本工具通过外部 oneclick 命令完成控制变量组合筛选。<br>• 运行后，工具会自动读取生成的 subset.dta，用于在右侧查看数据与结果。</html>"); ex.setForeground(TEXT); explain.add(ex,BorderLayout.CENTER); JTextArea syntax=new JTextArea("oneclick y candidates, fix(x required) p(#) m(method)\n[o(model_options)] [z]"); syntax.setEditable(false); syntax.setBackground(CODE_BG); syntax.setForeground(TEXT); syntax.setFont(new Font("Monospaced",Font.PLAIN,10)); syntax.setBorder(new EmptyBorder(8,10,8,10)); syntax.setPreferredSize(new Dimension(350,68)); explain.add(syntax,BorderLayout.EAST); root.add(explain);
 
          JPanel command = this.refCard(); command.setLayout(null); command.setBounds(16,704,745,106); JLabel ctitle=new JLabel("即将执行的 Stata 命令"); ctitle.setForeground(TEXT); ctitle.setFont(ctitle.getFont().deriveFont(Font.BOLD,12.0F)); ctitle.setBounds(14,6,190,22); command.add(ctitle); this.exactOneClickCommand.setEditable(false); this.exactOneClickCommand.setLineWrap(true); this.exactOneClickCommand.setWrapStyleWord(true); this.exactOneClickCommand.setBackground(new Color(244,248,255)); this.exactOneClickCommand.setForeground(TEXT); this.exactOneClickCommand.setFont(new Font("Monospaced",Font.PLAIN,10)); this.exactOneClickCommand.setBorder(new EmptyBorder(9,10,9,10)); JScrollPane cs=softScroll(this.exactOneClickCommand); cs.setBounds(14,32,420,55); command.add(cs); JButton copy=this.refButton("▣  复制命令",false); copy.setBounds(450,39,110,38); copy.addActionListener(e->{ Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(this.exactOneClickCommand.getText()),null); }); command.add(copy); JButton run=this.refButton("▶  运行外部 OneClick",true); run.setBounds(570,39,155,38); run.addActionListener(e->this.runOneClick()); command.add(run); root.add(command);
-
-         JPanel data = this.refCard(); data.setLayout(null); data.setBounds(780,115,660,695); JLabel dt=new JLabel("▣  当前数据"); dt.setForeground(TEXT); dt.setFont(dt.getFont().deriveFont(Font.BOLD,13.0F)); dt.setBounds(16,10,160,25); data.add(dt); JButton refresh=this.refButton("↻ 刷新",false); refresh.setBounds(570,9,70,32); refresh.addActionListener(e->this.refreshDataset(false)); data.add(refresh); JLabel tabs=new JLabel("数据      |      结果      |      日志"); tabs.setForeground(new Color(54,108,220)); tabs.setBounds(24,52,330,24); data.add(tabs); JComponent ill=this.exactEmptyDataIllustration(); ill.setBounds(200,125,260,210); data.add(ill); this.exactOneClickDataStatus.setForeground(TEXT); this.exactOneClickDataStatus.setFont(this.exactOneClickDataStatus.getFont().deriveFont(Font.BOLD,14.0F)); this.exactOneClickDataStatus.setBounds(170,340,320,30); data.add(this.exactOneClickDataStatus); this.exactOneClickDataDetail.setForeground(MUTED); this.exactOneClickDataDetail.setFont(this.exactOneClickDataDetail.getFont().deriveFont(9.5F)); this.exactOneClickDataDetail.setBounds(145,372,370,25); data.add(this.exactOneClickDataDetail); JButton au=this.refButton("▣  载入 auto 示例数据",false); au.setBounds(190,415,280,40); au.addActionListener(e->this.runUtility("sysuse auto, clear",true)); data.add(au); JButton own=this.refButton("↥  载入自己的 DTA",false); own.setBounds(190,465,280,40); own.addActionListener(e->this.chooseAndLoadDta()); data.add(own); JButton cv=this.refButton("▤  Excel / CSV 转换为 DTA",false); cv.setBounds(190,515,280,40); cv.addActionListener(e->this.navigateTo("data","导入与转换","hxconvert")); data.add(cv); JLabel hint=new JLabel("☼  提示：左侧完成变量设置，右侧查看数据与结果。"); hint.setForeground(MUTED); hint.setBounds(160,618,350,30); data.add(hint); root.add(data);
+         this.exactOneClickInspectorHost.removeAll();
+         this.exactOneClickInspectorHost.setOpaque(false);
+         this.exactOneClickInspectorHost.setBounds(780,115,660,695);
+         root.add(this.exactOneClickInspectorHost);
          return root;
       }
 
@@ -6644,9 +6693,9 @@ public final class HxWorkbench {
             HxWorkbench.StataBridge.execute("quietly hxresolve " + var1, false);
             this.offerOptionalDependency(var1);
          }
-         this.exactOneClickDataStatus.setText(Data.getObsTotal() > 0 ? Data.getObsTotal() + " 行 × " + Data.getVarCount() + " 变量" : "尚未载入数据");
-         this.exactOneClickDataDetail.setText(Data.getObsTotal() > 0 ? "当前 Stata 内存数据已连接。" : "选择一种方式开始，载入后这里会显示可滚动的只读数据表。");
          this.stageLayout.show(this.stageCards, "oneclick_exact");
+         this.attachSharedInspectorToOneClick();
+         this.selectDataView();
          this.updateOneClickConditionalFields();
          this.updateOneClickPreview();
          this.statusLabel.setText("OneClick 页面已就绪：只显示当前回归方法真正需要的设置。");
@@ -9192,7 +9241,7 @@ public final class HxWorkbench {
 
       private void loadExternalOneClickResults(HxWorkbench.RunResult var1, boolean var2) {
          if (var1.rc != 0) {
-            this.oneClickOverview.setText("外部命令执行失败。\n\nReturn code：" + var1.rc + "\n请查看右侧‘运行’和 Stata Results 中的原始错误信息。");
+            this.oneClickOverview.setText("外部命令执行失败。\n\nReturn code：" + var1.rc + "\n请查看右侧‘日志’和 Stata Results 中的原始错误信息。");
             this.oneClickResultTabs.setSelectedIndex(0);
          } else {
             String var3 = HxWorkbench.StataBridge.characteristic("hxtoolbox_oneclick_frame");
