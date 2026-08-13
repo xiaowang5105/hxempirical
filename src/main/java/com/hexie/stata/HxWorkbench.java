@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.7";
+   public static final String VERSION = "1.3.8";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.7");
+      SFIToolkit.displayln("HxWorkbench 1.3.8");
       return 0;
    }
 
@@ -6197,6 +6197,9 @@ public final class HxWorkbench {
          var3.add(this.missingResultTabs, "Center");
          this.resultSummaryArea.setText("选择命令并运行后，这里会显示与当前任务有关的结果摘要。\n\n回归命令显示样本数和拟合信息；数据处理显示前后变化；专题工作流显示自己的结果页面。");
          this.resultSummaryArea.setBackground(SURFACE);
+         // Stata tables depend on fixed columns. Never word-wrap the raw Results mirror.
+         this.resultSummaryArea.setLineWrap(false);
+         this.resultSummaryArea.setWrapStyleWord(false);
          this.resultSummaryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
          this.resultCards.setBackground(SURFACE);
          this.resultCards.add(softScroll(this.resultSummaryArea), "general");
@@ -11274,7 +11277,12 @@ public final class HxWorkbench {
          }
 
          if (!var6) {
-            this.selectRunView();
+            // A failed Stata command can still have the most useful diagnosis in Results.
+            if (!nativeOutput.isBlank()) {
+               this.selectResultView("general", true);
+            } else {
+               this.selectRunView();
+            }
          } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
             this.selectResultView("general", true);
          } else if ("__convert_dta__".equals(this.currentCommand)) {
