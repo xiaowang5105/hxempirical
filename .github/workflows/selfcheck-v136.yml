@@ -1,0 +1,136 @@
+name: Result-pane selfcheck v1.3.6
+
+on:
+  push:
+    branches: [selfcheck-v136]
+    paths: ['.github/workflows/selfcheck-v136.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply audited fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('public static final String VERSION = "1.3.5";', 'public static final String VERSION = "1.3.6";', 1)
+          s=s.replace('SFIToolkit.displayln("HxWorkbench 1.3.5");', 'SFIToolkit.displayln("HxWorkbench 1.3.6");', 1)
+
+          old='''      static void clearRunAudit() {\n         execute("quietly char _dta[hxtoolbox_last_native_command] \\\"\\\"", false);\n         execute("quietly char _dta[hxtoolbox_history_status] \\\"\\\"", false);\n      }'''
+          new='''      static void clearRunAudit() {\n         execute("quietly char _dta[hxtoolbox_last_native_command] \\\"\\\"", false);\n         execute("quietly char _dta[hxtoolbox_history_status] \\\"\\\"", false);\n         execute("quietly char _dta[hxtoolbox_last_results_file] \\\"\\\"", false);\n      }'''
+          assert old in s, 'clearRunAudit block not found'
+          s=s.replace(old,new,1)
+
+          old='''         this.dataTabs.addTab("结果", this.resultCards);\n         this.dataTabs.addTab("日志", this.buildRunMonitorPanel());\n         this.dataTabs.setBackground(SURFACE);'''
+          new='''         this.dataTabs.addTab("结果", this.resultCards);\n         this.dataTabs.addTab("日志", this.buildRunMonitorPanel());\n         this.dataTabs.addChangeListener(var0 -> this.syncRightPaneTitle());\n         this.dataTabs.setBackground(SURFACE);\n         this.syncRightPaneTitle();'''
+          assert old in s, 'dataTabs setup block not found'
+          s=s.replace(old,new,1)
+
+          old='''      private void selectDataView() {\n         this.dataTabs.setSelectedIndex(0);\n         this.rightPaneTitle.setText("当前数据");\n      }\n\n      private void selectResultView(String var1, boolean var2) {\n         this.resultLayout.show(this.resultCards, var1);\n         this.rightPaneTitle.setText("当前数据");\n         if (var2) {\n            this.dataTabs.setSelectedIndex(1);\n         }\n      }'''
+          new='''      private void syncRightPaneTitle() {\n         int index = this.dataTabs.getSelectedIndex();\n         if (index == 1) {\n            this.rightPaneTitle.setText("结果");\n         } else if (index == 2) {\n            this.rightPaneTitle.setText("运行日志");\n         } else {\n            this.rightPaneTitle.setText("当前数据");\n         }\n      }\n\n      private void selectDataView() {\n         this.dataTabs.setSelectedIndex(0);\n         this.syncRightPaneTitle();\n      }\n\n      private void selectResultView(String var1, boolean var2) {\n         this.resultLayout.show(this.resultCards, var1);\n         if (var2) {\n            this.dataTabs.setSelectedIndex(1);\n         }\n         this.syncRightPaneTitle();\n      }'''
+          assert old in s, 'selectData/result block not found'
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('hxexecute.ado'); s=p.read_text(encoding='utf-8')
+          s=s.replace('*! hxexecute 1.6.0  13aug2026','*! hxexecute 1.6.1  13aug2026',1)
+          old='''    char _dta[hxtoolbox_history_status] "准备写入"\n    capture window push `native'\n'''
+          new='''    char _dta[hxtoolbox_history_status] "准备写入"\n    char _dta[hxtoolbox_last_results_file] ""\n    capture window push `native'\n'''
+          assert old in s, 'hxexecute audit-init block not found'
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('hxempirical.ado'); s=p.read_text(encoding='utf-8')
+          s=s.replace('*! hxempirical 1.3.5  13aug2026','*! hxempirical 1.3.6  13aug2026',1).replace('"1.3.5"','"1.3.6"')
+          p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.pkg'); s=p.read_text(encoding='utf-8').replace('d Version 1.3.5','d Version 1.3.6',1); p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.sthlp'); s=p.read_text(encoding='utf-8').replace('version 1.3.5','version 1.3.6').replace('The 1.3.5 interface','The 1.3.6 interface'); p.write_text(s,encoding='utf-8')
+          p=Path('README.md'); s=p.read_text(encoding='utf-8').replace('**当前发布版本：1.3.5**','**当前发布版本：1.3.6**',1).replace('**上次修改时间：2026-08-13 14:08（UTC+8）**','**上次修改时间：2026-08-13 14:18（UTC+8）**',1); p.write_text(s,encoding='utf-8')
+          print('PATCH_OK')
+          PY
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Run result synchronization audit
+        shell: bash
+        run: |
+          grep -q 'hxtoolbox_last_results_file] ""' hxexecute.ado
+          grep -q 'markout .*strok' hxmonitor.ado
+          grep -q 'hxtoolbox_last_results_file.*\\\\\"\\\\\"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'dataTabs.addChangeListener' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'rightPaneTitle.setText("结果")' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'rightPaneTitle.setText("运行日志")' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'public static final String VERSION = "1.3.6"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.3.6' hxempirical.pkg
+
+          cat > /tmp/ResultUiAudit.java <<'EOF'
+          import java.lang.reflect.*; import java.nio.file.*; import javax.swing.*; import com.stata.sfi.*;
+          public class ResultUiAudit {
+            static Field f(Class<?> c,String n)throws Exception{Field x=c.getDeclaredField(n);x.setAccessible(true);return x;}
+            static Method m(Class<?> c,String n,Class<?>...a)throws Exception{Method x=c.getDeclaredMethod(n,a);x.setAccessible(true);return x;}
+            static void ck(boolean v,String s){if(!v)throw new AssertionError(s);}
+            public static void main(String[]a)throws Exception{
+              Path p=Paths.get("/tmp/hx_result_sample.txt"); Files.writeString(p,"regress price mpg weight\nNumber of obs = 74\n"); Characteristic.setDtaChar("hxtoolbox_last_results_file",p.toString());
+              Class<?> bridge=Class.forName("com.hexie.stata.HxWorkbench$StataBridge"); Method out=m(bridge,"lastNativeOutput"); String raw=(String)out.invoke(null); ck(raw.contains("Number of obs = 74"),"raw output bridge");
+              Method clear=m(bridge,"clearRunAudit"); SFIToolkit.commands.clear(); clear.invoke(null); ck(SFIToolkit.commands.stream().anyMatch(x->x.contains("hxtoolbox_last_results_file")),"stale output path not cleared");
+              final Throwable[] err={null}; SwingUtilities.invokeAndWait(()->{try{Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Constructor<?> ct=c.getDeclaredConstructor(boolean.class);ct.setAccessible(true); JFrame fr=(JFrame)ct.newInstance(true); fr.addNotify(); Method sel=m(c,"selectResultView",String.class,boolean.class); sel.invoke(fr,"general",true); JTabbedPane tabs=(JTabbedPane)f(c,"dataTabs").get(fr); JLabel title=(JLabel)f(c,"rightPaneTitle").get(fr); ck(tabs.getSelectedIndex()==1,"result tab not selected"); ck("结果".equals(title.getText()),"result title="+title.getText()); tabs.setSelectedIndex(2); ck("运行日志".equals(title.getText()),"log title="+title.getText()); tabs.setSelectedIndex(0); ck("当前数据".equals(title.getText()),"data title="+title.getText()); fr.dispose();}catch(Throwable t){err[0]=t;}}); if(err[0]!=null)throw new RuntimeException(err[0]);
+              System.out.println("RESULT_UI_AUDIT_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/ResultUiAudit.java
+          xvfb-run -a java -cp /tmp/classes ResultUiAudit
+
+      - name: Smoke-render key pages
+        shell: bash
+        run: |
+          for mode in home regress; do
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench --render-${mode}-preview /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit audited product changes
+        shell: bash
+        run: |
+          rm -f .github/workflows/selfcheck-v136.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Harden result synchronization and right-pane state [v1.3.6]'
+          git push origin HEAD:selfcheck-v136
