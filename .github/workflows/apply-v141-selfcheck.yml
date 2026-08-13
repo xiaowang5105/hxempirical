@@ -1,0 +1,133 @@
+name: Apply v1.4.1 selfcheck fixes
+
+on:
+  push:
+    branches: [selfcheck-v140-20260813]
+    paths: ['.github/workflows/apply-v141-selfcheck.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  fix-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply selfcheck fixes
+        run: python3 scripts/fix_v141_selfcheck.py
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/sfi /tmp/classes
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { static final String[] N={"firm","year","y","x1","x2","Size","Lev","ROA"}; public static long getObsTotal(){return 20L;} public static int getVarCount(){return N.length;} public static String getVarName(int i){return i>=1&&i<=N.length?N[i-1]:"";} public static String getVarLabel(int i){return i>=1&&i<=N.length?"label_"+N[i-1]:"";} public static String getVarFormat(int i){return "%9.0g";} public static int getVarIndex(String s){for(int i=0;i<N.length;i++)if(N[i].equals(s))return i+1;return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return i*100+j;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return String.valueOf(getNum(i,j));} public static String getFormattedValue(int i,long j,boolean b){return getFormattedValue(i,j);} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getVarLabel(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          jar tf hxworkbench.jar | grep -q 'com/hexie/stata/HxWorkbench.class'
+
+      - name: Runtime inspector linkage and responsive layout audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/V141Audit.java <<'EOF'
+          import java.awt.*; import java.lang.reflect.*; import java.util.*; import javax.swing.*;
+          public class V141Audit {
+            static Field f(Class<?> c,String n)throws Exception{Field x=c.getDeclaredField(n);x.setAccessible(true);return x;}
+            static Method m(Class<?> c,String n,Class<?>...a)throws Exception{Method x=c.getDeclaredMethod(n,a);x.setAccessible(true);return x;}
+            static void ck(boolean v,String s){if(!v)throw new AssertionError(s);}
+            static void layout(Container c){c.doLayout();for(Component x:c.getComponents())if(x instanceof Container)layout((Container)x);}
+            static java.util.List<Component> all(Component c){java.util.List<Component> z=new ArrayList<>();z.add(c);if(c instanceof Container)for(Component x:((Container)c).getComponents())z.addAll(all(x));return z;}
+            static int rowOf(JTable t,String name){for(int r=0;r<t.getRowCount();r++)if(name.equals(String.valueOf(t.getValueAt(r,0))))return r;return -1;}
+            static String selectedName(JTable t){int r=t.getSelectedRow();return r>=0?String.valueOf(t.getValueAt(r,0)):"";}
+            static final Object[] S=new Object[12]; static Throwable err;
+            public static void main(String[] args)throws Exception{
+              SwingUtilities.invokeAndWait(()->{try{
+                Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");Constructor<?> ct=c.getDeclaredConstructor(boolean.class);ct.setAccessible(true);JFrame fr=(JFrame)ct.newInstance(false);
+                m(c,"showXtregWizardPageV130").invoke(fr);m(c,"refreshDataset",boolean.class).invoke(fr,false);m(c,"refreshInspectorVariables").invoke(fr);fr.setSize(1672,901);fr.addNotify();fr.validate();layout(fr.getContentPane());
+                S[0]=c;S[1]=fr;S[2]=f(c,"dataSummarySplit").get(fr);S[3]=f(c,"inspectorLowerSplit").get(fr);S[4]=f(c,"inspectorVariableTable").get(fr);S[5]=f(c,"dataTable").get(fr);S[6]=f(c,"inspectorVariableFilter").get(fr);S[7]=f(c,"inspectorRoleLabel").get(fr);S[8]=f(c,"xtregDepVar").get(fr);S[9]=f(c,"xtregIndepList").get(fr);S[10]=f(c,"summaryArea").get(fr);
+              }catch(Throwable t){err=t;}});
+              if(err!=null)fail();
+              SwingUtilities.invokeAndWait(()->{try{m((Class<?>)S[0],"applyDividerRatios").invoke((JFrame)S[1]);}catch(Throwable t){err=t;}});
+              SwingUtilities.invokeAndWait(()->{try{JFrame fr=(JFrame)S[1];fr.validate();layout(fr.getContentPane());}catch(Throwable t){err=t;}});
+              if(err!=null)fail();
+              SwingUtilities.invokeAndWait(()->{try{
+                Class<?> c=(Class<?>)S[0];JFrame fr=(JFrame)S[1];JSplitPane outer=(JSplitPane)S[2],lower=(JSplitPane)S[3];JTable vt=(JTable)S[4],dt=(JTable)S[5];JTextField q=(JTextField)S[6];JLabel role=(JLabel)S[7];JComboBox<?> dep=(JComboBox<?>)S[8];JList<?> xs=(JList<?>)S[9];JTextArea summary=(JTextArea)S[10];
+                double r=(double)outer.getTopComponent().getHeight()/Math.max(1,outer.getHeight());double lr=(double)lower.getTopComponent().getHeight()/Math.max(1,lower.getHeight());System.out.println("WIDE_TOP_RATIO="+r+" LOWER_RATIO="+lr);ck(r>=.24&&r<=.34,"wide current-data ratio="+r);ck(lr>=.44&&lr<=.60,"wide variable/property ratio="+lr);ck(lower.getTopComponent().getHeight()>90&&lower.getBottomComponent().getHeight()>90,"wide lower windows collapsed");
+                ck(vt.getRowCount()==8&&vt.getColumnCount()==2,"variable window shape");ck(vt.getTransferHandler()!=null,"variable drag missing");q.setText("label_roa");m(c,"refreshInspectorVariables").invoke(fr);ck(vt.getRowCount()==1&&"ROA".equals(String.valueOf(vt.getValueAt(0,0))),"name/label filter");q.setText("");m(c,"refreshInspectorVariables").invoke(fr);
+                dep.setSelectedItem("y");xs.setSelectedIndices(new int[]{3,4});int ry=rowOf(vt,"y");vt.setRowSelectionInterval(ry,ry);m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("因变量 Y"),"Y role "+role.getText());ck("y".equals(dt.getColumnName(dt.getSelectedColumn())),"variable -> data linkage");int rx=rowOf(vt,"x1");vt.setRowSelectionInterval(rx,rx);m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("解释变量 X"),"X role "+role.getText());
+                int roa=-1;for(int i=0;i<dt.getColumnCount();i++)if("ROA".equals(dt.getColumnName(i)))roa=i;ck(roa>=0,"ROA column");dt.setColumnSelectionInterval(roa,roa);dt.setRowSelectionInterval(0,0);m(c,"syncVariableWindowFromDataTable").invoke(fr);ck("ROA".equals(selectedName(vt)),"data -> variable linkage selected="+selectedName(vt));ck(summary.getText().contains("ROA"),"property summary did not follow data click");
+                q.setText("x1");m(c,"refreshInspectorVariables").invoke(fr);dt.setColumnSelectionInterval(roa,roa);m(c,"syncVariableWindowFromDataTable").invoke(fr);ck(vt.getSelectedRow()<0,"filtered-out variable should clear variable-window selection");ck(summary.getText().contains("ROA"),"property summary lost filtered data selection");q.setText("");m(c,"refreshInspectorVariables").invoke(fr);
+                int chips=0;JButton one=null;for(Component x:all(fr))if(x instanceof JButton&&((JButton)x).getText()!=null&&((JButton)x).getText().contains("×")){chips++;if(one==null)one=(JButton)x;}ck(chips>=2,"chip count="+chips);int before=xs.getSelectedIndices().length;one.doClick();ck(xs.getSelectedIndices().length==before-1,"chip removal");
+                fr.setSize(1280,720);fr.validate();layout(fr.getContentPane());
+              }catch(Throwable t){err=t;}});
+              if(err!=null)fail();
+              SwingUtilities.invokeAndWait(()->{try{m((Class<?>)S[0],"applyDividerRatios").invoke((JFrame)S[1]);}catch(Throwable t){err=t;}});
+              SwingUtilities.invokeAndWait(()->{try{JFrame fr=(JFrame)S[1];fr.validate();layout(fr.getContentPane());}catch(Throwable t){err=t;}});
+              SwingUtilities.invokeAndWait(()->{try{JFrame fr=(JFrame)S[1];JSplitPane outer=(JSplitPane)S[2],lower=(JSplitPane)S[3];double r=(double)outer.getTopComponent().getHeight()/Math.max(1,outer.getHeight());System.out.println("NARROW_TOP_RATIO="+r);ck(outer.getTopComponent().getHeight()>=95,"narrow current data collapsed");ck(lower.getTopComponent().getHeight()>=75&&lower.getBottomComponent().getHeight()>=75,"narrow inspector windows collapsed");int radios=0;for(Component x:all(fr))if(x instanceof JRadioButton&&Arrays.asList("固定效应（FE）","随机效应（RE）","between","population-averaged").contains(((JRadioButton)x).getText())){radios++;ck(x.getWidth()>20&&x.getHeight()>15,"radio collapsed "+((JRadioButton)x).getText());}ck(radios==4,"radio count="+radios);fr.dispose();}catch(Throwable t){err=t;}});
+              if(err!=null)fail();System.out.println("V141_RUNTIME_AUDIT_OK");System.exit(0);
+            }
+            static void fail(){err.printStackTrace();try{SwingUtilities.invokeAndWait(()->{if(S[1] instanceof JFrame)((JFrame)S[1]).dispose();});}catch(Exception ignored){}System.exit(2);}
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/V141Audit.java
+          xvfb-run -a java -cp /tmp/classes V141Audit
+
+      - name: Static regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'public static final String VERSION = "1.4.1"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'syncVariableWindowFromDataTable' src/main/java/com/hexie/stata/HxWorkbench.java
+          ! grep -q 'dataSummarySplit.getHeight() \* 0.70' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '^\*! hxempirical 1.4.1' hxempirical.ado
+          grep -q '版本：.*1.4.1' hxempirical.ado
+          grep -q 'return local version "1.4.1"' hxempirical.ado
+          grep -q '^d Version 1.4.1$' hxempirical.pkg
+          grep -q 'version 1.4.1' hxempirical.sthlp
+          grep -q '当前发布版本：1.4.1' README.md
+
+      - name: Preview smoke matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          for mode in preview home regress monitor-details oneclick graph did; do
+            if [ "$mode" = preview ]; then arg=--render-preview; else arg=--render-${mode}-preview; fi
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench "$arg" /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit product fix and remove temporary selfcheck files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/selfcheck-v140.yml .github/workflows/selfcheck-v140b.yml .github/workflows/apply-v141-selfcheck.yml scripts/fix_v141_selfcheck.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix inspector linkage and split ratios [v1.4.1]'
+          git push origin HEAD:selfcheck-v140-20260813
