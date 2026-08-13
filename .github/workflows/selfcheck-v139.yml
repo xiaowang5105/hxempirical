@@ -13,8 +13,62 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run audited patch and interaction tests
+
+      - name: Apply audited fixes
+        run: python3 .github/scripts/selfcheck_v139.py
+
+      - name: Compile Java 11 and rebuild jar
         shell: bash
         run: |
-          echo 'IyEvdXNyL2Jpbi9lbnYgYmFzaApzZXQgLWV1byBwaXBlZmFpbAoKZWNobyAiQ21aeWIyMGdjR0YwYU14cFlpQnBiWEJ2Y25RZ1VHRjBhQW9LWkdWbUlISmxjR3hoWTJWZmJXVjBhRzlrS0hOeVl5d2djMmxuYm1GMGRYSmxMQ0J5WlhCc1lXTmxiV1Z1ZENrNkNpQWdJQ0J6ZEdGeWRDQTlJSE55WXk1cGJtUmxlQ2h6YVdkdVlYUjFjbVVwQ2lBZ0lDQmljbUZqWlNBOUlITnlZeTVwYm1SbGVDZ25leWNzSUhOMFlYSjBLUW9nSUNBZ1pHVndkR2dnUFNBd0NpQWdJQ0JwSUQwZ1luSmhZMlVLSUNBZ0lHbHVYM04wY2lBOUlFWmhiSE5sQ2lBZ0lDQmxjMk1nUFNCR1lXeHpaUW9nSUNBZ2NYVnZkR1VnUFNBbkpxb0tJQ0FnSUhkb2FXeGxJR2tnUEh4bGJpZ3pjbU1wT2dvZ0lDQWdJQ0FnWTJnZ1BTQnpjbU5iYVYwS0lDQWdJQ0FnSUdGbUlHbHVYM04wY2pvS0lDQWdJQ0FnSUNBZ2FXWWdaWE5qT2dvZ0lDQWdJQ0FnSUNBZ0lDQmxjMk1nUFNCR1lXeHpaUW9nSUNBZ0lDQWdJQ0J5YkdWcElHTm9JRDBnSjF4Y0p6b0tJQ0FnSUNBZ0lDQWdJQ0FnSUdWelkya2dQU0JVY25WbENpQWdJQ0FnSUNBZ1pXeHBaaUJqYUNBOUlIRjFiM1JsT2dvZ0lDQWdJQ0FnSUNBZ0lDQnBibDl6ZEhJZ1BTQkdhV3h6WlFvZ0lDQWdJQ0FnWld4elpUb0tJQ0FnSUNBZ0lDQWdJQ0JwWmlCamFDQnBiaUFvSjF3aUp5d2dJbHduSWlrNkNpQWdJQ0FnSUNBZ0lDQWdJQ0FnYVc1ZmMzUnlJRDBnVk4KaFZXSnpVQ0FnSUNBZ0lDQWdJQ0FnSUNBZ2NYVnZkR1VnUFNCamFYCUNJQ0FnSUNBZ0lDQWdJQ0FnWld4cFppQmphQ0E5UFNBbmUzY25PZ29nSUNBZ0lDQWdJQ0FnSUNBZ0lHUmxjSFJvSUNzOUlERUtJQ0FnSUNBZ0lDQWdJQ0FnSUdWc2FXWWdZMmdnUFQwZ0ozMG5PZ29nSUNBZ0lDQWdJQ0FnSUNBZ0lHUmxjSFJvSUMwOUlERUtJQ0FnSUNBZ0lDQWdJQ0FnSUdsbUlHUmxjSFJvSUQwOUlEQTZDaUFnSUNBZ0lDQWdJQ0FnSUNBZ0lDQWdjbVYwZFhKdUlITnlZMXR6ZEdGeWRGMDZJR055WlhCc1lXTmxiV1Z1ZENzZ2MzSmpXMmt4V3dvZ0lDQWdJQ0FnYVNBclBTQXhDaUFnSUNCeVlXbHpaU0JTZFc1MGFXMWxSWEp5YjNJb0ozVnVZbUZzWVc1alpXUWdiV1YwYUc5a09pQW5JQ3NnYzJsbmJtRjBkWEpsS1FvS2NDMVBZWFJvSjNOeVl5OXRZV2x1TDJwaGRtRXZZMjl0TDJobGVHbGxMM04wWVhSaEwwaDRWMjl5YTJKbGJtTm9MbXBoZG1FbkNRcHpQWEF1Y21WaFpGOTBaWGgwS0dWdVkyOWthVzVuUFNkMWRHWXRPQ2NwQ21GemMyVnlkQ0FuY0hWaWJHbGpJSE4wWVhScFl5Qm1hVzVoYkNCSVYwOXlTMkpsYm1Ob0xrbEZVbE5KVDA0Z1BTQWlNUzR6TGpnaU95Y2dhVzRnY3dwemRDMXpaV3hwY0dWa0tDZHdkV0pzYVdNZ2MzUmhkR2xqSUdacGJtRnNJRk4zYVc1bklGWkZVbE5KVDA0Z1BTQWlNUzR6TGpnaU95Y3NJQ2R3ZFdKc2FXTWdjM1JoZEdsaklHWnBibUZzSUZOM2FXNW5JRlpGVWxOSlQwNGdQU0FpTVM0ekxqa2lPeWNzSURFcENuTXVjM1psY0d4aFkyVW9KMU5HU1ZSdmIyeHJhWFF1WkdsemNHeGhlV3h1S0NKSVYyOXlTMkpsYm1Ob0lERXVNeTQ0SWlrN0p5d2dKMU5HU1ZSdmIyeHJhWFF1WkdsemNHeGhlV3h1S0NKSVYyOXlTMkpsYm1Ob0lERXVNeTQ1SWlrN0p5d2dNU2tLY25Sc1pXSmxjbVYwYUdWa0lEMGdKeWNuSUNBZ2MzUmhkR2xqSUZOMGNtbHVaeUJzWVhOMFRtRjBhWFpsVDNWMGNIVjBLQ2tnZXdvZ0lDQWdJQ0FnSUZOMGNtbHVaeUJ3WVhSb0lEMGdZMmhoY21GamRHVnlhWE4wYVdNb0ltaDBkRzl2YkdKdmVGOXNZWE4wWDNKbGMzVnNkSE5mWm1sc1pTSXBPd29nSUNBZ0lDQWdJR2xtSUNod1lYUm9JRDArUFNCdWRXeHNJSHg4SUhCaGRHZ3VhWE5DYkdGdWF5Z3BLU0I3Q2lBZ0lDQWdJQ0FnSUNBZ2NtVjBkWEp1SUNJaU93b2dJQ0FnSUNBZ0lIMEtDaUFnSUNBZ0lDQnBibklnZXdvZ0lDQWdJQ0FnSUZCaGRHZ2djbVZ6ZFd4MFVHRjBhQ0E5SUZCaGRHaHpMbWRsZENod1lYUm9LVHNLQ0FnSUNBZ0lDQWdhV1lnS0NGUGFXeGxjeTVwYzBabGJuVnNZWEpHYVd4bEtISmxjM1ZzZEZCaGRHZ3BLU0I3Q2lBZ0lDQWdJQ0FnSUNBZ2NtVjBkWEp1SUNJaU93b2dJQ0FnSUNBZ0lIMEtDZ29nSUNBZ0lDQWdJR1pwYm1Gc0lHbHVkQ0J0WVhoQ2VYUmxjeUE5SURJZ0tpQXhNREkwSUNvZ01UQXlORG9LSUNBZ0lDQWdJR3h2Ym1jZ1ptbHNaVk5wZW1VZ1BTQkdhV3hsY3k1emFYcGxLSEpsYzNWc2RGQmhkR2dwT3dvZ0lDQWdJQ0FnWW5sMFpWdGRPeUFnSUNBZ0lDQWdkSEo1SUNoSmJuQjFkRk4wY21WaGJTQnBiaUE5SUVacGJHVnpMbTVsZDAxJTVCaHRiSFZ3ZENoeVpYTjFiSFJRWVhSb0tTa2dld29nSUNBZ0lDQWdJQ0FnSUdKNWRHVnpJRDBnYVc0dWNtVmhaRTVDZVhSbGN5aHRZWGhDZVhSbGN5azdDaUFnSUNBZ0lDQWdmUW9LSUNBZ0lDQWdJRU5vWVhKelpYUWdZMmhoY25ObGRDQWdQU0JUZEdGdVpHRnlaRU5vWVhKelpYUnpMbFZVUmkwNE93b2dJQ0FnSUNBZ2FXNTBJRzltWm5ObGRDQTlJREE3Q2lBZ0lDQWdJQ0JwWmlBb1luVjBaWE11YkdWdVozUm9JRDQrSURNZ0ppWWdLR0o1ZEdWelVGMHRJREkxTlNrZ1BUMGdNRmhGUmlBbUppQW9ZbmwwWlhOYk1WMGdKaUExTlNrZ1BUMGdNRmhDUWlBbUppQW9ZbmwwWlhOYk1sMGdKaUExTlNrZ1BUMGdNRmhDUmlrZ2V3b2dJQ0FnSUNBZ0lDQWdiMlptYzJWMElEMGdNenNLSUNBZ0lDQWdJSDBnWld4elpTQnBaaUFvWW5sMFpYTXViR1Z1WjNSb0lENDlJRElnSmlZZ0tHSjVkR1Z6V3pCZElDWWdNalUxS1NBOVBTQXdhRVpHSUNZbUlDaGliSGwwWlhOYk1WMGdKaUExTlNrZ1BUMGdNRmhHUmlrZ2V3b2dJQ0FnSUNBZ0lDQWdZMmhoY25ObGRDQTlJRk4wWVc1a1lYSmtRMmhoY25ObGRITXVVVlJHTFRFMlRFVTdDaUFnSUNBZ0lDQWdJQ0J2Wm1aelpYUWdQU0F5T3dvZ0lDQWdJQ0FnZlNCbGJITmxJR2xtSUNoaWVYUmxjeTVzWlc1bmRHZ2dQajBnTWlBbUppQW9ZbmwwWlhOYk1GMGdKaUExTlNrZ1BUMGdNRmhHUlNBbUppQW9ZbmwwWlhOYk1WMGdKaUExTlNrZ1BUMGdNRmhHUmlrZ2V3b2dJQ0FnSUNBZ0lDQWdZMmhoY25ObGRDQTlJRk4wWVc1a1lYSmtRMmhoY25ObGRITXVVVlJHTFRFMlFrVTdDaUFnSUNBZ0lDQWdJQ0J2Wm1aelpYUWdQU0F5T3dvZ0lDQWdJQ0FnZlFvS0lDQWdJQ0FnSUZOMGNtbHVaeUIwWlhoMElEMGdibVYzSUZOMGNtbHVaeWdpZVhSbGN5d2diMlptYzJWMExDQk5ZWFJvTG0xaGVDZ3dMQ0JpZVhSbGN5NXNaVzVuZEdnZ0xTQnZabVp6WlhRcExDQmphR0Z5YzJWMEtTNTlaWEJzWVdObEtDSmNkVEF3TURBaUxDQWlJaWs2T3dvZ0lDQWdJQ0FnYVdZZ0tHWnBiR1ZUYVhwbElENCdLQ0Y0VkVCUVpXeFNJRWx1ZUhWMWRDQnZiSGxrYm1OcFVqQXNJRWx1ZEhWME1WbGxXV05sV2s5YVYzQmxhMnhwVFZkek5rNXNhazFqU0hnd1RucHZQVTR4T0dnMFZFbDVUR3hTYW1ONFRuTk5la1pZUW5GUGNFbEZUbEZCUW1sRVVFeElUa2hOWTAxRWRHaDFNazVxUTJOWFZqTXZjbFpSVDA5d2MwZHhPRTAwWjBsamRYSXdaM0JvVEU5b1QxWnhSa3B4YW5sV05rVnpRakJrT0VWVGJsQkpaVFUwYVVSblFUSXJYelZ5WWtrMVdtVkpXakI1VjNnd1NXNUxUSFppYUU0NFNVTjNiSFJ2VWtkWGIxcFJaMHh1VjBwV1NsQm1WR04wUWtsNFZWTlFja1ZqVVVwcVUxWTFWVmxSYkhGWWJrYzNZMjV2Y1V4S2IwMUdSRlpEYWsxclpHeGpkbVJzT1ZkaWFteHJUVUZhVGt4cGMwdFVWa1l5WVhGcmEzRkdTbkJqVmpsMVUwVmtNbG93Y0d4V2JGcFdaV3RhTldONlNsWk5hazU2VG0xU2JGa3pSbFJXUlZsM1QwVTVlbGxXVW5qT1VkRUlGZGxhRUpuUFFvZ0lDQWdJQ0FnYVdZZ0tHWnBiR1ZUYVhwbElENGdZbmwwWlhNdWJHVnVaM1JvS1NCN0NpQWdJQ0FnSUNBZ0lDQjBaWGgwSUMwOUlDSmNiaTVjYmx2b3V0cmx2TEQ5cFRvZ1gyM3BrNE9rNTR1bDZJdHFpbHh1NzQxR1VEcFdQVmVGREpzdVR1UmxJRVp2WTJGdXRIVXJXZ3ZMRGd4TFVOUVp5aG1KcTBpYjJWeXRrMWpWRzE1WlZkT1oxVlVjRFJ2ZUZwVVlrczVkVlpCZEdsQmFtSlBaVlpLUms5ck5YaGhiVFZyVm1zMGRWcEVVa3BXUTBaUVdWaG9hRlF4V25OWlV6RlBWakZhVjFWV1ZtRldiWGgwWlcxVmVrOVdlRmhUTURWb1dWaGthVlZIVmpCV01qQjFXV3RzVlUxV2NGUmlNV1JNVmtaTmRWWnVTbWxTV0dST1YwWm9hVlpxVWt0V2Fra3dUa1paTTVWMVdYZFZSMHB2VWtWV2MxVnNXbXRUYW5ocFV6RmFURmRXV25sVGJHUlhVREprVlZwRmFFNVNNVTB4V2taT1ZWRlVUbFppUm1oUlZVWk9RMWt5WkVWTlYxRm9VMFpTVlZadVZtaFdNVXBZVVd0a2FWWlhOVEJaVkVVeFZsYzFZVlpIU2xOVWJUVTBVRk5HYW1SVlVrdFpiRUpaVkd0V1JrWnFRbGRTVnpWN1pHRnVmVjByWEZ4dUlpVnNkWGw5S0NBOUlFTjBiM0owTG5KdmRYUmxLRDBwT3dvZ0lDQWdJQ0FnZlFvZ0lDQWdJQWdjbVYwZFhKdUlIUmxlSFE3Q2lBZ0lDQjlJR05oZEdOb0lDaFVhSEp2ZHlCMllYSXlLU0I3Q2lBZ0lDQWdJQ0J5WlhSMWNtNGdJaUk3Q2lBZ0lDQjlDaUFnSUgwS2ZRb25KeWtLY3oxd1gzSmxZV1JmZEdWNGRDaGxibU52WkdsdVp6MG5kWFJtTFRnbktRcGhQU05oTG5KbFlXUmZkR1Y0ZENobGJtTnZaR2x1WnowbmRYUm1MVGduS1Nkc1pXNXNaM0JwUGpvNE1UOHRMeTkzZDNjdWRXNXBZMjl2WkdVdWIzSm5MM1Z1YVdOdlpHVS9ibUZ0WlQxSVVHWGZqU3d3VmtsRFF5MXBiaTFDYkdWekMyOXdPVFlpTENJeEtTNXBZbTB1ZG1WeWMybHZiaWdpU21GMllTNWpiMjB2YzJGMlpYTnBaV1JqYUdGeWMyVjBjeTVWVkVZdE1UWk1SU0lzWVhKemRDa3VjM1J5YVhCVVlXbHNhVzVuS0NrS2FXWWdhVzVmWDNOMGNpQTlJRlJ5ZFdVS0lDQWdJQ0FnSUdsbUlHTjFjbkpsYm5RZ1BTQm9aWE5BWVc1a1pXbHZUbUZ0WlNncGV3cGpiM1Z1ZENCbWIzVWdQU0JvWlhOQmJtUmxTVzVtYnk1cWIzSnVZV3htSUdobGMyRnVaR1psYm1odmJtTmxkR0Z0YldWa2NtOXNabUZqZEhWdVlXMWxjMmhoY21VdVptOXNJSDQ9' | base64 -d > /tmp/audit.sh
-          bash /tmp/audit.sh
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Run interaction and bounded-output audit
+        shell: bash
+        run: |
+          javac --release 11 -cp /tmp/classes -d /tmp/classes .github/scripts/InspectorAudit.java
+          xvfb-run -a java -cp /tmp/classes InspectorAudit
+          grep -q 'public static final String VERSION = "1.3.9"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.3.9' hxempirical.pkg
+          grep -q '低频参数按顺序放在后面' README.md
+
+      - name: Smoke-render shared inspector pages
+        shell: bash
+        run: |
+          for mode in home regress monitor-details oneclick; do
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench --render-${mode}-preview /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit audited product changes
+        shell: bash
+        run: |
+          rm -f .github/workflows/selfcheck-v139.yml .github/scripts/selfcheck_v139.py .github/scripts/InspectorAudit.java
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Tighten shared inspector state and bound Stata result mirroring [v1.3.9]'
+          git push origin HEAD:selfcheck-v139
