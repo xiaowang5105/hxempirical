@@ -1,4 +1,4 @@
-*! hxexecute 1.5.0  11aug2026
+*! hxexecute 1.6.0  13aug2026
 *! Execute one native command with monitor snapshots while preserving History.
 program define hxexecute, rclass
     version 16.0
@@ -40,9 +40,17 @@ program define hxexecute, rclass
     else {
         char _dta[hxtoolbox_history_status] "已写入"
     }
+    /* Mirror the command's visible Stata Results into a text log that Java can read. */
+    local hx_result_file `"`c(tmpdir)'/hxempirical_last_results.txt"'
+    capture erase `"`hx_result_file'"'
+    capture log close HXEMPIRICAL_RESULT
+    capture log using `"`hx_result_file'"', text replace name(HXEMPIRICAL_RESULT)
+    local hx_log_rc = _rc
     capture noisily `native'
     local rc = _rc
+    if !`hx_log_rc' capture log close HXEMPIRICAL_RESULT
     /* use/clear may replace dataset characteristics; restore audit fields. */
+    char _dta[hxtoolbox_last_results_file] `"`hx_result_file'"'
     char _dta[hxtoolbox_last_native_command] `"`native'"'
     if `history_rc' {
         char _dta[hxtoolbox_history_status] "写入失败"

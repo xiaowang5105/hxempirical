@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.4";
+   public static final String VERSION = "1.3.5";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.4");
+      SFIToolkit.displayln("HxWorkbench 1.3.5");
       return 0;
    }
 
@@ -2027,6 +2027,37 @@ public final class HxWorkbench {
          } catch (Throwable var3) {
             SFIToolkit.errorln("工作台调用 Stata 失败：" + var0 + "\n" + var3.getMessage());
             return 459;
+         }
+      }
+
+      static String lastNativeOutput() {
+         String path = characteristic("hxtoolbox_last_results_file");
+         if (path == null || path.isBlank()) {
+            return "";
+         }
+
+         try {
+            byte[] bytes = Files.readAllBytes(Paths.get(path));
+            if (bytes.length == 0) {
+               return "";
+            }
+
+            String text;
+            try {
+               text = StandardCharsets.UTF_8
+                  .newDecoder()
+                  .onMalformedInput(CodingErrorAction.REPORT)
+                  .onUnmappableCharacter(CodingErrorAction.REPORT)
+                  .decode(ByteBuffer.wrap(bytes))
+                  .toString();
+            } catch (CharacterCodingException var3) {
+               text = new String(bytes, Charset.defaultCharset());
+            }
+
+            text = text.replace("\r\n", "\n").replace('\r', '\n').trim();
+            return text.length() > 120000 ? text.substring(text.length() - 120000) : text;
+         } catch (Throwable var4) {
+            return "";
          }
       }
 
@@ -6165,6 +6196,7 @@ public final class HxWorkbench {
          var3.add(this.missingResultTabs, "Center");
          this.resultSummaryArea.setText("选择命令并运行后，这里会显示与当前任务有关的结果摘要。\n\n回归命令显示样本数和拟合信息；数据处理显示前后变化；专题工作流显示自己的结果页面。");
          this.resultSummaryArea.setBackground(SURFACE);
+         this.resultSummaryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
          this.resultCards.setBackground(SURFACE);
          this.resultCards.add(softScroll(this.resultSummaryArea), "general");
          this.resultCards.add(softScroll(this.changeArea), "changes");
@@ -8076,10 +8108,19 @@ public final class HxWorkbench {
             }
             String setup = "xtset " + pv + (tv.isBlank() ? "" : " " + tv);
             String cmd = this.previewArea.getText().trim();
-            int rc = HxWorkbench.StataBridge.execute(setup, false);
-            if (rc == 0) rc = HxWorkbench.StataBridge.execute(cmd, true);
-            this.refreshDataset(false);
-            this.statusLabel.setText(rc == 0 ? "xtreg 已运行。右侧可查看结果与日志。" : "xtreg 运行失败，返回码：" + rc);
+            int setupRc = HxWorkbench.StataBridge.execute(setup, false);
+            if (setupRc != 0) {
+               this.statusLabel.setText("xtset 失败，返回码：" + setupRc);
+               return;
+            }
+            this.executeMonitoredCommand(
+               cmd,
+               "hxexecute, command(" + HxWorkbench.StataBridge.quote(cmd) + ")",
+               false,
+               result -> this.statusLabel.setText(
+                  result.rc == 0 ? "xtreg 已运行；右侧‘结果’已同步 Stata Results。" : "xtreg 运行失败，返回码：" + result.rc
+               )
+            );
          });
          actions.add(prev); actions.add(clear); actions.add(run);
          step4.add(actions, BorderLayout.SOUTH);
@@ -11187,7 +11228,12 @@ public final class HxWorkbench {
          String var7 = this.buildRunOutcome(var1, this.activeRunBefore, var2);
          this.monitorOutcome.setText(var7);
          this.monitorOutcome.setCaretPosition(0);
-         this.resultSummaryArea.setText(var7);
+         String nativeOutput = HxWorkbench.StataBridge.lastNativeOutput();
+         if (nativeOutput.isBlank()) {
+            this.resultSummaryArea.setText(var7);
+         } else {
+            this.resultSummaryArea.setText("Stata 原始输出\n\n" + nativeOutput + "\n\n—— 执行摘要 ——\n" + var7);
+         }
          this.resultSummaryArea.setCaretPosition(0);
          this.commandDockTitle.setText("即将执行的 Stata 命令");
          this.commandDockStatus.setText(var6 ? "● 成功 · " + var5 : "● 失败 r(" + var1.rc + ")");

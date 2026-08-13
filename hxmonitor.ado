@@ -1,4 +1,4 @@
-*! hxmonitor 1.1.0  09aug2026
+*! hxmonitor 1.1.1  13aug2026
 *! Live data monitor and before/after summaries for the empirical toolbox.
 program define hxmonitor, rclass
     version 16.0
@@ -263,7 +263,7 @@ program define hxmonitor, rclass
         capture confirm variable `v'
         if !_rc local checkedvars "`checkedvars' `v'"
     }
-    if "`checkedvars'" != "" quietly markout `touse' `checkedvars'
+    if "`checkedvars'" != "" quietly markout `touse' `checkedvars', strok
     quietly count if `touse'
     local sampleN = r(N)
     local excluded = _N - `sampleN'
