@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.3";
+   public static final String VERSION = "1.3.4";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.3");
+      SFIToolkit.displayln("HxWorkbench 1.3.4");
       return 0;
    }
 
@@ -8078,8 +8078,8 @@ public final class HxWorkbench {
             String cmd = this.previewArea.getText().trim();
             int rc = HxWorkbench.StataBridge.execute(setup, false);
             if (rc == 0) rc = HxWorkbench.StataBridge.execute(cmd, true);
-            this.statusLabel.setText(rc == 0 ? "xtreg 已运行。右侧可查看结果与日志。" : "xtreg 运行失败，返回码：" + rc);
             this.refreshDataset(false);
+            this.statusLabel.setText(rc == 0 ? "xtreg 已运行。右侧可查看结果与日志。" : "xtreg 运行失败，返回码：" + rc);
          });
          actions.add(prev); actions.add(clear); actions.add(run);
          step4.add(actions, BorderLayout.SOUTH);
