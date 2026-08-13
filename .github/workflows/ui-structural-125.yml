@@ -1,0 +1,50 @@
+name: UI structural cleanup 1.2.5
+
+on:
+  push:
+    branches: [ui-structural-1.2.5]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Apply structural cleanup
+        run: python tools/ui_structural_125.py
+
+      - name: Compile
+        run: |
+          rm -rf build/classes
+          mkdir -p build/classes
+          javac --release 11 -d build/classes $(find test-stubs src/main/java -name '*.java')
+          javap -verbose -classpath build/classes com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Build jar
+        run: jar cf hxworkbench.jar -C build/classes .
+
+      - name: Render core pages
+        run: |
+          xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-home-preview /tmp/home.png
+          xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-method-preview /tmp/linear.png
+          xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-oneclick-preview /tmp/oneclick.png
+          xvfb-run -a java -cp build/classes com.hexie.stata.HxWorkbench --render-preview /tmp/command.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-structural-1.2.5-previews
+          path: /tmp/*.png
+
+      - name: Commit production files
+        run: |
+          git config user.name 'xiaowang5105'
+          git config user.email '2692127923@qq.com'
+          git add src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp hxtoolbox.sthlp
+          if ! git diff --cached --quiet; then
+            git commit -m 'Unify responsive UI structure for 1.2.5'
+            git push
+          fi
