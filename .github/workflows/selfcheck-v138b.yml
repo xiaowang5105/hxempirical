@@ -1,0 +1,130 @@
+name: Regression result usability selfcheck v1.3.8b
+
+on:
+  push:
+    branches: [selfcheck-v137]
+    paths: ['.github/workflows/selfcheck-v138b.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply audited fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s=p.read_text(encoding='utf-8')
+          assert 'public static final String VERSION = "1.3.7";' in s
+          s=s.replace('public static final String VERSION = "1.3.7";', 'public static final String VERSION = "1.3.8";', 1)
+          s=s.replace('SFIToolkit.displayln("HxWorkbench 1.3.7");', 'SFIToolkit.displayln("HxWorkbench 1.3.8");', 1)
+          old='''         this.resultSummaryArea.setBackground(SURFACE);\n         this.resultSummaryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));'''
+          new='''         this.resultSummaryArea.setBackground(SURFACE);\n         // Stata tables depend on fixed columns. Never word-wrap the raw Results mirror.\n         this.resultSummaryArea.setLineWrap(false);\n         this.resultSummaryArea.setWrapStyleWord(false);\n         this.resultSummaryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));'''
+          assert old in s
+          s=s.replace(old,new,1)
+          old='''         if (!var6) {\n            this.selectRunView();\n         } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {'''
+          new='''         if (!var6) {\n            // A failed Stata command can still have the most useful diagnosis in Results.\n            if (!nativeOutput.isBlank()) {\n               this.selectResultView("general", true);\n            } else {\n               this.selectRunView();\n            }\n         } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {'''
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          for fn in ['hxempirical.ado','hxempirical.pkg','hxempirical.sthlp','README.md']:
+              p=Path(fn); t=p.read_text(encoding='utf-8')
+              t=t.replace('1.3.7','1.3.8')
+              if fn=='README.md': t=t.replace('2026-08-13 14:26（UTC+8）','2026-08-13 14:31（UTC+8）',1)
+              p.write_text(t,encoding='utf-8')
+          print('PATCH_OK')
+          PY
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class SFIToolkit { public static final List<String> commands=new ArrayList<>(); public static int executeCommand(String s, boolean b){commands.add(s);return 0;} public static void errorln(String s){} public static void displayln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; import java.util.*; public class Characteristic { private static final Map<String,String>M=new HashMap<>(); public static String getDtaChar(String s){return M.getOrDefault(s,"");} public static void setDtaChar(String s,String v){M.put(s,v);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String s,String v){} public static void setLocal(String s,String v){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return Double.isNaN(d);} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static int getVarIndex(String s){return -1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} public static void storeNum(int i,long j,double d){} public static void storeStr(int i,long j,String s){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public int getVarIndex(String s){return -1;} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+
+      - name: Runtime result readability audit
+        shell: bash
+        run: |
+          grep -q 'resultSummaryArea.setLineWrap(false)' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'if (!nativeOutput.isBlank())' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'public static final String VERSION = "1.3.8"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q 'd Version 1.3.8' hxempirical.pkg
+          grep -q 'markout .*strok' hxmonitor.ado
+          grep -q 'hxtoolbox_last_results_file] ""' hxexecute.ado
+
+          cat > /tmp/ResultReadabilityAudit.java <<'EOF'
+          import java.lang.reflect.*; import java.nio.file.*; import javax.swing.*; import com.stata.sfi.*;
+          public class ResultReadabilityAudit {
+            static Field f(Class<?> c,String n)throws Exception{Field x=c.getDeclaredField(n);x.setAccessible(true);return x;}
+            static Method m(Class<?> c,String n,Class<?>...a)throws Exception{Method x=c.getDeclaredMethod(n,a);x.setAccessible(true);return x;}
+            static void ck(boolean v,String s){if(!v)throw new AssertionError(s);}
+            public static void main(String[] args)throws Exception{
+              Path p=Paths.get("/tmp/hx_result_sample.txt");
+              Files.writeString(p,"Fixed-effects regression\n------------------------------------------------------------------------------\n       price | Coefficient  Std. err.      t    P>|t|\n         mpg |  -49.51222   86.15604    -0.57   0.567\n------------------------------------------------------------------------------\n");
+              Characteristic.setDtaChar("hxtoolbox_last_results_file",p.toString());
+              final Throwable[] err={null};
+              SwingUtilities.invokeAndWait(()->{try{
+                Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Constructor<?> ct=c.getDeclaredConstructor(boolean.class);ct.setAccessible(true); JFrame fr=(JFrame)ct.newInstance(true); fr.addNotify();
+                JTextArea area=(JTextArea)f(c,"resultSummaryArea").get(fr); ck(!area.getLineWrap(),"raw Stata table wraps");
+                f(c,"currentCommand").set(fr,"xtreg"); f(c,"runStartedNanos").setLong(fr,System.nanoTime());
+                Class<?> rr=Class.forName("com.hexie.stata.HxWorkbench$RunResult"); Constructor<?> rc=rr.getDeclaredConstructor(String.class,int.class,String.class,String.class,double.class,double.class,double.class);rc.setAccessible(true); Object failed=rc.newInstance("xtreg price mpg, fe",198,"已写入","",Double.NaN,Double.NaN,Double.NaN);
+                Method finish=m(c,"finishMonitoredRun",rr,Class.forName("com.hexie.stata.HxWorkbench$RunShape")); finish.invoke(fr,failed,null);
+                JTabbedPane tabs=(JTabbedPane)f(c,"dataTabs").get(fr); JLabel title=(JLabel)f(c,"rightPaneTitle").get(fr);
+                ck(tabs.getSelectedIndex()==1,"failed Stata transcript not surfaced"); ck("结果".equals(title.getText()),"result title mismatch"); ck(area.getText().contains("Coefficient"),"raw output absent");
+                Method run=m(c,"selectRunView");run.invoke(fr);ck("运行日志".equals(title.getText()),"log title mismatch");
+                Method data=m(c,"selectDataView");data.invoke(fr);ck("当前数据".equals(title.getText()),"data title mismatch");
+                fr.dispose();
+              }catch(Throwable t){err[0]=t;}}); if(err[0]!=null)throw new RuntimeException(err[0]);
+              System.out.println("RESULT_READABILITY_AUDIT_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/ResultReadabilityAudit.java
+          xvfb-run -a java -cp /tmp/classes ResultReadabilityAudit
+
+      - name: Smoke-render main pages
+        shell: bash
+        run: |
+          for mode in home regress monitor-details; do
+            xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench --render-${mode}-preview /tmp/${mode}.png
+            test -s /tmp/${mode}.png
+          done
+
+      - name: Commit audited product changes
+        shell: bash
+        run: |
+          rm -f .github/workflows/selfcheck-v138.yml .github/workflows/selfcheck-v138b.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Keep Stata regression output readable and surface failures [v1.3.8]'
+          git push origin HEAD:selfcheck-v137
