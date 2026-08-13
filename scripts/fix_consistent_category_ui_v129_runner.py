@@ -2,10 +2,9 @@ from pathlib import Path
 
 p = Path('scripts/apply_consistent_category_ui_v129.py')
 s = p.read_text(encoding='utf-8')
-start = s.index('# ---- Replace remaining category card-wall fallback')
+start = s.index('pattern = re.compile(')
 end = s.index("java.write_text(s, encoding='utf-8')", start)
-replacement = '''# ---- Replace remaining category card-wall fallback with compact list navigation ----
-start_marker = '         this.setChooserBreadcrumb("开始  >  " + this.activeCategoryName);'
+replacement = '''start_marker = '         this.setChooserBreadcrumb("开始  >  " + this.activeCategoryName);'
 start_pos = s.find(start_marker)
 if start_pos < 0:
     raise SystemExit('generic category fallback start not found')
