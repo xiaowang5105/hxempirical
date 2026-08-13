@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.3";
+   public static final String VERSION = "1.4.4";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.3");
+      SFIToolkit.displayln("HxWorkbench 1.4.4");
       return 0;
    }
 
@@ -2863,12 +2863,12 @@ public final class HxWorkbench {
 
          JPanel center = new JPanel(new BorderLayout());
          center.setBackground(APP_BG);
-         center.add(this.buildSidebarToggleBar(), BorderLayout.NORTH);
          center.add(this.stageCards, BorderLayout.CENTER);
          center.add(this.buildStatusBar(), BorderLayout.SOUTH);
 
          JPanel shell = new JPanel(new BorderLayout());
          shell.setBackground(APP_BG);
+         shell.add(this.buildSidebarToggleBar(), BorderLayout.NORTH);
          shell.add(this.buildSidebar(), BorderLayout.WEST);
          shell.add(center, BorderLayout.CENTER);
          this.add(shell, BorderLayout.CENTER);
