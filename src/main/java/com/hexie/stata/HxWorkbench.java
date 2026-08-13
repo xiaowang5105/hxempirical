@@ -24,6 +24,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.datatransfer.DataFlavor;
@@ -96,6 +97,7 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JSpinner;
 import javax.swing.JSplitPane;
 import javax.swing.JTabbedPane;
@@ -125,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.3.1";
+   public static final String VERSION = "1.3.2";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -346,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.3.1");
+      SFIToolkit.displayln("HxWorkbench 1.3.2");
       return 0;
    }
 
@@ -2358,6 +2360,11 @@ public final class HxWorkbench {
       private JButton sidebarToggleButton;
       private boolean sidebarCollapsed = false;
       private String draggedDataVariable = "";
+      private JComboBox<String> xtregPanelVar;
+      private JComboBox<String> xtregTimeVar;
+      private JComboBox<String> xtregDepVar;
+      private JList<String> xtregIndepList;
+      private Runnable xtregPreviewUpdater;
       private String activeSidebarKey = "home";
       private final JTextArea exactOneClickCommand = new JTextArea();
       private final JTextField exactOneClickModelOptions = new JTextField();
@@ -2372,7 +2379,7 @@ public final class HxWorkbench {
       private static final int MAX_RECENT_SNAPSHOTS = 3;
       private final JLabel methodCaption = new JLabel("先选择功能分类");
       private final JLabel commandCaption = new JLabel("再选择方法");
-      private final JPanel formPanel = new JPanel(new GridBagLayout());
+      private final JPanel formPanel = new HxWorkbench.WorkbenchFrame.WidthTrackingPanel();
       private final JScrollPane formScroll = new JScrollPane(this.formPanel);
       private final JPanel breadcrumbBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
       private final JLabel commandTitle = new JLabel("选择一个 Stata 命令");
@@ -3405,15 +3412,15 @@ public final class HxWorkbench {
          nav.setOpaque(false);
          nav.setBorder(new EmptyBorder(22, 11, 8, 11));
          nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-         nav.add(this.sidebarButton("home", "◆", "工作台", this::showHomePage));
+         nav.add(this.sidebarButton("home", "⌂", "工作台", this::showHomePage));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("data", "", "数据", () -> this.browseCategoryOverview("data")));
+         nav.add(this.sidebarButton("data", "▤", "数据", () -> this.browseCategoryOverview("data")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("stats", "", "统计", () -> this.browseCategoryOverview("stats")));
+         nav.add(this.sidebarButton("stats", "▥", "统计", () -> this.browseCategoryOverview("stats")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("graph", "", "图形", () -> this.browseCategoryOverview("graph")));
+         nav.add(this.sidebarButton("graph", "▧", "图形", () -> this.browseCategoryOverview("graph")));
          nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("oneclick", "", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         nav.add(this.sidebarButton("oneclick", "◇", "OneClick", () -> this.browseMethodCategory("oneclick")));
          nav.add(Box.createVerticalStrut(8));
          nav.add(this.sidebarButton("history", "◷", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
          nav.add(Box.createVerticalStrut(8));
@@ -3481,7 +3488,7 @@ public final class HxWorkbench {
 
       private void applySidebarCollapsedState() {
          if (this.sidebarPanel == null) return;
-         int width = this.sidebarCollapsed ? 58 : 205;
+         int width = this.sidebarCollapsed ? 56 : 205;
          this.sidebarPanel.setPreferredSize(new Dimension(width, 0));
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
@@ -3493,7 +3500,8 @@ public final class HxWorkbench {
             String label = Objects.toString(button.getClientProperty("hx.sidebar.label"), "");
             String glyph = Objects.toString(button.getClientProperty("hx.sidebar.glyph"), "");
             String compact = glyph.isBlank() ? (label.isBlank() ? "•" : label.substring(0, 1)) : glyph;
-            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(label) + "</b></html>");
+            String expanded = glyph.isBlank() ? label : glyph + "   " + label;
+            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(expanded) + "</b></html>");
             button.setHorizontalAlignment(this.sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
             button.setBorder(new EmptyBorder(11, this.sidebarCollapsed ? 6 : 14, 11, this.sidebarCollapsed ? 6 : 14));
             button.setToolTipText(this.sidebarCollapsed ? label : null);
@@ -3502,7 +3510,6 @@ public final class HxWorkbench {
          this.sidebarPanel.repaint();
          Container parent = this.sidebarPanel.getParent();
          if (parent != null) { parent.revalidate(); parent.repaint(); }
-         SwingUtilities.invokeLater(this::applyDividerRatios);
       }
 
       private JButton sidebarButton(String key, String glyph, String label, Runnable action) {
@@ -5621,7 +5628,7 @@ public final class HxWorkbench {
       private void renderBreadcrumb(JPanel bar, String path) {
          bar.removeAll();
          ArrayList<String> parts = new ArrayList<>();
-         for (String raw : path.split("\\s*[›>]\\s*")) {
+         for (String raw : path.split("\\s*[›>/]\\s*")) {
             String part = raw.trim();
             if (!part.isBlank() && !"开始".equals(part) && !"首页".equals(part)) {
                parts.add(part);
@@ -5875,6 +5882,7 @@ public final class HxWorkbench {
          this.formPanel.setBorder(new EmptyBorder(16, 16, 20, 16));
          this.formPanel.setBackground(SURFACE);
          this.formScroll.setBorder(null);
+         this.formScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
          this.formScroll.getVerticalScrollBar().setUnitIncrement(16);
          this.commandTitle.setForeground(TEXT);
          this.commandTitle.setFont(this.commandTitle.getFont().deriveFont(1, 16.0F));
@@ -7665,6 +7673,37 @@ public final class HxWorkbench {
       }
 
 
+      private JComponent xtregCircleBadge(String text, boolean active, int size) {
+         JComponent badge = new JComponent() {
+            @Override
+            protected void paintComponent(Graphics g0) {
+               Graphics2D g = (Graphics2D)g0.create();
+               g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+               int d = Math.min(getWidth(), getHeight()) - 2;
+               int x = (getWidth() - d) / 2;
+               int y = (getHeight() - d) / 2;
+               g.setColor(active ? new Color(47, 111, 228) : new Color(239, 243, 248));
+               g.fillOval(x, y, d, d);
+               if (!active) {
+                  g.setColor(new Color(225, 231, 239));
+                  g.drawOval(x, y, d - 1, d - 1);
+               }
+               g.setColor(active ? Color.WHITE : new Color(75, 88, 108));
+               g.setFont(getFont().deriveFont(Font.BOLD, size >= 28 ? 12.0F : 10.5F));
+               java.awt.FontMetrics fm = g.getFontMetrics();
+               int tx = (getWidth() - fm.stringWidth(text)) / 2;
+               int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+               g.drawString(text, tx, ty);
+               g.dispose();
+            }
+         };
+         Dimension d = new Dimension(size, size);
+         badge.setPreferredSize(d);
+         badge.setMinimumSize(d);
+         badge.setMaximumSize(d);
+         return badge;
+      }
+
       private JPanel xtregWizardCardV130(int step, String title, String subtitle) {
          JPanel card = cardPanel();
          card.setBackground(SURFACE);
@@ -7672,28 +7711,29 @@ public final class HxWorkbench {
             new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
             new EmptyBorder(12, 14, 12, 14)
          ));
-         card.setLayout(new BorderLayout(12, 10));
-         JLabel badge = new JLabel(Integer.toString(step), SwingConstants.CENTER);
-         badge.setOpaque(true);
-         badge.setBackground(new Color(47, 111, 228));
-         badge.setForeground(Color.WHITE);
-         badge.setFont(badge.getFont().deriveFont(Font.BOLD, 12.0F));
-         badge.setPreferredSize(new Dimension(26, 26));
-         badge.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(47, 111, 228), 13));
-         card.add(badge, BorderLayout.WEST);
+         card.setLayout(new BorderLayout(0, 10));
+         card.setMinimumSize(new Dimension(0, 0));
+
+         JPanel header = new JPanel(new BorderLayout(10, 0));
+         header.setOpaque(false);
+         JComponent badge = this.xtregCircleBadge(Integer.toString(step), true, 28);
+         header.add(badge, BorderLayout.WEST);
+
          JPanel head = new JPanel();
          head.setOpaque(false);
          head.setLayout(new BoxLayout(head, BoxLayout.Y_AXIS));
          JLabel t = new JLabel(title);
          t.setForeground(TEXT);
          t.setFont(t.getFont().deriveFont(Font.BOLD, 13.5F));
-         JLabel st = new JLabel(subtitle);
+         JLabel st = new JLabel("<html>" + html(subtitle) + "</html>");
          st.setForeground(MUTED);
          st.setFont(st.getFont().deriveFont(9.5F));
+         st.setMinimumSize(new Dimension(0, 0));
          head.add(t);
          head.add(Box.createVerticalStrut(3));
          head.add(st);
-         card.add(head, BorderLayout.NORTH);
+         header.add(head, BorderLayout.CENTER);
+         card.add(header, BorderLayout.NORTH);
          return card;
       }
 
@@ -7702,31 +7742,56 @@ public final class HxWorkbench {
          strip.setBackground(SURFACE);
          strip.setBorder(BorderFactory.createCompoundBorder(
             new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
-            new EmptyBorder(10, 12, 10, 12)
+            new EmptyBorder(9, 10, 9, 10)
          ));
-         strip.setLayout(new GridLayout(1, 4, 12, 0));
+         strip.setLayout(new GridLayout(1, 4, 8, 0));
          String[][] steps = new String[][]{
             {"1", "面板设定", "指定个体与时间维度"},
             {"2", "选择变量", "选择因变量与解释变量"},
             {"3", "估计选项", "模型与标准误设置"},
-            {"4", "预览并运行", "预览命令并运行估计"}
+            {"4", "预览运行", "预览命令并运行估计"}
          };
          for (int i = 0; i < steps.length; i++) {
-            JPanel p = new JPanel(new BorderLayout(8, 0));
+            JPanel p = new JPanel(new BorderLayout(6, 0));
             p.setOpaque(false);
-            JLabel n = new JLabel(steps[i][0], SwingConstants.CENTER);
-            n.setOpaque(true);
-            n.setBackground(i == 0 ? new Color(47, 111, 228) : new Color(239, 243, 248));
-            n.setForeground(i == 0 ? Color.WHITE : new Color(75, 88, 108));
-            n.setPreferredSize(new Dimension(28, 28));
-            n.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(i == 0 ? new Color(47, 111, 228) : new Color(225, 231, 239), 14));
+            p.setMinimumSize(new Dimension(0, 0));
+            JComponent n = this.xtregCircleBadge(steps[i][0], i == 0, 24);
             p.add(n, BorderLayout.WEST);
-            JLabel label = new JLabel("<html><b>" + html(steps[i][1]) + "</b><br><span style='font-size:9px;color:#738096'>" + html(steps[i][2]) + "</span></html>");
+            JLabel label = new JLabel("<html><b>" + html(steps[i][1]) + "</b></html>");
+            label.setForeground(TEXT);
+            label.setFont(label.getFont().deriveFont(10.5F));
+            label.setToolTipText(steps[i][2]);
+            label.setMinimumSize(new Dimension(0, 0));
             p.add(label, BorderLayout.CENTER);
             strip.add(p);
          }
-         strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+         strip.setPreferredSize(new Dimension(0, 52));
+         strip.setMinimumSize(new Dimension(0, 52));
+         strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
          return strip;
+      }
+
+      private List<String> xtregAvailableVariables() {
+         if (this.previewMode) {
+            return Arrays.asList("make", "price", "mpg", "rep78", "headroom", "trunk", "weight", "length", "turn", "displacement", "gear_ratio", "foreign");
+         }
+         return HxWorkbench.StataBridge.variableNames();
+      }
+
+      private void refreshXtregVariableControls() {
+         if (!"xtreg".equals(this.currentCommand)
+            || this.xtregPanelVar == null || this.xtregTimeVar == null
+            || this.xtregDepVar == null || this.xtregIndepList == null) return;
+
+         List<String> vars = this.xtregAvailableVariables();
+         boolean oldRebuilding = this.rebuilding;
+         this.rebuilding = true;
+         replaceComboItems(this.xtregPanelVar, vars);
+         replaceComboItems(this.xtregTimeVar, vars);
+         replaceComboItems(this.xtregDepVar, vars);
+         replaceListItems(this.xtregIndepList, vars);
+         this.rebuilding = oldRebuilding;
+         if (!this.rebuilding && this.xtregPreviewUpdater != null) this.xtregPreviewUpdater.run();
       }
 
       private void installDataHeaderDragSupport() {
@@ -7851,7 +7916,7 @@ public final class HxWorkbench {
          this.commandDock.setVisible(false);
          this.commandTabs.setVisible(true);
          this.commandTabs.setSelectedIndex(0);
-         this.setWorkspaceBreadcrumb("首页  /  统计  /  纵向/面板数据  /  xtreg");
+         this.setWorkspaceBreadcrumb("统计  >  纵向/面板数据  >  xtreg");
          this.commandTitle.setText("xtreg · 面板数据回归");
          this.commandTitle.setToolTipText("Stata 官方面板数据回归命令");
          this.exampleLabel.setText("使用 xtreg 进行面板数据回归分析，分四步完成模型设定与估计。");
@@ -7863,19 +7928,26 @@ public final class HxWorkbench {
          this.formPanel.setBackground(APP_BG);
          this.formPanel.setBorder(new EmptyBorder(12, 12, 16, 12));
 
-         List<String> vars = HxWorkbench.StataBridge.variableNames();
+         List<String> vars = this.xtregAvailableVariables();
          String[] choices = new String[vars.size() + 1];
          choices[0] = "";
          for (int i = 0; i < vars.size(); i++) choices[i + 1] = vars.get(i);
 
-         JComboBox<String> panelVar = new JComboBox<>(choices);
-         JComboBox<String> timeVar = new JComboBox<>(choices);
-         JComboBox<String> dep = new JComboBox<>(choices);
+         this.xtregPanelVar = new JComboBox<>(choices);
+         this.xtregTimeVar = new JComboBox<>(choices);
+         this.xtregDepVar = new JComboBox<>(choices);
          DefaultListModel<String> indepModel = new DefaultListModel<>();
          for (String v : vars) indepModel.addElement(v);
-         JList<String> indep = new JList<>(indepModel);
+         this.xtregIndepList = new JList<>(indepModel);
+         JComboBox<String> panelVar = this.xtregPanelVar;
+         JComboBox<String> timeVar = this.xtregTimeVar;
+         JComboBox<String> dep = this.xtregDepVar;
+         JList<String> indep = this.xtregIndepList;
          indep.setSelectionMode(2);
          indep.setVisibleRowCount(4);
+         panelVar.setMinimumSize(new Dimension(0, 30));
+         timeVar.setMinimumSize(new Dimension(0, 30));
+         dep.setMinimumSize(new Dimension(0, 30));
          this.enableVariableDrop(panelVar, "个体变量（面板 ID）");
          this.enableVariableDrop(timeVar, "时间变量");
          this.enableVariableDrop(dep, "因变量（Y）");
@@ -7899,7 +7971,8 @@ public final class HxWorkbench {
          commandPreview.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
          commandPreview.setBackground(new Color(247, 250, 255));
          JScrollPane commandPreviewScroll = softScroll(commandPreview);
-         commandPreviewScroll.setPreferredSize(new Dimension(640, 62));
+         commandPreviewScroll.setPreferredSize(new Dimension(100, 62));
+         commandPreviewScroll.setMinimumSize(new Dimension(0, 62));
 
          Runnable update = () -> {
             String pv = Objects.toString(panelVar.getSelectedItem(), "").trim();
@@ -7919,12 +7992,13 @@ public final class HxWorkbench {
             commandPreview.setText(shown);
             this.previewArea.setText(xt.toString());
          };
-         panelVar.addActionListener(e -> update.run());
-         timeVar.addActionListener(e -> update.run());
-         dep.addActionListener(e -> update.run());
-         indep.addListSelectionListener(e -> { if (!e.getValueIsAdjusting()) update.run(); });
-         for (JRadioButton b : Arrays.asList(fe, re, be, pa)) b.addActionListener(e -> update.run());
-         se.addActionListener(e -> update.run());
+         this.xtregPreviewUpdater = update;
+         panelVar.addActionListener(e -> { if (!this.rebuilding) update.run(); });
+         timeVar.addActionListener(e -> { if (!this.rebuilding) update.run(); });
+         dep.addActionListener(e -> { if (!this.rebuilding) update.run(); });
+         indep.addListSelectionListener(e -> { if (!this.rebuilding && !e.getValueIsAdjusting()) update.run(); });
+         for (JRadioButton b : Arrays.asList(fe, re, be, pa)) b.addActionListener(e -> { if (!this.rebuilding) update.run(); });
+         se.addActionListener(e -> { if (!this.rebuilding) update.run(); });
          update.run();
 
          GridBagConstraints c = new GridBagConstraints();
@@ -7933,8 +8007,8 @@ public final class HxWorkbench {
 
          JPanel step1 = this.xtregWizardCardV130(1, "面板设定（xtset）", "先设置面板结构：指定个体变量（面板 ID）和时间变量（时间维度）。");
          JPanel s1Fields = new JPanel(new GridLayout(1, 2, 12, 0)); s1Fields.setOpaque(false);
-         JPanel p1 = new JPanel(new BorderLayout(0, 5)); p1.setOpaque(false); p1.add(new JLabel("个体变量（面板 ID）"), BorderLayout.NORTH); p1.add(panelVar, BorderLayout.CENTER);
-         JPanel p2 = new JPanel(new BorderLayout(0, 5)); p2.setOpaque(false); p2.add(new JLabel("时间变量"), BorderLayout.NORTH); p2.add(timeVar, BorderLayout.CENTER);
+         JPanel p1 = new JPanel(new BorderLayout(0, 5)); p1.setOpaque(false); p1.add(new JLabel("<html>个体变量（面板 ID） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH); p1.add(panelVar, BorderLayout.CENTER);
+         JPanel p2 = new JPanel(new BorderLayout(0, 5)); p2.setOpaque(false); p2.add(new JLabel("<html>时间变量 <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH); p2.add(timeVar, BorderLayout.CENTER);
          s1Fields.add(p1); s1Fields.add(p2);
          step1.add(s1Fields, BorderLayout.CENTER);
          JPanel advice1 = new JPanel(); advice1.setBackground(new Color(246, 250, 255)); advice1.setBorder(new EmptyBorder(8, 10, 8, 10));
@@ -7944,12 +8018,23 @@ public final class HxWorkbench {
 
          JPanel step2 = this.xtregWizardCardV130(2, "选择变量", "选择因变量和一个或多个解释变量。");
          JPanel s2Fields = new JPanel(new GridLayout(1, 2, 12, 0)); s2Fields.setOpaque(false);
-         JPanel p3 = new JPanel(new BorderLayout(0, 5)); p3.setOpaque(false); p3.add(new JLabel("因变量（Y）"), BorderLayout.NORTH); p3.add(dep, BorderLayout.CENTER);
-         JPanel p4 = new JPanel(new BorderLayout(0, 5)); p4.setOpaque(false); p4.add(new JLabel("解释变量（X，可多选）"), BorderLayout.NORTH); p4.add(indepScroll, BorderLayout.CENTER);
+         JPanel p3 = new JPanel(new BorderLayout(0, 5));
+         p3.setOpaque(false);
+         p3.add(new JLabel("<html>因变量（Y） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH);
+         dep.setPreferredSize(new Dimension(100, 32));
+         dep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+         JPanel depWrap = new JPanel();
+         depWrap.setOpaque(false);
+         depWrap.setLayout(new BoxLayout(depWrap, BoxLayout.Y_AXIS));
+         dep.setAlignmentX(0.0F);
+         depWrap.add(dep);
+         depWrap.add(Box.createVerticalGlue());
+         p3.add(depWrap, BorderLayout.CENTER);
+         JPanel p4 = new JPanel(new BorderLayout(0, 5)); p4.setOpaque(false); p4.add(new JLabel("<html>解释变量（X，可多选） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH); p4.add(indepScroll, BorderLayout.CENTER);
          s2Fields.add(p3); s2Fields.add(p4);
          step2.add(s2Fields, BorderLayout.CENTER);
          JPanel tip2 = new JPanel(); tip2.setBackground(new Color(244, 252, 248)); tip2.setBorder(new EmptyBorder(8, 10, 8, 10));
-         tip2.add(new JLabel("提示：按 Ctrl / Shift 可多选解释变量。"));
+         tip2.add(new JLabel("提示：可直接把右侧数据表表头拖入；列表仍支持 Ctrl / Shift 多选。"));
          step2.add(tip2, BorderLayout.SOUTH);
          c.gridy++; this.formPanel.add(step2, c);
 
@@ -8002,7 +8087,12 @@ public final class HxWorkbench {
          this.formPanel.revalidate();
          this.formPanel.repaint();
          this.formScroll.getVerticalScrollBar().setValue(0);
-         this.statusLabel.setText("已进入 xtreg 分步向导：面板设定 → 选择变量 → 估计选项 → 预览并运行。");
+         if (!this.previewMode) {
+            long n = Data.getObsTotal();
+            int k = Data.getVarCount();
+            if (n > 0L && k > 0) this.dataLabel.setText(n + " 行 × " + k + " 列 | 拖动表头变量可直接填入左侧变量框");
+         }
+         this.statusLabel.setText("xtreg：可点击选择变量，也可直接从右侧表头拖入对应变量框。");
       }
 
       private void openCommandPage(String var1) {
@@ -11264,9 +11354,11 @@ public final class HxWorkbench {
       void refreshDataset(boolean var1) {
          this.dataModel.reload();
          this.refreshVariableControls();
+         this.refreshXtregVariableControls();
          long var2 = Data.getObsTotal();
          int var4 = Data.getVarCount();
-         this.dataLabel.setText(var2 != 0L && var4 != 0 ? var2 + " 行 × " + var4 + " 列 | 表格只读，可横向和纵向滚动" : "尚未载入数据");
+         String dataHint = "xtreg".equals(this.currentCommand) ? " | 拖动表头变量可直接填入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+         this.dataLabel.setText(var2 != 0L && var4 != 0 ? var2 + " 行 × " + var4 + " 列" + dataHint : "尚未载入数据");
          this.currentDataLayout.show(this.currentDataCards, var2 != 0L && var4 != 0 ? "table" : "empty");
          this.configureColumnWidths();
          if (var1 && this.beforeSnapshot != null) {
@@ -12200,6 +12292,37 @@ public final class HxWorkbench {
             } else {
                return var0 == null ? "" : var0;
             }
+         }
+      }
+
+      private static final class WidthTrackingPanel extends JPanel implements Scrollable {
+         private WidthTrackingPanel() {
+            super(new GridBagLayout());
+         }
+
+         @Override
+         public Dimension getPreferredScrollableViewportSize() {
+            return this.getPreferredSize();
+         }
+
+         @Override
+         public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 18;
+         }
+
+         @Override
+         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(18, visibleRect.height - 18);
+         }
+
+         @Override
+         public boolean getScrollableTracksViewportWidth() {
+            return true;
+         }
+
+         @Override
+         public boolean getScrollableTracksViewportHeight() {
+            return false;
          }
       }
 
