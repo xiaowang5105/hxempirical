@@ -84,49 +84,37 @@ jobs:
               SwingUtilities.invokeAndWait(()->{JFrame fr=null;try{
                 Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");Constructor<?> ct=c.getDeclaredConstructor(boolean.class);ct.setAccessible(true);fr=(JFrame)ct.newInstance(false);
                 m(c,"showXtregWizardPageV130").invoke(fr);m(c,"refreshDataset",boolean.class).invoke(fr,false);
-                fr.setSize(1672,901);fr.addNotify();fr.validate();layout(fr.getContentPane());
-                m(c,"applyDividerRatios").invoke(fr);
-                // Drain invokeLater used by divider logic.
-                final JFrame fr2=fr;SwingUtilities.invokeLater(()->{});
+                fr.setSize(1672,901);fr.addNotify();fr.validate();layout(fr.getContentPane());m(c,"applyDividerRatios").invoke(fr);
 
                 JComboBox<?> panel=(JComboBox<?>)f(c,"xtregPanelVar").get(fr), time=(JComboBox<?>)f(c,"xtregTimeVar").get(fr), dep=(JComboBox<?>)f(c,"xtregDepVar").get(fr);
                 JList<?> xs=(JList<?>)f(c,"xtregIndepList").get(fr);JTextArea preview=(JTextArea)f(c,"previewArea").get(fr);
                 JTable vt=(JTable)f(c,"inspectorVariableTable").get(fr), dt=(JTable)f(c,"dataTable").get(fr);JTextField filter=(JTextField)f(c,"inspectorVariableFilter").get(fr);JLabel role=(JLabel)f(c,"inspectorRoleLabel").get(fr);
                 JSplitPane outer=(JSplitPane)f(c,"dataSummarySplit").get(fr), lower=(JSplitPane)f(c,"inspectorLowerSplit").get(fr), cmd=(JSplitPane)f(c,"commandDataSplit").get(fr);
                 JTabbedPane tabs=(JTabbedPane)f(c,"dataTabs").get(fr);JButton sideToggle=(JButton)f(c,"sidebarToggleButton").get(fr);JToggleButton inspToggle=(JToggleButton)f(c,"inspectorToggle").get(fr);
+                ck(!inspToggle.isVisible(),"hidden legacy inspector toggle unexpectedly visible");
 
-                // Actual TransferHandler imports: variable source semantics -> all xtreg targets.
                 ck(drop((JComponent)panel,"firm"),"drop panel failed");ck("firm".equals(sel(panel)),"panel not set");
                 ck(drop((JComponent)time,"year"),"drop time failed");ck("year".equals(sel(time)),"time not set");
                 ck(drop((JComponent)dep,"y"),"drop dep failed");ck("y".equals(sel(dep)),"dep not set");
                 ck(drop((JComponent)xs,"x1"),"drop x1 failed");ck(drop((JComponent)xs,"x2"),"drop x2 failed");ck(listHas(xs,"x1")&&listHas(xs,"x2"),"X drops not cumulative");
                 ck(preview.getText().contains("xtreg y x1 x2")||preview.getText().contains("xtreg y x2 x1"),"preview missing dropped X: "+preview.getText());
 
-                // Refresh must preserve model selections and command preview.
                 String beforePreview=preview.getText();m(c,"refreshDataset",boolean.class).invoke(fr,false);
                 ck("firm".equals(sel(panel))&&"year".equals(sel(time))&&"y".equals(sel(dep)),"refresh lost combo selections");
                 ck(listHas(xs,"x1")&&listHas(xs,"x2"),"refresh lost X selections");ck(preview.getText().equals(beforePreview),"refresh changed command preview");
 
-                // Bidirectional selection and filter behavior.
-                int roa=rowOf(vt,"ROA");ck(roa>=0,"ROA missing");vt.setRowSelectionInterval(roa,roa);m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("未使用")||role.getText().contains("当前模型角色"),"role label malformed");
+                int roa=rowOf(vt,"ROA");ck(roa>=0,"ROA missing");vt.setRowSelectionInterval(roa,roa);m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("未使用"),"ROA role wrong: "+role.getText());
                 int x1=rowOf(vt,"x1");vt.setRowSelectionInterval(x1,x1);m(c,"syncInspectorSelectionFromVariableWindow").invoke(fr);ck(role.getText().contains("解释变量 X"),"x1 role wrong: "+role.getText());
                 filter.setText("label_roa");m(c,"refreshInspectorVariables").invoke(fr);ck(vt.getRowCount()==1,"label filter failed");filter.setText("");m(c,"refreshInspectorVariables").invoke(fr);
 
-                // Manual vertical split should survive ordinary data refresh (user layout choice).
                 outer.setDividerLocation(0.36);lower.setDividerLocation(0.60);fr.validate();layout(fr.getContentPane());double o0=ratio(outer),l0=ratio(lower);m(c,"refreshDataset",boolean.class).invoke(fr,false);fr.validate();layout(fr.getContentPane());double o1=ratio(outer),l1=ratio(lower);
                 ck(Math.abs(o1-o0)<0.06,"refresh reset top split: "+o0+" -> "+o1);ck(Math.abs(l1-l0)<0.06,"refresh reset lower split: "+l0+" -> "+l1);
 
-                // Data/result/log tab changes must not destroy inspector state.
                 for(int i=0;i<tabs.getTabCount();i++){tabs.setSelectedIndex(i);fr.validate();layout(fr.getContentPane());}
                 tabs.setSelectedIndex(0);ck("firm".equals(sel(panel))&&listHas(xs,"x1"),"tab switching lost model state");
 
-                // Sidebar collapse should actually free center width, then restore cleanly.
                 int w0=cmd.getWidth();sideToggle.doClick();fr.validate();layout(fr.getContentPane());int w1=cmd.getWidth();ck(w1>w0,"sidebar collapse did not free width: "+w0+" -> "+w1);sideToggle.doClick();fr.validate();layout(fr.getContentPane());
 
-                // Inspector hide/show should not collapse permanently.
-                inspToggle.doClick();fr.validate();layout(fr.getContentPane());ck(!cmd.getRightComponent().isVisible(),"inspector not hidden");inspToggle.doClick();fr.validate();layout(fr.getContentPane());ck(cmd.getRightComponent().isVisible(),"inspector not restored");
-
-                // Responsive matrix: controls and all three right-side areas remain usable.
                 int[][] sizes={{1600,900},{1366,768},{1280,720},{1100,700}};
                 for(int[] s:sizes){fr.setSize(s[0],s[1]);fr.validate();layout(fr.getContentPane());m(c,"applyDividerRatios").invoke(fr);fr.validate();layout(fr.getContentPane());ck(outer.getTopComponent().getHeight()>=90,"top collapsed @"+s[0]);ck(lower.getTopComponent().getHeight()>=70,"vars collapsed @"+s[0]);ck(lower.getBottomComponent().getHeight()>=70,"props collapsed @"+s[0]);ck(cmd.getLeftComponent().getWidth()>=360,"command too narrow @"+s[0]+": "+cmd.getLeftComponent().getWidth());}
                 fr.dispose();
@@ -143,7 +131,7 @@ jobs:
         run: |
           set -euo pipefail
           ! grep -R -n '方案 A\|方案 B\|方案 C\|方案 D' src/main/java README.md hxempirical.sthlp
-          ! find . -maxdepth 2 -type f -name '*selfcheck*' -o -name '*temporary*' | grep -v '.github/workflows/deep-selfcheck-v141.yml' | grep .
+          if find . -maxdepth 2 -type f \( -name '*selfcheck*' -o -name '*temporary*' \) | grep -v '.github/workflows/deep-selfcheck-v141.yml' | grep -q .; then exit 1; fi
           for mode in preview home regress monitor-details oneclick graph did; do
             if [ "$mode" = preview ]; then arg=--render-preview; else arg=--render-${mode}-preview; fi
             xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench "$arg" /tmp/${mode}.png
