@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.4";
+   public static final String VERSION = "1.4.5";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.4");
+      SFIToolkit.displayln("HxWorkbench 1.4.5");
       return 0;
    }
 
@@ -2407,6 +2407,13 @@ public final class HxWorkbench {
       private JComboBox<String> xtregDepVar;
       private JList<String> xtregIndepList;
       private Runnable xtregPreviewUpdater;
+      private JTextArea xtregCommandPreview;
+      private JRadioButton xtregFeButton;
+      private JRadioButton xtregReButton;
+      private JRadioButton xtregBeButton;
+      private JRadioButton xtregPaButton;
+      private JComboBox<String> xtregSeCombo;
+      private boolean xtregSyncingFromCommand;
       private String activeSidebarKey = "home";
       private final JTextArea exactOneClickCommand = new JTextArea();
       private final JTextField exactOneClickModelOptions = new JTextField();
@@ -2473,6 +2480,8 @@ public final class HxWorkbench {
       private final JTable inspectorVariableTable = new JTable(this.inspectorVariableModel);
       private final JTextField inspectorVariableFilter = new JTextField();
       private final JLabel inspectorRoleLabel = new JLabel("当前模型角色：未使用");
+      private final JTextArea inspectorPropertyArea = readonlyArea();
+      private final JLabel inspectorOverviewLabel = new JLabel("数据概览：尚未载入数据");
       private final JTabbedPane oneClickResultTabs = new JTabbedPane();
       private final JTextArea oneClickOverview = readonlyArea();
       private final JLabel monitorStatus = new JLabel("等待执行");
@@ -2501,6 +2510,7 @@ public final class HxWorkbench {
       private final JSplitPane commandDataSplit;
       private JSplitPane dataSummarySplit;
       private JSplitPane inspectorLowerSplit;
+      private JSplitPane inspectorDataSplit;
       private JTabbedPane variableTabs;
       private final CardLayout currentDataLayout = new CardLayout();
       private final JPanel currentDataCards = new JPanel(this.currentDataLayout);
@@ -3327,11 +3337,11 @@ public final class HxWorkbench {
             int height = this.dataSummarySplit.getHeight();
             if (height > 0) {
                int dividerSize = Math.max(0, this.dataSummarySplit.getDividerSize());
-               int minData = 90;
-               int minLower = 160;
+               int minData = 135;
+               int minSummary = 105;
                int current = this.dataSummarySplit.getDividerLocation();
-               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.28);
-               int max = Math.max(minData, height - minLower - dividerSize);
+               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.68);
+               int max = Math.max(minData, height - minSummary - dividerSize);
                int target = Math.max(minData, Math.min(current, max));
                if (target != this.dataSummarySplit.getDividerLocation()) this.dataSummarySplit.setDividerLocation(target);
             }
@@ -3340,13 +3350,26 @@ public final class HxWorkbench {
             int height = this.inspectorLowerSplit.getHeight();
             if (height > 0) {
                int dividerSize = Math.max(0, this.inspectorLowerSplit.getDividerSize());
-               int minVariable = 75;
-               int minProperty = 75;
+               int minVariable = 120;
+               int minProperty = 120;
                int current = this.inspectorLowerSplit.getDividerLocation();
-               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.52);
+               if (current <= 0 || current >= height - dividerSize) current = (int)Math.round(height * 0.54);
                int max = Math.max(minVariable, height - minProperty - dividerSize);
                int target = Math.max(minVariable, Math.min(current, max));
                if (target != this.inspectorLowerSplit.getDividerLocation()) this.inspectorLowerSplit.setDividerLocation(target);
+            }
+         }
+         if (this.inspectorDataSplit != null) {
+            int width = this.inspectorDataSplit.getWidth();
+            if (width > 0) {
+               int dividerSize = Math.max(0, this.inspectorDataSplit.getDividerSize());
+               int minMiddle = 210;
+               int minData = 300;
+               int current = this.inspectorDataSplit.getDividerLocation();
+               if (current <= 0 || current >= width - dividerSize) current = Math.min(250, Math.max(minMiddle, width / 3));
+               int max = Math.max(minMiddle, width - minData - dividerSize);
+               int target = Math.max(minMiddle, Math.min(current, max));
+               if (target != this.inspectorDataSplit.getDividerLocation()) this.inspectorDataSplit.setDividerLocation(target);
             }
          }
       }
@@ -3355,12 +3378,15 @@ public final class HxWorkbench {
          SwingUtilities.invokeLater(() -> {
             int total = this.commandDataSplit.getWidth();
             if (total > 0) {
-               int minInspector = total < 980 ? 270 : 320;
-               int inspector = Math.max(minInspector, Math.min(520, (int)Math.round(total * 0.43)));
-               int minCommand = total < 980 ? 390 : 480;
+               int minInspector = total < 1050 ? 535 : 610;
+               int inspector = Math.max(minInspector, Math.min(720, (int)Math.round(total * 0.48)));
+               int minCommand = total < 1050 ? 420 : 520;
                int divider = Math.max(minCommand, total - inspector);
-               divider = Math.min(divider, Math.max(minCommand, total - 250));
+               divider = Math.min(divider, Math.max(minCommand, total - 510));
                this.commandDataSplit.setDividerLocation(Math.max(0, divider));
+            }
+            if (this.inspectorDataSplit != null && this.inspectorDataSplit.getWidth() > 0) {
+               this.inspectorDataSplit.setDividerLocation(Math.min(250, Math.max(210, this.inspectorDataSplit.getWidth() / 3)));
             }
             this.clampInspectorDividers();
          });
@@ -6237,19 +6263,8 @@ public final class HxWorkbench {
          this.currentDataCards.add(var1, "table");
          this.currentDataCards.add(this.buildEmptyDataPanel(), "empty");
 
-         JComponent variableWindow = this.buildVariableInspectorPanel();
-         JComponent propertyWindow = this.buildPropertyInspectorPanel();
-         variableWindow.setMinimumSize(new Dimension(0, 75));
-         propertyWindow.setMinimumSize(new Dimension(0, 75));
-         this.inspectorLowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, variableWindow, propertyWindow);
-         this.inspectorLowerSplit.setResizeWeight(0.52);
-         this.inspectorLowerSplit.setContinuousLayout(true);
-         this.inspectorLowerSplit.setMinimumSize(new Dimension(0, 155));
-         this.inspectorLowerSplit.setBorder(null);
-         this.inspectorLowerSplit.setDividerSize(5);
-
-         this.dataSummarySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, this.currentDataCards, this.inspectorLowerSplit);
-         this.dataSummarySplit.setResizeWeight(0.28);
+         this.dataSummarySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, this.currentDataCards, this.variableTabs);
+         this.dataSummarySplit.setResizeWeight(0.68);
          this.dataSummarySplit.setContinuousLayout(true);
          this.dataSummarySplit.setMinimumSize(new Dimension(0, 0));
          this.dataSummarySplit.setBorder(null);
@@ -6257,8 +6272,7 @@ public final class HxWorkbench {
          var2.add(this.dataSummarySplit, BorderLayout.CENTER);
          this.dataTabs.addTab("数据", var2);
          SwingUtilities.invokeLater(() -> {
-            if (this.dataSummarySplit != null) this.dataSummarySplit.setDividerLocation(0.28);
-            if (this.inspectorLowerSplit != null) this.inspectorLowerSplit.setDividerLocation(0.52);
+            if (this.dataSummarySplit != null) this.dataSummarySplit.setDividerLocation(0.68);
          });
          JPanel var3 = new JPanel(new BorderLayout(0, 8));
          var3.setBackground(SURFACE);
@@ -6674,7 +6688,17 @@ public final class HxWorkbench {
          header.add(title, BorderLayout.WEST);
          header.add(this.inspectorRoleLabel, BorderLayout.SOUTH);
          root.add(header, BorderLayout.NORTH);
-         root.add(this.variableTabs, BorderLayout.CENTER);
+         this.inspectorPropertyArea.setRows(8);
+         this.inspectorPropertyArea.setBackground(SURFACE);
+         this.inspectorPropertyArea.setForeground(TEXT);
+         this.inspectorPropertyArea.setFont(this.inspectorPropertyArea.getFont().deriveFont(10.5F));
+         JPanel body = new JPanel(new BorderLayout(0, 7));
+         body.setOpaque(false);
+         body.add(softScroll(this.inspectorPropertyArea), BorderLayout.CENTER);
+         this.inspectorOverviewLabel.setForeground(MUTED);
+         this.inspectorOverviewLabel.setFont(this.inspectorOverviewLabel.getFont().deriveFont(9.5F));
+         body.add(this.inspectorOverviewLabel, BorderLayout.SOUTH);
+         root.add(body, BorderLayout.CENTER);
          return root;
       }
 
@@ -6732,6 +6756,7 @@ public final class HxWorkbench {
          }
          if (this.previewMode && HxWorkbench.safe(() -> Data.getVarIndex(variable), -1) <= 0) {
             this.summaryArea.setText("变量：" + variable + "\n\n预览模式下仅展示变量结构；载入真实 Stata 数据后显示类型、标签、缺失值和描述统计。");
+            this.inspectorPropertyArea.setText(this.summaryArea.getText());
             this.histogram.setValues(Collections.emptyList(), variable);
             this.refreshInspectorRole();
          } else {
@@ -6803,9 +6828,27 @@ public final class HxWorkbench {
       private JComponent buildDataContainer() {
          JPanel root = new JPanel(new BorderLayout());
          root.setBackground(APP_BG);
-         root.setBorder(new EmptyBorder(18, 8, 16, 18));
+         root.setBorder(new EmptyBorder(18, 6, 16, 18));
+
+         JComponent variableWindow = this.buildVariableInspectorPanel();
+         JComponent propertyWindow = this.buildPropertyInspectorPanel();
+         variableWindow.setMinimumSize(new Dimension(0, 120));
+         propertyWindow.setMinimumSize(new Dimension(0, 120));
+         this.inspectorLowerSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, variableWindow, propertyWindow);
+         this.inspectorLowerSplit.setResizeWeight(0.54);
+         this.inspectorLowerSplit.setContinuousLayout(true);
+         this.inspectorLowerSplit.setBorder(null);
+         this.inspectorLowerSplit.setDividerSize(5);
+         JPanel middle = new JPanel(new BorderLayout());
+         middle.setBackground(APP_BG);
+         middle.setBorder(new EmptyBorder(0, 0, 0, 6));
+         middle.setPreferredSize(new Dimension(250, 0));
+         middle.setMinimumSize(new Dimension(210, 0));
+         middle.add(this.inspectorLowerSplit, BorderLayout.CENTER);
+
          JPanel card = cardPanel();
          card.setLayout(new BorderLayout());
+         card.setMinimumSize(new Dimension(300, 0));
          card.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(216, 224, 235), 11), new EmptyBorder(0, 0, 0, 0)));
          JPanel header = new JPanel(new BorderLayout(10, 4));
          header.setOpaque(false);
@@ -6821,7 +6864,15 @@ public final class HxWorkbench {
          card.add(header, BorderLayout.NORTH);
          this.dataTabs.setBorder(new EmptyBorder(0, 6, 6, 6));
          card.add(this.dataTabs, BorderLayout.CENTER);
-         root.add(card, BorderLayout.CENTER);
+
+         this.inspectorDataSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, middle, card);
+         this.inspectorDataSplit.setResizeWeight(0.0);
+         this.inspectorDataSplit.setContinuousLayout(true);
+         this.inspectorDataSplit.setOneTouchExpandable(false);
+         this.inspectorDataSplit.setDividerSize(6);
+         this.inspectorDataSplit.setBorder(null);
+         root.add(this.inspectorDataSplit, BorderLayout.CENTER);
+         SwingUtilities.invokeLater(() -> this.inspectorDataSplit.setDividerLocation(250));
          return root;
       }
 
@@ -6874,7 +6925,7 @@ public final class HxWorkbench {
             this.refreshButton.setVisible(true);
             long n = Data.getObsTotal();
             int k = Data.getVarCount();
-            String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+            String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
             this.dataLabel.setText(n != 0L && k != 0 ? n + " 行 × " + k + " 列" + dataHint : "尚未载入数据");
          }
       }
@@ -8343,13 +8394,19 @@ public final class HxWorkbench {
          JRadioButton re = new JRadioButton("随机效应（RE）");
          JRadioButton be = new JRadioButton("between");
          JRadioButton pa = new JRadioButton("population-averaged");
+         this.xtregFeButton = fe; this.xtregReButton = re; this.xtregBeButton = be; this.xtregPaButton = pa;
          for (JRadioButton b : Arrays.asList(fe, re, be, pa)) { b.setOpaque(false); b.setForeground(TEXT); }
          ButtonGroup modelGroup = new ButtonGroup();
          modelGroup.add(fe); modelGroup.add(re); modelGroup.add(be); modelGroup.add(pa);
          JComboBox<String> se = new JComboBox<>(new String[]{"稳健标准误", "默认标准误", "按面板聚类"});
+         this.xtregSeCombo = se;
 
-         JTextArea commandPreview = readonlyArea();
+         JTextArea commandPreview = new JTextArea();
+         this.xtregCommandPreview = commandPreview;
+         commandPreview.setEditable(true);
          commandPreview.setRows(2);
+         commandPreview.setLineWrap(false);
+         commandPreview.setToolTipText("可以直接修改 xtset / xtreg 命令；离开编辑框后，上方设置会自动同步");
          commandPreview.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
          commandPreview.setBackground(new Color(247, 250, 255));
          JScrollPane commandPreviewScroll = softScroll(commandPreview);
@@ -8376,6 +8433,9 @@ public final class HxWorkbench {
             this.refreshInspectorRole();
          };
          this.xtregPreviewUpdater = update;
+         commandPreview.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusLost(java.awt.event.FocusEvent e) { WorkbenchFrame.this.syncXtregControlsFromCommand(); }
+         });
          panelVar.addActionListener(e -> { if (!this.rebuilding) update.run(); });
          timeVar.addActionListener(e -> { if (!this.rebuilding) update.run(); });
          dep.addActionListener(e -> { if (!this.rebuilding) update.run(); });
@@ -8418,7 +8478,7 @@ public final class HxWorkbench {
          s2Fields.add(p3); s2Fields.add(p4);
          step2.add(s2Fields, BorderLayout.CENTER);
          JPanel tip2 = new JPanel(); tip2.setBackground(new Color(244, 252, 248)); tip2.setBorder(new EmptyBorder(8, 10, 8, 10));
-         tip2.add(new JLabel("提示：优先从右侧“变量窗口”拖入；顶部数据表头也可直接拖入。"));
+         tip2.add(new JLabel("提示：优先从中间“变量窗口”拖入；顶部数据表头也可直接拖入。"));
          step2.add(tip2, BorderLayout.SOUTH);
          step2.setMinimumSize(new Dimension(0, step2.getPreferredSize().height));
          c.gridy++; this.formPanel.add(step2, c);
@@ -8459,7 +8519,9 @@ public final class HxWorkbench {
 
          JPanel step4 = this.xtregWizardCardV130(4, "预览并运行", "查看将要执行的命令，确认无误后运行模型。");
          JPanel previewWrap = new JPanel(new BorderLayout(10, 0)); previewWrap.setOpaque(false);
-         JPanel previewLeft = new JPanel(new BorderLayout(0, 5)); previewLeft.setOpaque(false); previewLeft.add(new JLabel("命令预览"), BorderLayout.NORTH); previewLeft.add(commandPreviewScroll, BorderLayout.CENTER);
+         JPanel previewLeft = new JPanel(new BorderLayout(0, 5)); previewLeft.setOpaque(false);
+         JLabel commandPreviewLabel = new JLabel("<html>命令预览 <span style='color:#2f6fe4'>· 可编辑，编辑完成后自动同步上方设置</span></html>");
+         previewLeft.add(commandPreviewLabel, BorderLayout.NORTH); previewLeft.add(commandPreviewScroll, BorderLayout.CENTER);
          JTextArea syntax = readonlyArea(); syntax.setRows(3); syntax.setText("语法说明\n• xtset：声明面板结构\n• fe / re：固定效应或随机效应\n• vce(robust)：稳健标准误");
          JScrollPane syntaxScroll = softScroll(syntax); syntaxScroll.setPreferredSize(new Dimension(0, 72));
          previewWrap.add(previewLeft, BorderLayout.CENTER); previewWrap.add(syntaxScroll, BorderLayout.SOUTH);
@@ -8469,6 +8531,7 @@ public final class HxWorkbench {
          JButton clear = this.refButton("清空设置", false); clear.addActionListener(e -> { panelVar.setSelectedIndex(0); timeVar.setSelectedIndex(0); dep.setSelectedIndex(0); indep.clearSelection(); fe.setSelected(true); se.setSelectedIndex(0); update.run(); });
          JButton run = this.refButton("运行 xtreg", true);
          run.addActionListener(e -> {
+            this.syncXtregControlsFromCommand();
             String pv = Objects.toString(panelVar.getSelectedItem(), "").trim();
             String tv = Objects.toString(timeVar.getSelectedItem(), "").trim();
             String y = Objects.toString(dep.getSelectedItem(), "").trim();
@@ -8506,9 +8569,94 @@ public final class HxWorkbench {
          if (!this.previewMode) {
             long n = Data.getObsTotal();
             int k = Data.getVarCount();
-            if (n > 0L && k > 0) this.dataLabel.setText(n + " 行 × " + k + " 列 | 可从变量窗口或表头拖入左侧变量框");
+            if (n > 0L && k > 0) this.dataLabel.setText(n + " 行 × " + k + " 列 | 可从中间变量窗口或表头拖入左侧变量框");
          }
-         this.statusLabel.setText("xtreg：右侧变量窗口是主要选变量入口；可把变量直接拖到 Y / X / 面板 ID / 时间变量。");
+         this.statusLabel.setText("xtreg：中间变量窗口是主要选变量入口；可把变量直接拖到 Y / X / 面板 ID / 时间变量。");
+      }
+
+      private boolean setXtregComboValue(JComboBox<String> combo, String value) {
+         if (combo == null || value == null || value.isBlank()) return false;
+         for (int i = 0; i < combo.getItemCount(); i++) {
+            if (value.equals(Objects.toString(combo.getItemAt(i), ""))) {
+               combo.setSelectedIndex(i);
+               return true;
+            }
+         }
+         return false;
+      }
+
+      private void syncXtregControlsFromCommand() {
+         if (this.xtregSyncingFromCommand || this.xtregCommandPreview == null
+            || this.xtregPanelVar == null || this.xtregTimeVar == null || this.xtregDepVar == null
+            || this.xtregIndepList == null || this.xtregFeButton == null || this.xtregSeCombo == null) return;
+         String raw = this.xtregCommandPreview.getText() == null ? "" : this.xtregCommandPreview.getText().trim();
+         if (raw.isBlank()) return;
+
+         String xtsetLine = "";
+         String xtregLine = "";
+         for (String line : raw.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.toLowerCase(Locale.ROOT).startsWith("xtset ")) xtsetLine = trimmed;
+            if (trimmed.toLowerCase(Locale.ROOT).startsWith("xtreg ")) xtregLine = trimmed;
+         }
+         if (xtregLine.isBlank() && raw.toLowerCase(Locale.ROOT).startsWith("xtreg ")) xtregLine = raw;
+         if (xtregLine.isBlank()) {
+            this.statusLabel.setText("命令编辑：未找到 xtreg 命令；上方设置未改变。");
+            return;
+         }
+
+         boolean oldRebuilding = this.rebuilding;
+         this.xtregSyncingFromCommand = true;
+         this.rebuilding = true;
+         int synced = 0;
+         try {
+            if (!xtsetLine.isBlank()) {
+               String[] parts = xtsetLine.replaceFirst("(?i)^xtset\\s+", "").trim().split("\\s+");
+               if (parts.length >= 1 && this.setXtregComboValue(this.xtregPanelVar, parts[0])) synced++;
+               if (parts.length >= 2 && this.setXtregComboValue(this.xtregTimeVar, parts[1])) synced++;
+            }
+
+            int comma = xtregLine.indexOf(',');
+            String lhs = comma >= 0 ? xtregLine.substring(0, comma).trim() : xtregLine.trim();
+            String opts = comma >= 0 ? xtregLine.substring(comma + 1).trim() : "";
+            String varsText = lhs.replaceFirst("(?i)^xtreg\\s+", "").trim();
+            String[] terms = varsText.isBlank() ? new String[0] : varsText.split("\\s+");
+            if (terms.length >= 1 && this.setXtregComboValue(this.xtregDepVar, terms[0])) synced++;
+
+            this.xtregIndepList.clearSelection();
+            ListModel<String> model = this.xtregIndepList.getModel();
+            for (int t = 1; t < terms.length; t++) {
+               String term = terms[t];
+               for (int i = 0; i < model.getSize(); i++) {
+                  if (term.equals(model.getElementAt(i))) {
+                     this.xtregIndepList.addSelectionInterval(i, i);
+                     synced++;
+                     break;
+                  }
+               }
+            }
+
+            String padded = " " + opts.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ") + " ";
+            if (Pattern.compile("(^|\\s)fe(\\s|$)").matcher(padded).find()) this.xtregFeButton.setSelected(true);
+            else if (Pattern.compile("(^|\\s)re(\\s|$)").matcher(padded).find()) this.xtregReButton.setSelected(true);
+            else if (Pattern.compile("(^|\\s)(be|between)(\\s|$)").matcher(padded).find()) this.xtregBeButton.setSelected(true);
+            else if (Pattern.compile("(^|\\s)(pa|population-averaged)(\\s|$)").matcher(padded).find()) this.xtregPaButton.setSelected(true);
+            synced++;
+
+            Matcher clusterMatcher = Pattern.compile("(?i)vce\\s*\\(\\s*cluster\\s+([^\\s\\)]+)\\s*\\)").matcher(opts);
+            if (clusterMatcher.find()) this.xtregSeCombo.setSelectedItem("按面板聚类");
+            else if (Pattern.compile("(?i)vce\\s*\\(\\s*robust\\s*\\)").matcher(opts).find()) this.xtregSeCombo.setSelectedItem("稳健标准误");
+            else this.xtregSeCombo.setSelectedItem("默认标准误");
+            synced++;
+
+            this.previewArea.setText(xtregLine);
+            this.previewArea.setCaretPosition(0);
+            this.refreshInspectorRole();
+         } finally {
+            this.rebuilding = oldRebuilding;
+            this.xtregSyncingFromCommand = false;
+         }
+         this.statusLabel.setText("已从编辑后的命令同步上方设置（" + synced + " 项）；未识别的高级语法继续保留在命令框中。");
       }
 
       private void openCommandPage(String var1) {
@@ -11784,7 +11932,7 @@ public final class HxWorkbench {
          this.refreshInspectorVariables();
          long var2 = Data.getObsTotal();
          int var4 = Data.getVarCount();
-         String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+         String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
          this.dataLabel.setText(var2 != 0L && var4 != 0 ? var2 + " 行 × " + var4 + " 列" + dataHint : "尚未载入数据");
          this.currentDataLayout.show(this.currentDataCards, var2 != 0L && var4 != 0 ? "table" : "empty");
          this.configureColumnWidths();
@@ -11884,13 +12032,17 @@ public final class HxWorkbench {
          int var2 = var1 >= 0 ? this.dataTable.convertColumnIndexToModel(var1) : (this.dataModel.getColumnCount() > 0 ? 0 : -1);
          if (var2 < 0) {
             this.summaryArea.setText("当前没有变量。");
+            this.inspectorPropertyArea.setText("当前没有变量。");
             this.histogram.setValues(Collections.emptyList(), "");
          } else {
             HxWorkbench.VariableSummary var3 = HxWorkbench.VariableSummary.compute(var2 + 1);
             this.summaryArea.setText(var3.text);
             this.summaryArea.setCaretPosition(0);
+            this.inspectorPropertyArea.setText(var3.text);
+            this.inspectorPropertyArea.setCaretPosition(0);
             this.histogram.setValues(var3.numericValues, var3.name);
          }
+         this.inspectorOverviewLabel.setText("数据概览：" + Data.getObsTotal() + " 行 × " + Data.getVarCount() + " 列");
          this.refreshInspectorRole();
       }
 
