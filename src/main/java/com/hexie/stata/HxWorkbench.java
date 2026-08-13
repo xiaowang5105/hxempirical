@@ -3500,7 +3500,8 @@ public final class HxWorkbench {
             String label = Objects.toString(button.getClientProperty("hx.sidebar.label"), "");
             String glyph = Objects.toString(button.getClientProperty("hx.sidebar.glyph"), "");
             String compact = glyph.isBlank() ? (label.isBlank() ? "•" : label.substring(0, 1)) : glyph;
-            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(label) + "</b></html>");
+            String expanded = glyph.isBlank() ? label : glyph + "   " + label;
+            button.setText(this.sidebarCollapsed ? "<html><b>" + html(compact) + "</b></html>" : "<html><b>" + html(expanded) + "</b></html>");
             button.setHorizontalAlignment(this.sidebarCollapsed ? SwingConstants.CENTER : SwingConstants.LEFT);
             button.setBorder(new EmptyBorder(11, this.sidebarCollapsed ? 6 : 14, 11, this.sidebarCollapsed ? 6 : 14));
             button.setToolTipText(this.sidebarCollapsed ? label : null);
@@ -7672,6 +7673,37 @@ public final class HxWorkbench {
       }
 
 
+      private JComponent xtregCircleBadge(String text, boolean active, int size) {
+         JComponent badge = new JComponent() {
+            @Override
+            protected void paintComponent(Graphics g0) {
+               Graphics2D g = (Graphics2D)g0.create();
+               g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+               int d = Math.min(getWidth(), getHeight()) - 2;
+               int x = (getWidth() - d) / 2;
+               int y = (getHeight() - d) / 2;
+               g.setColor(active ? new Color(47, 111, 228) : new Color(239, 243, 248));
+               g.fillOval(x, y, d, d);
+               if (!active) {
+                  g.setColor(new Color(225, 231, 239));
+                  g.drawOval(x, y, d - 1, d - 1);
+               }
+               g.setColor(active ? Color.WHITE : new Color(75, 88, 108));
+               g.setFont(getFont().deriveFont(Font.BOLD, size >= 28 ? 12.0F : 10.5F));
+               java.awt.FontMetrics fm = g.getFontMetrics();
+               int tx = (getWidth() - fm.stringWidth(text)) / 2;
+               int ty = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+               g.drawString(text, tx, ty);
+               g.dispose();
+            }
+         };
+         Dimension d = new Dimension(size, size);
+         badge.setPreferredSize(d);
+         badge.setMinimumSize(d);
+         badge.setMaximumSize(d);
+         return badge;
+      }
+
       private JPanel xtregWizardCardV130(int step, String title, String subtitle) {
          JPanel card = cardPanel();
          card.setBackground(SURFACE);
@@ -7684,15 +7716,7 @@ public final class HxWorkbench {
 
          JPanel header = new JPanel(new BorderLayout(10, 0));
          header.setOpaque(false);
-         JLabel badge = new JLabel(Integer.toString(step), SwingConstants.CENTER);
-         badge.setOpaque(true);
-         badge.setBackground(new Color(47, 111, 228));
-         badge.setForeground(Color.WHITE);
-         badge.setFont(badge.getFont().deriveFont(Font.BOLD, 12.0F));
-         badge.setPreferredSize(new Dimension(28, 28));
-         badge.setMinimumSize(new Dimension(28, 28));
-         badge.setMaximumSize(new Dimension(28, 28));
-         badge.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(47, 111, 228), 14));
+         JComponent badge = this.xtregCircleBadge(Integer.toString(step), true, 28);
          header.add(badge, BorderLayout.WEST);
 
          JPanel head = new JPanel();
@@ -7731,13 +7755,7 @@ public final class HxWorkbench {
             JPanel p = new JPanel(new BorderLayout(6, 0));
             p.setOpaque(false);
             p.setMinimumSize(new Dimension(0, 0));
-            JLabel n = new JLabel(steps[i][0], SwingConstants.CENTER);
-            n.setOpaque(true);
-            n.setBackground(i == 0 ? new Color(47, 111, 228) : new Color(239, 243, 248));
-            n.setForeground(i == 0 ? Color.WHITE : new Color(75, 88, 108));
-            n.setPreferredSize(new Dimension(24, 24));
-            n.setMinimumSize(new Dimension(24, 24));
-            n.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(i == 0 ? new Color(47, 111, 228) : new Color(225, 231, 239), 12));
+            JComponent n = this.xtregCircleBadge(steps[i][0], i == 0, 24);
             p.add(n, BorderLayout.WEST);
             JLabel label = new JLabel("<html><b>" + html(steps[i][1]) + "</b></html>");
             label.setForeground(TEXT);
@@ -8000,7 +8018,18 @@ public final class HxWorkbench {
 
          JPanel step2 = this.xtregWizardCardV130(2, "选择变量", "选择因变量和一个或多个解释变量。");
          JPanel s2Fields = new JPanel(new GridLayout(1, 2, 12, 0)); s2Fields.setOpaque(false);
-         JPanel p3 = new JPanel(new BorderLayout(0, 5)); p3.setOpaque(false); p3.add(new JLabel("<html>因变量（Y） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH); p3.add(dep, BorderLayout.CENTER);
+         JPanel p3 = new JPanel(new BorderLayout(0, 5));
+         p3.setOpaque(false);
+         p3.add(new JLabel("<html>因变量（Y） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH);
+         dep.setPreferredSize(new Dimension(100, 32));
+         dep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+         JPanel depWrap = new JPanel();
+         depWrap.setOpaque(false);
+         depWrap.setLayout(new BoxLayout(depWrap, BoxLayout.Y_AXIS));
+         dep.setAlignmentX(0.0F);
+         depWrap.add(dep);
+         depWrap.add(Box.createVerticalGlue());
+         p3.add(depWrap, BorderLayout.CENTER);
          JPanel p4 = new JPanel(new BorderLayout(0, 5)); p4.setOpaque(false); p4.add(new JLabel("<html>解释变量（X，可多选） <span style='color:#2f6fe4'>· 可拖入</span></html>"), BorderLayout.NORTH); p4.add(indepScroll, BorderLayout.CENTER);
          s2Fields.add(p3); s2Fields.add(p4);
          step2.add(s2Fields, BorderLayout.CENTER);
