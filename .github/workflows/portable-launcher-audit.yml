@@ -1,0 +1,48 @@
+name: Portable launcher audit
+
+on:
+  push:
+    branches: [zip-installer-v149-20260814]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify portable launcher invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src = Path('hxportable.do').read_text(encoding='utf-8')
+          required = [
+              ': environment HOME', ': environment USERPROFILE',
+              '.hxempirical', 'adopath ++', 'codeload.github.com',
+              'hxempirical.pkg', 'hxworkbench.jar', 'hxempirical.ado',
+              '本方式不写入 Stata PLUS/PERSONAL'
+          ]
+          missing = [x for x in required if x not in src]
+          assert not missing, missing
+          assert 'c(sysdir_personal)' not in src.lower()
+          assert 'c(sysdir_plus)' not in src.lower()
+          assert 'net install' not in src.lower()
+          print('PORTABLE_INVARIANTS_OK')
+          PY
+      - name: Verify archive and manifest
+        run: |
+          curl --fail --location --retry 3 \
+            https://codeload.github.com/xiaowang5105/hxempirical/zip/refs/heads/main \
+            -o /tmp/hx.zip
+          unzip -q /tmp/hx.zip -d /tmp/hx
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root = next(Path('/tmp/hx').glob('hxempirical-*'))
+          pkg = (root/'hxempirical.pkg').read_text(encoding='utf-8')
+          files = [re.match(r'^f\s+(.+)$', l).group(1) for l in pkg.splitlines() if re.match(r'^f\s+(.+)$', l)]
+          missing = [f for f in files if not (root/f).is_file()]
+          assert files and not missing, missing
+          print('ARCHIVE_MANIFEST_OK', len(files))
+          PY
