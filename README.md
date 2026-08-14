@@ -4,33 +4,39 @@
 
 **当前发布版本：1.4.9**  
 **支持：Stata 17 及以上版本**  
-**上次修改时间：2026-08-14 17:06（UTC+8）**
+**上次修改时间：2026-08-14 18:00（UTC+8）**
 
-### 推荐：让 Codex 帮你安装
+### 一行安装（推荐）
 
-不同电脑上的 Stata 版本、`PLUS` / `PERSONAL` 目录权限、`adopath` 和网络环境可能不同。为了减少 `r(603)`、目录不可写、下载源访问异常等安装问题，**建议直接让 Codex 根据当前电脑的实际环境完成安装和检查**。
+在 **Stata 17 或更高版本**的命令窗口运行：
 
-可以把下面这段话直接发给 Codex：
+```stata
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
+```
 
-> 请帮我在这台电脑上安装 `hxempirical`。仓库地址是 `https://github.com/xiaowang5105/hxempirical`。请先检查 Stata 版本、`sysdir`、`adopath`、`PLUS` / `PERSONAL` 写权限和网络访问情况，再选择适合当前系统的安装方式。安装完成后，请验证 `which hxempirical`、`hxempirical about`，并确认 `hxworkbench.jar` 可以被当前 Stata 使用。不要修改与 `hxempirical` 无关的 Stata 配置。
+安装完成后验证并启动：
 
-Codex 可以根据 Windows / macOS、个人电脑 / 学校机房、目录权限和网络情况选择不同安装路径，比要求所有电脑机械执行同一条命令更稳妥。
+```stata
+which hxempirical
+hxempirical about
+hxempirical
+```
 
-### 手动安装
+安装器使用当前用户的 `PERSONAL` ado 目录，先完整下载并校验发布清单，再统一写入正式目录；更新发生写入错误时会恢复原有文件。普通用户只需要记住这一条安装命令。
 
-如果希望自己安装，可以先使用 Stata 标准安装方式：
+GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，安装说明统一使用 GitHub Pages 地址。请勿把 Raw 地址用于 `net install`。
+
+详细的更新、卸载和故障排查见 [INSTALL.md](INSTALL.md)。
+
+### 传统包管理方式（高级）
+
+GitHub Pages 仍支持：
 
 ```stata
 net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
 ```
 
-安装完成后启动：
-
-```stata
-hxempirical
-```
-
-如果出现 `r(603)`、无法写入目录或下载失败，建议不要反复尝试同一条命令，直接把报错截图和本仓库地址交给 Codex 排查。
+请选择一种安装方式并持续使用。推荐的一行安装器同时管理更新和卸载，可避免 `PLUS` 权限问题及重复包登记。
 
 ---
 
@@ -172,19 +178,17 @@ OneClick 专区执行的是作者发布的真实外部命令。候选控制变�
 
 ## 更新
 
-重新运行安装命令即可覆盖更新：
-
-```stata
-net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
-```
-
-也可以运行：
-
 ```stata
 hxempirical update
 ```
 
-如果当前 Stata 会话已经加载过 hxempirical，并在更新时出现 Java/JAR 文件正在使用或 `r(602)`，请关闭 Stata，重新打开后先执行安装或更新命令，再启动工作台。
+也可以直接运行：
+
+```stata
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" update
+```
+
+安装器会重试临时网络错误、先下载完整发布包、备份已有文件，并在写入失败时恢复原安装。已经打开 Java 工作台时，请先关闭工作台；如遇到 JAR 正在使用或 `r(602)`，关闭 Stata，重新打开后先执行更新命令。
 
 ## 常用管理命令
 
@@ -222,19 +226,17 @@ hxempirical menu remove
 
 ## 卸载
 
-如果曾启用持久菜单，先运行：
-
 ```stata
-hxempirical menu remove
+hxempirical uninstall
 ```
 
-然后卸载：
+也可以直接运行：
 
 ```stata
-ado uninstall hxempirical
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 ```
 
-更新或卸载后重新启动 Stata，可以释放已经加载的 Java 类。
+卸载器会删除 `PERSONAL` 中由本地清单管理的文件，并移除 HX 写入 `profile.do` 的菜单区块。若电脑以前多次使用 `net install` 安装过旧版本，卸载器会提示通过 `ado dir hxempirical` 和 `ado uninstall [编号]` 清理旧的 `PLUS` 包登记。完成后重新启动 Stata。
 
 ## 兼容性
 
@@ -261,6 +263,15 @@ hxempirical, classic
 ---
 
 ## 修改记录
+
+### 2026-08-14 18:00（UTC+8）
+
+- 统一安装入口为 GitHub Pages 一行安装器，明确 Raw 地址不作为安装入口。
+- 安装器增加 Pages 重试、每次运行独立暂存目录、完整备份与失败回滚；JAR 优先写入，避免更新只完成一半。
+- 安装清单保存到 `PERSONAL`，后续更新可清理旧版本遗留文件，卸载可离线读取本地清单。
+- 新增 `hxempirical uninstall`；`hxempirical update` 改为调用同一安装器，最终命令继续进入 Stata History。
+- 安装、更新、卸载已在隔离的 `PERSONAL` 与 `PLUS` 目录完成端到端测试。
+
 
 ### 2026-08-14 17:06（UTC+8）
 

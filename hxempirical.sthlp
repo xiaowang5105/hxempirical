@@ -16,6 +16,7 @@
 {p 8 16 2}{cmd:hxempirical menu remove}
 {p 8 16 2}{cmd:hxempirical install} {it:command}
 {p 8 16 2}{cmd:hxempirical update}
+{p 8 16 2}{cmd:hxempirical uninstall}
 
 {title:Description}
 
@@ -128,9 +129,9 @@ uses the actual number of completed files and displays a real percentage.
 {title:Installation}
 
 {pstd}
-Install from a package server with
+Run the maintained installer from GitHub Pages:
 
-{phang2}{cmd:. net install hxempirical, from("release_location")}
+{phang2}{cmd:. do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"}
 
 {pstd}
 Then open it with
@@ -209,12 +210,14 @@ start, {cmd:hxempirical, classic} opens the included Stata dialog.
 {title:Update and uninstall}
 
 {phang2}{cmd:. hxempirical update}
-{phang2}{cmd:. hxempirical menu remove}
-{phang2}{cmd:. ado uninstall hxempirical}
+{phang2}{cmd:. hxempirical uninstall}
 
 {pstd}
-Run {cmd:hxempirical menu remove} before uninstalling if a persistent startup menu was enabled. Restart Stata after an update or uninstall so the loaded Java class is
-released.
+The maintained installer writes its file manifest into PERSONAL, retries
+transient downloads, stages all files before replacement, and restores the
+previous installation if a write fails. Uninstall also removes the managed
+startup-menu block when present. Restart Stata after an update or uninstall so
+the loaded Java class is released.
 
 {title:Examples}
 
