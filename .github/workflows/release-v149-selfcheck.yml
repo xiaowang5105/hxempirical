@@ -1,0 +1,93 @@
+name: Prepare audited v1.4.9
+
+on:
+  push:
+    branches: [selfcheck-v149-deep]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v149-deep
+          fetch-depth: 0
+      - name: Update release metadata
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          def once(s,a,b,label):
+              n=s.count(a)
+              if n!=1: raise SystemExit(f'{label}: expected 1, got {n}')
+              return s.replace(a,b,1)
+
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java'); j=p.read_text(encoding='utf-8')
+          j=once(j,'public static final String VERSION = "1.4.8";','public static final String VERSION = "1.4.9";','java VERSION')
+          j=once(j,'SFIToolkit.displayln("HxWorkbench 1.4.8");','SFIToolkit.displayln("HxWorkbench 1.4.9");','java version output')
+          p.write_text(j,encoding='utf-8')
+
+          p=Path('hxregistry.ado'); s=p.read_text(encoding='utf-8')
+          s=once(s,'*! hxregistry 3.1.1  14aug2026','*! hxregistry 3.1.2  14aug2026','registry version')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('hxempirical.ado'); s=p.read_text(encoding='utf-8')
+          s=once(s,'*! hxempirical 1.4.8  14aug2026','*! hxempirical 1.4.9  14aug2026','ado header')
+          s=once(s,'display as text "版本：" as result "1.4.8"','display as text "版本：" as result "1.4.9"','ado about')
+          s=once(s,'return local version "1.4.8"','return local version "1.4.9"','ado return')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('hxempirical.pkg'); s=p.read_text(encoding='utf-8')
+          s=once(s,'d Version 1.4.8','d Version 1.4.9','pkg version')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('hxempirical.sthlp'); s=p.read_text(encoding='utf-8')
+          s=once(s,'{* *! version 1.4.8  14aug2026}{...}','{* *! version 1.4.9  14aug2026}{...}','help header')
+          s=once(s,'The 1.4.8 interface uses','The 1.4.9 interface uses','help current interface')
+          p.write_text(s,encoding='utf-8')
+
+          p=Path('README.md'); s=p.read_text(encoding='utf-8')
+          s=once(s,'**当前发布版本：1.4.8**','**当前发布版本：1.4.9**','readme current version')
+          s=re.sub(r'\*\*上次修改时间：[^\n]+\*\*','**上次修改时间：2026-08-14 15:54（UTC+8）**',s,count=1)
+          marker='## 修改记录\n'
+          note='''## 修改记录\n\n### 2026-08-14 15:54（UTC+8）\n\n- 深度自查扩展到“数据 / 统计 / 图形 / DID / OneClick”五类可见目录，逐项核对 67 个方法与 208 个可搜索命令的双向可达性。\n- 修复 DID 搜索覆盖：`did_builder` 与 `did_trends` 原先可从 DID 页面点击进入，却未进入全局搜索集合；现已将 `did_cmds` 纳入统一搜索目录。\n- 清理 Java 导航状态代码中的两处重复 `syncSidebarFromContext()` 调用，避免无意义的重复状态同步。\n- 重新以 Java 11 编译 `hxworkbench.jar`，并逐个 `.class` 与源码重建结果做字节级一致性检查；同时核对 37 个发布文件完整性及 Java 预览目录与正式 registry 的一致性。\n'''
+          if marker not in s: raise SystemExit('README changelog marker missing')
+          s=s.replace(marker,note,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Build Java 11 jar
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          printf '%s\n' 'package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }' > /tmp/sfi/com/stata/sfi/SFIToolkit.java
+          printf '%s\n' 'package com.stata.sfi; public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }' > /tmp/sfi/com/stata/sfi/Characteristic.java
+          printf '%s\n' 'package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }' > /tmp/sfi/com/stata/sfi/Macro.java
+          printf '%s\n' 'package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return false;} }' > /tmp/sfi/com/stata/sfi/Missing.java
+          printf '%s\n' 'package com.stata.sfi; public class Scalar { public static double getValue(String s){return 0;} }' > /tmp/sfi/com/stata/sfi/Scalar.java
+          printf '%s\n' 'package com.stata.sfi; public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Data.java
+          printf '%s\n' 'package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Frame.java
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+      - name: Verify release metadata
+        shell: bash
+        run: |
+          grep -F 'public static final String VERSION = "1.4.9";' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'd Version 1.4.9' hxempirical.pkg
+          grep -F '*! hxempirical 1.4.9  14aug2026' hxempirical.ado
+          grep -F '{* *! version 1.4.9  14aug2026}{...}' hxempirical.sthlp
+          grep -F '**当前发布版本：1.4.9**' README.md
+          grep -F '*! hxregistry 3.1.2  14aug2026' hxregistry.ado
+      - name: Commit release candidate
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp hxregistry.ado hxworkbench.jar src/main/java/com/hexie/stata/HxWorkbench.java
+          git commit -m 'Prepare audited hxempirical v1.4.9 [selfcheck]'
+          git push origin HEAD:selfcheck-v149-deep
