@@ -53,7 +53,7 @@ if `"`target'"' == "" {
 /* Make the private cache visible to Stata in this session. */
 capture adopath ++ `"`target'"'
 
-/* One archive download; no net install and no PLUS/PERSONAL writes. */
+/* One archive download; bypasses Stata package-manager target directories. */
 local archive "https://codeload.github.com/xiaowang5105/hxempirical/zip/refs/heads/main"
 local tmp `"`c(tmpdir)'"'
 local plast = substr(`"`tmp'"', strlen(`"`tmp'"'), 1)
