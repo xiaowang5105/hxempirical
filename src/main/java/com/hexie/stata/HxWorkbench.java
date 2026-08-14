@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.8";
+   public static final String VERSION = "1.4.9";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.8");
+      SFIToolkit.displayln("HxWorkbench 1.4.9");
       return 0;
    }
 
@@ -5157,7 +5157,6 @@ public final class HxWorkbench {
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
          this.syncSidebarFromContext();
-         this.syncSidebarFromContext();
          this.activeMethodName = "";
          this.selectCategoryCode(var1);
          ArrayList<String> var2 = new ArrayList<>();
@@ -5408,7 +5407,6 @@ public final class HxWorkbench {
          if ("reg".equals(var1) && "线性模型".equals(var2)) { this.showExactLinearPage(); return; }
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
-         this.syncSidebarFromContext();
          this.syncSidebarFromContext();
          this.activeMethodName = var2;
          this.selectCategoryCode(var1);
