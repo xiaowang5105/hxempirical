@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.6";
+   public static final String VERSION = "1.4.7";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.6");
+      SFIToolkit.displayln("HxWorkbench 1.4.7");
       return 0;
    }
 
@@ -4775,11 +4775,11 @@ public final class HxWorkbench {
       private static String statsMethodPreview(String method) {
          switch (method) {
             case "汇总，表格和假设检验": return "summarize · tabstat · tabulate · ttest";
-            case "线性模型及相关": return "regress · areg · qreg · correlate";
+            case "线性模型及相关": return "regress · areg · reghdfe · qreg";
             case "二元结果": return "logit · logistic · probit · cloglog";
             case "序数结果": return "ologit · oprobit";
             case "分类结果": return "mlogit · mprobit · asclogit";
-            case "计数结果": return "poisson · nbreg · zinb";
+            case "计数结果": return "poisson · nbreg · ppmlhdfe · zinb";
             case "分数结果": return "fracreg · betareg";
             case "广义线性模型": return "glm";
             case "选择模型": return "heckman · heckprobit · heckpoisson";
@@ -4808,6 +4808,8 @@ public final class HxWorkbench {
             case "效能，精度和样品含量": return "power";
             case "贝叶斯分析": return "bayes · bayesmh · bayespredict";
             case "贝叶斯模型平均": return "bma";
+            case "工具变量与内生性": return "ivregress · ivreghdfe";
+            case "估计后分析": return "test · lincom · predict · margins";
             default: return "查看该分类下的 Stata 命令";
          }
       }
@@ -5129,7 +5131,8 @@ public final class HxWorkbench {
             {"时间与面板数据", "时间序列、空间、纵向与多层数据", new Color(128, 92, 220), new String[]{"时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型"}},
             {"进阶与结构", "生存、流行病学、内生性与样本选择", new Color(235, 151, 39), new String[]{"生存分析", "流行病学及相关", "内生协变量", "样本选择模型"}},
             {"因果与结构模型", "处理效应、SEM、潜在类别与多元分析", new Color(222, 92, 112), new String[]{"因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析"}},
-            {"扩展方法", "正则化、插补、重抽样、效能与贝叶斯", new Color(57, 145, 183), new String[]{"Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均"}}
+            {"扩展方法", "正则化、插补、重抽样、效能与贝叶斯", new Color(57, 145, 183), new String[]{"Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均"}},
+            {"扩展与第三方", "工具变量、内生性与估计后分析", new Color(71, 126, 188), new String[]{"工具变量与内生性", "估计后分析"}}
          };
 
          int groupNo = 1;
@@ -5458,7 +5461,7 @@ public final class HxWorkbench {
          ArrayList<String> picks = new ArrayList<>();
          List<String> wanted;
          if ("线性模型及相关".equals(method)) {
-            wanted = Arrays.asList("regress", "areg", "qreg", "correlate");
+            wanted = Arrays.asList("regress", "areg", "reghdfe", "qreg", "correlate");
          } else if ("汇总，表格和假设检验".equals(method)) {
             wanted = Arrays.asList("summarize", "tabstat", "tabulate", "ttest");
          } else if ("二元结果".equals(method)) {
@@ -5468,7 +5471,11 @@ public final class HxWorkbench {
          } else if ("分类结果".equals(method)) {
             wanted = Arrays.asList("mlogit", "mprobit", "asclogit");
          } else if ("计数结果".equals(method)) {
-            wanted = Arrays.asList("poisson", "nbreg", "zip", "zinb");
+            wanted = Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb");
+         } else if ("工具变量与内生性".equals(method)) {
+            wanted = Arrays.asList("ivregress", "ivreghdfe");
+         } else if ("估计后分析".equals(method)) {
+            wanted = Arrays.asList("test", "lincom", "predict", "margins");
          } else if ("分数结果".equals(method)) {
             wanted = Arrays.asList("fracreg", "betareg");
          } else if ("时间序列".equals(method)) {
@@ -5837,6 +5844,14 @@ public final class HxWorkbench {
             return Arrays.asList("xtreg", "xtlogit", "xtprobit");
          } else if ("二元结果".equals(var0)) {
             return Arrays.asList("logit", "probit");
+         } else if ("线性模型及相关".equals(var0)) {
+            return Arrays.asList("regress", "areg", "reghdfe", "qreg", "correlate");
+         } else if ("计数结果".equals(var0)) {
+            return Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb");
+         } else if ("工具变量与内生性".equals(var0)) {
+            return Arrays.asList("ivregress", "ivreghdfe");
+         } else if ("估计后分析".equals(var0)) {
+            return Arrays.asList("test", "lincom", "predict", "margins");
          } else if ("计数模型".equals(var0)) {
             return Arrays.asList("poisson", "nbreg", "ppmlhdfe");
          } else if ("工具变量".equals(var0)) {
@@ -5872,7 +5887,7 @@ public final class HxWorkbench {
                "汇总，表格和假设检验", "线性模型及相关", "二元结果", "序数结果", "分类结果", "计数结果", "分数结果", "广义线性模型", "选择模型",
                "时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型", "生存分析", "流行病学及相关", "内生协变量", "样本选择模型",
                "因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析",
-               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均"
+               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均", "工具变量与内生性", "估计后分析"
             );
          } else if ("reg".equals(var0)) {
             return Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量", "双重差分");
