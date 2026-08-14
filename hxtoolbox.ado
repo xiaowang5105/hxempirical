@@ -1,4 +1,4 @@
-*! hxtoolbox 4.5.0  11aug2026
+*! hxtoolbox 4.7.0  14aug2026
 *! Open the Java single-window workbench; keep the native dialog as fallback.
 program define hxtoolbox
     version 17.0
@@ -10,10 +10,16 @@ program define hxtoolbox
     quietly hxpick, target(all) action(clear)
     quietly hxmonitor, action(refresh)
 
-    /* Batch runs and explicit classic mode use the tested native dialog. */
-    if "`classic'" != "" | "`c(mode)'" == "batch" {
+    /* Classic is a compatibility fallback with a deliberately smaller scope. */
+    if "`classic'" != "" {
+        display as text "正在打开经典兼容界面。该界面保留基础操作；最新工作台功能以 Java 界面为准。"
         db hxtoolbox_v2
         exit
+    }
+    if "`c(mode)'" == "batch" {
+        display as error "hxempirical 图形工作台只能在 Stata 交互模式中打开。"
+        display as text "批处理实证请直接运行生成的 Stata 命令或正式 .do 文件。"
+        exit 198
     }
 
     local jarfile ""
@@ -42,16 +48,16 @@ program define hxtoolbox
         }
     }
     if `"`jarfile'"' == "" {
-        display as text "未找到单窗口工作台组件，已打开经典界面。"
-        db hxtoolbox_v2
-        exit
+        display as error "未找到 Java 工作台组件 hxworkbench.jar，当前安装可能不完整。"
+        display as text "请先运行 hxempirical doctor；如需临时使用基础兼容界面，可运行 hxtoolbox, classic。"
+        exit 601
     }
     capture noisily javacall com.hexie.stata.HxWorkbench launch, ///
         classpath(`"`jarfile'"')
     if _rc {
         local rc = _rc
-        display as error "单窗口工作台启动失败（返回码 `rc'），已打开经典界面。"
-        display as text "可运行 hxtoolbox, classic 随时使用原有窗口。"
-        db hxtoolbox_v2
+        display as error "Java 工作台启动失败，返回码 `rc'。"
+        display as text "请运行 hxempirical doctor 检查安装；基础兼容界面可用 hxtoolbox, classic 手动打开。"
+        exit `rc'
     }
 end

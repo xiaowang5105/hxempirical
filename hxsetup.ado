@@ -1,4 +1,4 @@
-*! hxsetup 2.2.0  11aug2026
+*! hxsetup 2.3.0  14aug2026
 *! Opt-in persistence for the single HX menu entry; never rewrites unrelated profile.do lines.
 program define hxsetup, rclass
     version 17.0
@@ -20,7 +20,17 @@ program define hxsetup, rclass
     if substr(`"`profile'"', 1, 1) == char(34) & substr(`"`profile'"', -1, 1) == char(34) {
         local profile = substr(`"`profile'"', 2, strlen(`"`profile'"') - 2)
     }
-    if `"`profile'"' == "" local profile `"`c(sysdir_personal)'profile.do"'
+    local default_profile = (`"`profile'"' == "")
+    local personal `"`c(sysdir_personal)'"'
+    if `default_profile' {
+        if `"`personal'"' == "" {
+            display as error "Stata 没有返回 PERSONAL ado 目录。请先运行 sysdir 检查环境。"
+            exit 603
+        }
+        local lastchar = substr(`"`personal'"', strlen(`"`personal'"'), 1)
+        if !inlist(`"`lastchar'"', "/", "\") local personal `"`personal'/"'
+        local profile `"`personal'profile.do"'
+    }
 
     local begin  "* >>> HXEMPIRICAL MANAGED MENU >>>"
     local finish "* <<< HXEMPIRICAL MANAGED MENU <<<"
@@ -40,14 +50,41 @@ program define hxsetup, rclass
         exit
     }
 
-    file open `output' using `"`rewritten'"', write text replace
+    /* A clean Stata user account may not have PERSONAL yet, especially on
+       macOS when hxempirical was installed elsewhere on the adopath. */
+    if "`persist'" != "" & `default_profile' {
+        capture quietly mkdir `"`personal'"'
+        local probe `"`personal'__hxempirical_profile_write_test.tmp"'
+        tempname probehandle
+        capture quietly file open `probehandle' using `"`probe'"', write text replace
+        local probe_rc = _rc
+        if `probe_rc' {
+            display as error "无法创建或写入 Stata PERSONAL 目录：`personal'"
+            display as text "请运行 sysdir 检查 PERSONAL 路径和当前用户的目录权限。"
+            exit 603
+        }
+        file write `probehandle' "hxempirical profile write test" _n
+        file close `probehandle'
+        capture quietly erase `"`probe'"'
+    }
+
+    capture quietly file open `output' using `"`rewritten'"', write text
+    if _rc {
+        display as error "无法创建菜单配置临时文件。请检查 Stata 临时目录的写权限。"
+        exit 603
+    }
     if `profile_exists' {
         /* Keep a one-time backup before the first HX-managed edit. */
-        local backup `"`c(sysdir_personal)'profile.before_hxempirical.do"'
+        local backup `"`personal'profile.before_hxempirical.do"'
         capture confirm file `"`backup'"'
-        if _rc capture copy `"`profile'"' `"`backup'"'
+        if _rc capture quietly copy `"`profile'"' `"`backup'"'
 
-        file open `input' using `"`profile'"', read text
+        capture quietly file open `input' using `"`profile'"', read text
+        if _rc {
+            display as error "无法读取现有 profile.do：`profile'"
+            display as text "文件可能被其他程序占用，或当前用户没有读取权限。"
+            exit 603
+        }
         local managed 0
         file read `input' line
         while r(eof) == 0 {
@@ -66,7 +103,14 @@ program define hxsetup, rclass
         file write `output' `"`finish'"' _n
     }
     file close `output'
-    copy `"`rewritten'"' `"`profile'"', replace
+    capture quietly copy `"`rewritten'"' `"`profile'"', replace
+    local write_rc = _rc
+    if `write_rc' {
+        display as error "无法写入 profile.do：`profile'"
+        if !`default_profile' display as text "自定义 profile() 的上级目录必须已经存在且可写。"
+        else display as text "请运行 sysdir 检查 PERSONAL 路径和当前用户的目录权限。"
+        exit 603
+    }
 
     if "`remove'" != "" {
         global HXEMPIRICAL_MENU_INSTALLED 0

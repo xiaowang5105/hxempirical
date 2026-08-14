@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.4.9  14aug2026}{...}
+{* *! version 1.5.0  14aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,10 +27,10 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.4.9 interface uses a stable desktop-workbench layout: a collapsible left
-navigation sidebar, a task-focused main workspace, and one shared right-side
-Current Data inspector. OneClick and ordinary command pages reuse that same
-inspector instead of maintaining separate look-alike data/result panels.
+The 1.5.0 interface uses a compact desktop-workbench layout: a collapsible left
+navigation sidebar, dense command tables with search and source filters, a
+contextual command preview panel, and one shared right-side Current Data inspector.
+OneClick and ordinary command pages reuse the same data/result components.
 
 {pstd}
 Research tasks can open a task workspace directly. The baseline-regression
@@ -196,6 +196,12 @@ installed after user confirmation. {cmd:oneclick_robustness} is detected when
 present but is not downloaded from an unverified source. Nothing is downloaded
 merely by installing {cmd:hxempirical}.
 
+{pstd}
+Optional commands are not core-health failures. {cmd:hxempirical doctor}
+reports the core workbench separately from these extensions. A command page can
+be inspected without installing its extension; installation is offered only
+when the user attempts to run that command.
+
 {phang2}{cmd:. hxempirical doctor}
 {phang2}{cmd:. hxempirical install reghdfe}
 
@@ -205,15 +211,25 @@ merely by installing {cmd:hxempirical}.
 Minimum version: Stata 17. The Java workbench is compiled for Java 11 bytecode
 and uses Stata's bundled Java/SFI interface. It contains no COM Automation,
 native C plugin, drive-letter path, or platform-specific font. If Java cannot
-start, {cmd:hxempirical, classic} opens the included Stata dialog.
+start, the launcher reports the return code and recommends {cmd:hxempirical doctor}.
+The included basic compatibility dialog remains available explicitly through
+{cmd:hxempirical, classic}; new workflow, monitor, and data-link features are
+maintained in the Java workbench.
+
+{pstd}
+On a clean Windows or macOS account, {cmd:hxempirical menu persist} creates and
+write-tests PERSONAL before editing the HX-managed block in {cmd:profile.do}.
+Expected missing-file probes are captured and replaced by a concise diagnostic.
 
 {title:Update and uninstall}
 
+{phang2}{cmd:. do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"}
 {phang2}{cmd:. hxempirical update}
 {phang2}{cmd:. hxempirical uninstall}
 
 {pstd}
-The maintained installer writes its file manifest into PERSONAL, retries
+The same one-line installer automatically selects install or update from the
+local manifest, writes its managed files into PERSONAL, retries
 transient downloads, stages all files before replacement, and restores the
 previous installation if a write fails. Uninstall also removes the managed
 startup-menu block when present. Restart Stata after an update or uninstall so

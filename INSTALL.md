@@ -1,6 +1,16 @@
-# hxempirical 安装
+# hxempirical 安装、更新与排错
 
-## 一行安装（推荐）
+## 先选安装方式
+
+| 当前环境 | 推荐方式 |
+|---|---|
+| Stata 可以稳定访问 GitHub Pages | 在线安装 |
+| 校园网、单位代理、网络审查、杀毒软件拦截，或 Stata 曾长时间显示“正忙” | 浏览器离线安装 |
+| 需要给朋友批量安装 | 下载一次离线包，再分别安装 |
+
+两种方式最终安装的是同一份发布包，都会写入当前用户的 `PERSONAL` ado 目录。首次安装和以后更新使用相同步骤。
+
+## 方法 A：在线安装
 
 在 **Stata 17 或更高版本**的命令窗口运行：
 
@@ -8,48 +18,96 @@
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 ```
 
-安装完成后验证并启动：
+安装器依次执行：
+
+1. 检查 Stata 版本和 `PERSONAL` 写权限；
+2. 读取 `hxempirical.pkg` 发布清单；
+3. 下载 11 个约 48KB 的 Base64 文本分段；
+4. 使用 Stata 17 自带 Java 还原完整发布包；
+5. 校验清单中的全部文件；
+6. 备份已有版本并统一写入；
+7. 建立唯一的 **用户（User） > 我的实证工具箱** 菜单入口。
+
+Results 窗口会持续显示：
+
+```text
+正在取得发布包：1/11（每段网络等待上限 20 秒）
+正在取得发布包：2/11（每段网络等待上限 20 秒）
+...
+```
+
+一次 HTTPS 传输期间，Stata 可能短暂显示“正忙”。当前分段最长等待 20 秒，随后会继续或给出明确错误。需要主动停止时，点击 Stata 工具栏的红色 **Break/停止** 按钮。安装器在取得并校验完整发布包之前不会改动已有安装。
+
+## 方法 B：浏览器离线安装
+
+此方法让浏览器负责下载，Stata 只读取本地文件。
+
+1. 下载 [hxempirical-release.zip](https://xiaowang5105.github.io/hxempirical/hxempirical-release.zip)。
+2. 右键 ZIP 并完整解压到普通文件夹。
+3. 打开 Stata，选择 **文件（File） > 执行 do 文件（Do...）**。
+4. 选择解压目录中的 `hxinstall_offline.do`。
+5. 文件选择框出现后，选择同一目录中的 `hxempirical.pkg`。
+6. 等待“hxempirical 安装完成”或“hxempirical 更新完成”，然后重启 Stata。
+
+也可以在 Stata 中直接运行：
+
+```stata
+do "D:/你的解压目录/hxinstall_offline.do"
+```
+
+启动文件会弹出文件选择框。路径中可以有中文和空格。请选择解压目录里的 `hxempirical.pkg`。
+
+离线安装包包含：
+
+- 全部 `.ado`、`.sthlp`、`.dlg`、测试数据和 Java 工作台；
+- `hxempirical.pkg` 完整清单；
+- 在线/本地共用的事务式安装器；
+- 离线启动文件和本说明。
+
+原 ZIP 和解压目录不会被修改。更新完成后可以自行保留或删除下载文件。
+
+## 安装完成后的验证
+
+重新启动 Stata，然后运行：
 
 ```stata
 which hxempirical
 hxempirical about
+hxempirical doctor
 hxempirical
 ```
 
-安装器会把文件放进当前用户的 `PERSONAL` ado 目录，通常不需要管理员权限。它会先下载完整发布包，再统一写入正式目录；更新中途发生写入错误时，会恢复原有文件。
+核心诊断应显示：
 
-安装器还会：
+```text
+[核心组件：正常] 11/11
+```
 
-- 检查 Stata 版本和 `PERSONAL` 写权限；
-- 从 `hxempirical.pkg` 自动读取发布清单；
-- 优先使用 GitHub Pages，并重试临时网络错误；
-- 给每次安装建立独立的临时目录；
-- 保存本地安装清单，供以后更新、清理旧文件和卸载使用；
-- 先更新 `hxworkbench.jar`，发现文件正在使用时立即停止，避免只更新一半。
+`reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot`、`event_plot` 是可选扩展。它们缺失时，核心工作台和 Stata 官方命令仍然可用。
 
 ## 更新
 
-在已安装 hxempirical 的 Stata 中运行：
+先关闭“我的实证工具箱”窗口，再选择一种方式：
+
+在线更新：
 
 ```stata
-hxempirical update
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 ```
 
-也可以直接运行安装器的更新模式：
+离线更新：下载最新 ZIP，解压后重新运行 `hxinstall_offline.do`。
 
-```stata
-do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" update
-```
-
-如果已经打开 Java 工作台，请先关闭工作台。遇到 JAR 正在使用或 `r(602)` 时，关闭 Stata，重新打开后先执行更新命令。
+安装器通过 `PERSONAL` 中的本地清单识别已有版本，先备份，再统一替换。写入失败时会恢复原版本。遇到 `hxworkbench.jar` 正在使用或 `r(602)` 时，请关闭所有 Stata 窗口，重新打开 Stata 后先执行更新。
 
 ## 卸载
+
+已安装时运行：
 
 ```stata
 hxempirical uninstall
 ```
 
-或：
+也可以运行在线卸载器：
 
 ```stata
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
@@ -57,38 +115,80 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 
 卸载器会删除 `PERSONAL` 中由 hxempirical 清单管理的文件，并移除 HX 写入 `profile.do` 的菜单区块。完成后重新启动 Stata。
 
-如果这台电脑以前多次使用 `net install` 安装过旧版本，Stata 的 `PLUS` 目录可能还保留旧的包登记。卸载器会提示使用：
+如果电脑以前多次使用 `net install` 安装过旧版本，`PLUS` 目录可能还保留旧登记。按提示运行：
 
 ```stata
 ado dir hxempirical
 ado uninstall [编号]
 ```
 
-按列表中的编号逐项清理旧登记。
+## Stata 显示“正忙”时怎么处理
 
-## 网络和权限问题
+### 看到 `正在取得发布包：#/11`
 
-先确认浏览器能够打开：
+安装器正在下载当前文本分段。每段最长等待 20 秒。让当前分段返回，或点击红色 **Break/停止**。完成中断后直接改用浏览器离线安装。
 
-```text
-https://xiaowang5105.github.io/hxempirical/hxempirical.pkg
-```
+### 运行在线命令后很久没有任何安装器文字
 
-然后在 Stata 中检查：
+Stata 正在下载最前面的 `hxinstall.do`，此时安装器代码尚未开始执行。点击红色 **Break/停止**，然后使用浏览器离线包。这通常代表当前网络对 Stata 的 GitHub HTTPS 请求有限制。
+
+### Stata 无法恢复，只能从任务管理器关闭
+
+重新打开 Stata后直接使用浏览器离线包。安装器在完整发布包校验前不会写入正式目录，因此未完成的在线下载不会形成半套新安装。随后运行：
 
 ```stata
+which hxempirical
 sysdir
-adopath
 ```
 
-GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，因此安装说明统一使用 GitHub Pages 地址。
+如果 `which hxempirical` 显示已有版本，再用离线包执行一次更新即可。
 
-## 传统包管理方式（高级）
+## 网络诊断
 
-GitHub Pages 仍支持 Stata 标准包安装：
+浏览器分别打开：
+
+- [安装入口](https://xiaowang5105.github.io/hxempirical/hxinstall.do)
+- [发布清单](https://xiaowang5105.github.io/hxempirical/hxempirical.pkg)
+- [完整离线包](https://xiaowang5105.github.io/hxempirical/hxempirical-release.zip)
+
+浏览器能打开、Stata 持续超时时，直接使用离线安装。浏览器也无法打开时，请更换网络，或让朋友把 ZIP 文件传给你。
+
+需要提交问题时，在 Stata 运行并保存输出：
+
+```stata
+about
+sysdir
+adopath
+which hxempirical
+```
+
+已经成功装入核心命令时，再运行：
+
+```stata
+hxempirical about
+hxempirical doctor
+```
+
+## macOS 与干净用户目录验证
+
+Windows 和 macOS 使用同一发布包。安装器会创建缺失的 `PERSONAL` 目录，并在写文件前验证权限。
+
+维护者从仓库根目录运行：
+
+```stata
+do "tests/cross_platform_core_smoke.do"
+do "tests/installer_lifecycle_smoke.do"
+do "tests/offline_launcher_smoke.do"
+```
+
+这些测试使用隔离的临时 `PERSONAL`，覆盖目录创建、核心/可选依赖诊断、菜单持久化、首次安装、同入口更新、离线启动和卸载。
+
+## 传统 Stata 包管理（高级）
+
+GitHub Pages 仍支持：
 
 ```stata
 net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
 ```
 
-请选择一种安装方式并持续使用。普通用户建议一直使用上面的一行安装器；这样更新和卸载都由同一份本地清单管理。
+普通用户使用在线安装器或浏览器离线包。统一安装器负责更新、回滚、清理旧文件和菜单持久化。
