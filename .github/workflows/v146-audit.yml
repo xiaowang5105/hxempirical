@@ -11,6 +11,18 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Repair Python replacement escaping
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/v146_patch.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('s, n = pat.subn(new_update, s, count=1)', 's, n = pat.subn(lambda m: new_update, s, count=1)')
+          s=s.replace('s, n = run_pat.subn(run_new, s, count=1)', 's, n = run_pat.subn(lambda m: run_new, s, count=1)')
+          s=s.replace('s, n = sync_pat.subn(sync_new, s, count=1)', 's, n = sync_pat.subn(lambda m: sync_new, s, count=1)')
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Run deep functional audit
         shell: bash
         run: bash scripts/v146_audit.sh
