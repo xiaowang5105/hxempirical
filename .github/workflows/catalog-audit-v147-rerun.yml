@@ -1,0 +1,163 @@
+name: Catalog audit v1.4.7 rerun
+
+on:
+  push:
+    branches: [ui-audit-v147]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-audit-v147
+          fetch-depth: 0
+
+      - name: Apply audited catalog patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          lines = Path('.github/workflows/catalog-audit-v147.yml').read_text(encoding='utf-8').splitlines()
+          collecting = False
+          script = []
+          for line in lines:
+              if not collecting and line.strip() == "python - <<'PY'":
+                  collecting = True
+                  continue
+              if collecting and line.strip() == 'PY':
+                  break
+              if collecting:
+                  script.append(line[10:] if line.startswith('          ') else line)
+          if not script:
+              raise SystemExit('patch script extraction failed')
+          code = '\n'.join(script) + '\n'
+          compile(code, '<catalog-patch>', 'exec')
+          exec(code, {'__name__':'__main__'})
+          print('PATCH_REPLAY_OK')
+          PY
+
+      - name: Audit search and visible directory invariants
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s = Path('hxregistry.ado').read_text(encoding='utf-8')
+          j = Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+          def local(name):
+              m = re.search(r'^\s*local\s+' + re.escape(name) + r'\s+"([^"]*)"', s, re.M)
+              if not m: raise SystemExit('missing local '+name)
+              return m.group(1).split()
+          visible = set(local('data_cmds') + local('stats_cmds') + local('graph_cmds') + local('oneclick_cmds'))
+          required = {'reghdfe','ppmlhdfe','ivregress','ivreghdfe','test','lincom','predict','margins','event_plot'}
+          if required - visible: raise SystemExit('searchable extension missing: '+str(sorted(required-visible)))
+          loop = re.search(r"foreach cmd in ([^\{]+)\{", s).group(1)
+          for hidden in ["`reg_cmds'", "`post_cmds'", "`did_cmds'"]:
+              if hidden in loop: raise SystemExit('hidden catalog leaks into global search: '+hidden)
+          for token in ["`data_cmds'", "`stats_cmds'", "`graph_cmds'", "`oneclick_cmds'"]:
+              if token not in loop: raise SystemExit('visible catalog absent from global search: '+token)
+          needles = [
+              'local view "poisson nbreg ppmlhdfe zip zinb tpoisson tnbreg"',
+              'local view "regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr"',
+              'local view "ivregress ivreghdfe"',
+              'local view "test lincom predict margins"',
+              'local view "marginsplot coefplot event_plot"',
+              'case "计数结果": return "poisson · nbreg · ppmlhdfe · zinb";',
+              'new String[]{"工具变量与内生性", "估计后分析"}',
+              'return Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb");'
+          ]
+          for n in needles:
+              if n not in s and n not in j: raise SystemExit('missing invariant: '+n)
+          print('CATALOG_AUDIT_OK searchable=', len(visible))
+          PY
+
+      - name: Create complete Stata SFI compile stubs
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit {
+            public static int executeCommand(String s, boolean b){return 0;}
+            public static void displayln(String s){}
+            public static void errorln(String s){}
+            public static String stackTraceToString(Throwable t){return "";}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic {
+            public static String getGlobal(String s){return "";}
+            public static String getDtaChar(String s){return "";}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro {
+            public static String getGlobal(String s){return "";}
+            public static void setGlobal(String a,String b){}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double d){return false;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return 0;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;}
+            public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;}
+            public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;}
+            public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";}
+            public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";}
+            public static String getFormattedValue(int i,long n,boolean b){return "";}
+          }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame {
+            public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();}
+            public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;}
+            public String getVarName(int i){return "";} public double getNum(int i,long n){return 0;}
+            public String getStr(int i,long n){return "";} public long getObsTotal(){return 0;} public int getVarCount(){return 0;}
+            public String getFormattedValue(int i,long n,boolean b){return "";}
+          }
+          EOF
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Verify release metadata and exact routes
+        shell: bash
+        run: |
+          grep -q 'Version 1.4.7' hxempirical.pkg
+          grep -q 'hxempirical 1.4.7' hxempirical.ado
+          grep -q 'version 1.4.7' hxempirical.sthlp
+          grep -q 'VERSION = "1.4.7"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -q '当前发布版本：1.4.7' README.md
+          grep -q '计数结果.*ppmlhdfe' hxregistry.ado
+          grep -q '工具变量与内生性' hxregistry.ado
+          grep -q '估计后分析' hxregistry.ado
+
+      - name: Commit audited production changes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md hxempirical.ado hxempirical.pkg hxempirical.sthlp hxregistry.ado hxworkbench.jar src/main/java/com/hexie/stata/HxWorkbench.java
+          git commit -m 'Unify searchable and navigable catalogs v1.4.7 [ui-audit]'
+          git push origin HEAD:ui-audit-v147
