@@ -74,20 +74,20 @@ program define hxempirical, rclass
         exit
     }
 
-    if `"`action'"' == "update" {
-        local updatecmd "adoupdate hxempirical, update"
-        capture window push `updatecmd'
-        capture noisily `updatecmd'
+    if inlist(`"`action'"', "update", "uninstall") {
+        local installer "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
+        local managecmd `"do "`installer'" `action'"'
+        capture window push `managecmd'
+        capture noisily do `"`installer'"' `action'
         local rc = _rc
         if `rc' {
-            display as error "更新失败，返回码 `rc'。原安装仍由 Stata 包管理器保留。"
+            display as error "hxempirical `action' 失败，返回码 `rc'。"
             exit `rc'
         }
-        display as result "hxempirical 更新检查完成。若安装了新文件，请重新启动 Stata。"
         exit
     }
 
     display as error "无法识别子命令：`action'"
-    display as text  "可用：hxempirical | about | doctor | menu [persist|remove] | classic | install 命令名 | update"
+    display as text  "可用：hxempirical | about | doctor | menu [persist|remove] | classic | install 命令名 | update | uninstall"
     exit 198
 end

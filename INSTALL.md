@@ -1,54 +1,94 @@
 # hxempirical 安装
 
-## 推荐：通用一行安装
+## 一行安装（推荐）
 
-在 **Stata 17 或更高版本**的命令窗口直接运行：
+在 **Stata 17 或更高版本**的命令窗口运行：
 
 ```stata
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 ```
 
-安装完成后运行：
+安装完成后验证并启动：
 
 ```stata
+which hxempirical
+hxempirical about
 hxempirical
 ```
 
-这个安装器不依赖 `net install` 的 PLUS 目录写权限。它会：
+安装器会把文件放进当前用户的 `PERSONAL` ado 目录，通常不需要管理员权限。它会先下载完整发布包，再统一写入正式目录；更新中途发生写入错误时，会恢复原有文件。
 
-1. 先检查 Stata 的用户级 `PERSONAL` ado 目录是否可写；
-2. 从 `hxempirical.pkg` 自动读取当前发布文件清单；
-3. 优先从 GitHub Pages 下载，每个文件失败时自动改用 GitHub Raw；
-4. 先把全部文件下载到 Stata 临时目录，全部成功后才覆盖正式安装；
-5. 将正式文件安装到当前用户的 `PERSONAL` ado 目录，因此 Windows/macOS 上通常不需要管理员权限；
-6. 检查 `hxempirical.ado` 和 `hxworkbench.jar` 是否实际写入成功。
+安装器还会：
 
-## GitHub Pages 无法访问时
+- 检查 Stata 版本和 `PERSONAL` 写权限；
+- 从 `hxempirical.pkg` 自动读取发布清单；
+- 优先使用 GitHub Pages，并重试临时网络错误；
+- 给每次安装建立独立的临时目录；
+- 保存本地安装清单，供以后更新、清理旧文件和卸载使用；
+- 先更新 `hxworkbench.jar`，发现文件正在使用时立即停止，避免只更新一半。
 
-使用 Raw 入口启动同一个安装器：
+## 更新
+
+在已安装 hxempirical 的 Stata 中运行：
 
 ```stata
-do "https://raw.githubusercontent.com/xiaowang5105/hxempirical/main/hxinstall.do"
+hxempirical update
 ```
 
-安装器启动后仍会在两个下载源之间自动回退。
+也可以直接运行安装器的更新模式：
 
-## 传统安装方式
+```stata
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" update
+```
 
-Stata 标准包管理方式仍然可用：
+如果已经打开 Java 工作台，请先关闭工作台。遇到 JAR 正在使用或 `r(602)` 时，关闭 Stata，重新打开后先执行更新命令。
+
+## 卸载
+
+```stata
+hxempirical uninstall
+```
+
+或：
+
+```stata
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
+```
+
+卸载器会删除 `PERSONAL` 中由 hxempirical 清单管理的文件，并移除 HX 写入 `profile.do` 的菜单区块。完成后重新启动 Stata。
+
+如果这台电脑以前多次使用 `net install` 安装过旧版本，Stata 的 `PLUS` 目录可能还保留旧的包登记。卸载器会提示使用：
+
+```stata
+ado dir hxempirical
+ado uninstall [编号]
+```
+
+按列表中的编号逐项清理旧登记。
+
+## 网络和权限问题
+
+先确认浏览器能够打开：
+
+```text
+https://xiaowang5105.github.io/hxempirical/hxempirical.pkg
+```
+
+然后在 Stata 中检查：
+
+```stata
+sysdir
+adopath
+```
+
+GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，因此安装说明统一使用 GitHub Pages 地址。
+
+## 传统包管理方式（高级）
+
+GitHub Pages 仍支持 Stata 标准包安装：
 
 ```stata
 net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
 ```
 
-`net install` 默认把社区下载内容写入 Stata 的 `PLUS` 目录。如果某台学校、实验室或共享电脑的 PLUS 目录没有当前用户写权限，可能出现 `r(603)`。这种情况下优先使用上面的 `hxinstall.do` 通用安装器。
-
-## 更新
-
-重新运行通用一行安装即可覆盖到当前发布版本：
-
-```stata
-do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
-```
-
-如果当前会话已经打开 Java 工作台，建议先关闭工作台；如遇到 JAR 文件占用问题，关闭并重新打开 Stata 后，再运行安装器。
+请选择一种安装方式并持续使用。普通用户建议一直使用上面的一行安装器；这样更新和卸载都由同一份本地清单管理。
