@@ -1,4 +1,4 @@
-*! hxempirical 1.5.0  14aug2026
+*! hxempirical 1.5.1  15aug2026
 *! Public entry point for the HX empirical workbench
 program define hxempirical, rclass
     version 13.0
@@ -49,12 +49,12 @@ program define hxempirical, rclass
 
     if `"`action'"' == "about" {
         display as text _newline ustrunescape("hxempirical\uff1a\u6211\u7684\u5b9e\u8bc1\u5de5\u5177\u7bb1")
-        display as text ustrunescape("\u7248\u672c\uff1a") as result "1.5.0"
+        display as text ustrunescape("\u7248\u672c\uff1a") as result "1.5.1"
         display as text ustrunescape("Stata\uff1a") as result "`c(stata_version)' (`c(os)')"
         display as text ustrunescape("\u6700\u4f4e\u652f\u6301\uff1a") as result "Stata 17"
         display as text ustrunescape("\u754c\u9762\uff1a") as result ustrunescape("Java \u5355\u7a97\u53e3\u5de5\u4f5c\u53f0\uff1b\u7ecf\u5178 .dlg \u81ea\u52a8\u540e\u5907")
         return local package "hxempirical"
-        return local version "1.5.0"
+        return local version "1.5.1"
         return local os "`c(os)'"
         return scalar stata_version = c(stata_version)
         exit
@@ -103,7 +103,7 @@ program define hxempirical, rclass
         exit
     }
 
-    if inlist(`"`action'"', "update", "uninstall") {
+    if inlist(`"`action'"', "update", "repair", "uninstall") {
         local installer "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
         local managecmd `"do "`installer'" `action'"'
         capture window push `managecmd'
@@ -117,6 +117,6 @@ program define hxempirical, rclass
     }
 
     display as error ustrunescape("\u65e0\u6cd5\u8bc6\u522b\u5b50\u547d\u4ee4\uff1a") "`action'"
-    display as text ustrunescape("\u53ef\u7528\uff1ahxempirical | about | doctor | menu [persist|remove] | classic | install \u547d\u4ee4\u540d | update | uninstall")
+    display as text ustrunescape("\u53ef\u7528\uff1ahxempirical | about | doctor | menu [persist|remove] | classic | install \u547d\u4ee4\u540d | update | repair | uninstall")
     exit 198
 end
