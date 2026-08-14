@@ -1,0 +1,50 @@
+name: Repair known v1.4.9 findings
+
+on:
+  push:
+    branches: [selfcheck-v149-deep]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v149-deep
+          fetch-depth: 0
+      - name: Apply targeted repairs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('hxregistry.ado'); s=p.read_text(encoding='utf-8')
+          old="foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `oneclick_cmds' {"
+          if s.count(old)!=1: raise SystemExit('unexpected global-search loop')
+          p.write_text(s.replace(old,"foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `did_cmds' `oneclick_cmds' {",1),encoding='utf-8')
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java'); j=p.read_text(encoding='utf-8')
+          dup='this.syncSidebarFromContext();\n         this.syncSidebarFromContext();'
+          if j.count(dup)<1: raise SystemExit('duplicate sync sequence not found')
+          p.write_text(j.replace(dup,'this.syncSidebarFromContext();'),encoding='utf-8')
+          PY
+      - name: Build Java 11 jar
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          printf '%s\n' 'package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }' > /tmp/sfi/com/stata/sfi/SFIToolkit.java
+          printf '%s\n' 'package com.stata.sfi; public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }' > /tmp/sfi/com/stata/sfi/Characteristic.java
+          printf '%s\n' 'package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }' > /tmp/sfi/com/stata/sfi/Macro.java
+          printf '%s\n' 'package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return false;} }' > /tmp/sfi/com/stata/sfi/Missing.java
+          printf '%s\n' 'package com.stata.sfi; public class Scalar { public static double getValue(String s){return 0;} }' > /tmp/sfi/com/stata/sfi/Scalar.java
+          printf '%s\n' 'package com.stata.sfi; public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Data.java
+          printf '%s\n' 'package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Frame.java
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+      - name: Commit targeted repairs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hxregistry.ado src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar
+          git commit -m 'Fix DID search coverage and duplicate sidebar sync [selfcheck]'
+          git push origin HEAD:selfcheck-v149-deep
