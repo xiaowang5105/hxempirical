@@ -1,0 +1,242 @@
+name: Repair exhaustive self-check v1.4.8
+
+on:
+  push:
+    branches: [selfcheck-v148]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v148
+          fetch-depth: 0
+
+      - name: Repair catalog and preview parity
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def once(s, old, new, label):
+              if s.count(old) != 1:
+                  raise SystemExit(f'{label}: expected 1 anchor, got {s.count(old)}')
+              return s.replace(old,new,1)
+
+          # Registry: make every visible graph command searchable and add Chinese search terms.
+          p=Path('hxregistry.ado'); s=p.read_text(encoding='utf-8')
+          s=once(s,'*! hxregistry 3.1.0  14aug2026','*! hxregistry 3.1.1  14aug2026','registry version')
+          old='local graph_cmds "twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"'
+          new='local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"'
+          s=once(s,old,new,'graph searchable command')
+          anchor='        local key_histogram "histogram 直方图 分布 频数 密度"'
+          insert='        local key_graph "graph 饼图 散点图矩阵 质量控制 图形组合 管理图形 图形方案 图形大小"\n'+anchor
+          s=once(s,anchor,insert,'graph search keywords')
+          p.write_text(s,encoding='utf-8')
+
+          # Java: version + preview category parity + exhaustive visible method preview routes.
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java'); j=p.read_text(encoding='utf-8')
+          j=j.replace('public static final String VERSION = "1.4.7";','public static final String VERSION = "1.4.8";',1)
+          j=j.replace('SFIToolkit.displayln("HxWorkbench 1.4.7");','SFIToolkit.displayln("HxWorkbench 1.4.8");',1)
+          old='''         } else if ("graph".equals(var0)) {
+            return Arrays.asList("数据分布", "变量关系", "分组趋势", "回归结果");
+         } else if ("did".equals(var0)) {'''
+          graph_methods='''         } else if ("graph".equals(var0)) {
+            return Arrays.asList(
+               "二维图(散点图，折线图等)", "条形图", "点图", "饼图", "直方图", "箱线图", "等高线图", "散点图矩阵", "分布图", "平滑和密度",
+               "回归诊断图", "时间序列图", "面板数据折线图", "生存分析图", "ROC分析", "多元分析图", "质量控制", "更多统计图形", "图形组合", "管理图形", "更改方案/大小"
+            );
+         } else if ("did".equals(var0)) {'''
+          j=once(j,old,graph_methods,'graph preview methods')
+
+          # Exact production-visible routes copied from hxregistry. This keeps CI preview mode faithful to the real Stata directory.
+          routes={
+          "汇总，表格和假设检验":"summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest",
+          "线性模型及相关":"regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr",
+          "二元结果":"logit logistic probit hetprobit scobit cloglog",
+          "序数结果":"ologit oprobit",
+          "分类结果":"mlogit mprobit asclogit asmprobit",
+          "计数结果":"poisson nbreg ppmlhdfe zip zinb tpoisson tnbreg",
+          "分数结果":"fracreg betareg",
+          "广义线性模型":"glm",
+          "选择模型":"heckman heckprobit heckoprobit heckpoisson",
+          "时间序列":"arima newey prais arch ucm dfuller pperron corrgram pergram",
+          "多元时间序列":"var svar vec varsoc vargranger varstable irf",
+          "空间自回归模型":"spregress spivregress spxtregress",
+          "纵向/面板数据":"xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys",
+          "多层混合效应模型":"mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm",
+          "生存分析":"stset sts stcox streg stcrreg",
+          "流行病学及相关":"cc cs ir",
+          "内生协变量":"eregress eprobit eoprobit epoisson eintreg",
+          "样本选择模型":"heckman heckprobit heckoprobit heckpoisson",
+          "因果推断/处理效应":"teffects etregress etpoisson didregress xtdidregress",
+          "结构方程模型(SEM)":"sem gsem",
+          "潜在类别分析(LCA)":"gsem",
+          "有限混合模型(FMM)":"fmm",
+          "项目反应理论(IRT)":"irt",
+          "多元分析":"factor pca canon cca manova mvreg discrim cluster",
+          "调查数据分析":"svy",
+          "Lasso回归":"lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress",
+          "Meta分析":"meta",
+          "多重插补":"mi",
+          "非参数分析":"ranksum median signrank signtest npregress kdensity lowess lpoly",
+          "精确统计":"bitesti tabi",
+          "重抽样":"bootstrap jackknife permute simulate statsby",
+          "效能，精度和样品含量":"power",
+          "贝叶斯分析":"bayes bayesmh bayespredict bayesstats bayesgraph",
+          "贝叶斯模型平均":"bma",
+          "工具变量与内生性":"ivregress ivreghdfe",
+          "估计后分析":"test lincom predict margins",
+          "二维图(散点图，折线图等)":"twoway scatter line connected lfit qfit lowess lpoly",
+          "条形图":"twoway",
+          "点图":"dotplot",
+          "饼图":"graph",
+          "直方图":"histogram",
+          "箱线图":"graph_box",
+          "等高线图":"twoway",
+          "散点图矩阵":"graph",
+          "分布图":"histogram kdensity",
+          "平滑和密度":"kdensity lowess lpoly",
+          "回归诊断图":"rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot",
+          "时间序列图":"tsline",
+          "面板数据折线图":"xtline",
+          "生存分析图":"sts",
+          "ROC分析":"roctab rocfit roccomp rocgold rocreg",
+          "多元分析图":"pca factor cluster",
+          "质量控制":"graph",
+          "更多统计图形":"marginsplot coefplot event_plot",
+          "图形组合":"graph",
+          "管理图形":"graph",
+          "更改方案/大小":"graph",
+          }
+          lines=[]
+          first=True
+          for method,cmds in routes.items():
+              cond=('if' if first else 'else if')+f' ("{method}".equals(var0)) {{\n'
+              vals=', '.join('"'+x+'"' for x in cmds.split())
+              ret=(f'            return Collections.singletonList({vals});\n' if len(cmds.split())==1 else f'            return Arrays.asList({vals});\n')
+              lines.append('         '+cond+ret+'         } ')
+              first=False
+          block=''.join(lines)
+          anchor='''      private static List<String> previewCommandsForMethod(String var0) {
+         if ("导入与转换".equals(var0)) {'''
+          replacement='''      private static List<String> previewCommandsForMethod(String var0) {
+'''+block+'''else if ("导入与转换".equals(var0)) {'''
+          j=once(j,anchor,replacement,'preview commands exhaustive block')
+          p.write_text(j,encoding='utf-8')
+
+          # Release metadata.
+          for name in ['hxempirical.ado','hxempirical.sthlp']:
+              p=Path(name); x=p.read_text(encoding='utf-8').replace('1.4.7','1.4.8'); p.write_text(x,encoding='utf-8')
+          p=Path('hxempirical.pkg'); x=p.read_text(encoding='utf-8').replace('d Version 1.4.7','d Version 1.4.8'); p.write_text(x,encoding='utf-8')
+          p=Path('README.md'); x=p.read_text(encoding='utf-8')
+          x=x.replace('**当前发布版本：1.4.7**','**当前发布版本：1.4.8**',1)
+          x=re.sub(r'\*\*上次修改时间：[^\n]+\*\*','**上次修改时间：2026-08-14 15:10（UTC+8）**',x,count=1)
+          marker='## 修改记录\n'
+          note='''## 修改记录\n\n### 2026-08-14 15:10（UTC+8）\n\n- 深度自查搜索目录与点击目录的一致性：补齐 `graph` 搜索入口，解决饼图、散点图矩阵、质量控制、图形组合、图形管理等可点击但无法反向搜索的问题。\n- 修复 Java 预览/自动化测试目录与正式 Stata 目录不一致：图形预览从旧的 4 个 HX 分类同步为当前 21 个 Stata 图形分类。\n- `previewCommandsForMethod()` 对全部 36 个统计分类和 21 个图形分类建立与 `hxregistry` 一致的命令映射，后续 UI 渲染自查不再使用过时目录。\n- 保留 `ppmlhdfe` 的正式路径：统计 → 计数结果 → ppmlhdfe，并将该路径纳入自动一致性审查。\n'''
+          if marker not in x: raise SystemExit('README 修改记录 marker missing')
+          x=x.replace(marker,note,1); p.write_text(x,encoding='utf-8')
+          PY
+
+      - name: Build complete SFI stubs
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return false;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return 0;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }
+          EOF
+
+      - name: Compile Java 11 and rebuild jar
+        shell: bash
+        run: |
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Exhaustive registry and preview parity audit
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('hxregistry.ado').read_text(encoding='utf-8')
+          def local(name):
+              m=re.search(r'^\s*local\s+'+re.escape(name)+r'\s+"([^"]*)"',s,re.M)
+              if not m: raise SystemExit('missing local '+name)
+              return m.group(1).split()
+          cats={'data':('data_cmds','data_methods'),'stats':('stats_cmds','stats_methods'),'graph':('graph_cmds','graph_methods'),'oneclick':('oneclick_cmds','oneclick_methods')}
+          pat=re.compile(r'(?:^|\n)\s*(?:if|else if)\s+inlist\(`"`method\'"\',\s*"([^"]+)"[^\n]*?\)\s+local\s+view\s+"([^"]*)"')
+          routes={m.group(1):m.group(2).split() for m in pat.finditer(s)}
+          searchable=set()
+          rows=[]
+          for cat,(cl,ml) in cats.items():
+              cmds=local(cl); methods=local(ml); searchable.update(cmds)
+              for method in methods:
+                  if method not in routes: raise SystemExit(f'NO_ROUTE {cat}/{method}')
+                  rows.append((cat,method,routes[method]))
+              missing=[c for c in cmds if c not in {x for m in methods for x in routes[m]}]
+              if missing: raise SystemExit(f'SEARCH_WITHOUT_PATH {cat}: {missing}')
+          for cat,method,cmds in rows:
+              for cmd in cmds:
+                  if cmd not in searchable: raise SystemExit(f'PATH_WITHOUT_SEARCH {cat}/{method}: {cmd}')
+          Path('/tmp/preview_expected.tsv').write_text('\n'.join(cat+'\t'+method+'\t'+' '.join(cmds) for cat,method,cmds in rows),encoding='utf-8')
+          Path('/tmp/method_expected.tsv').write_text('\n'.join(cat+'\t'+'|'.join(local(ml)) for cat,(cl,ml) in cats.items()),encoding='utf-8')
+          print('REGISTRY_BIJECTION_OK',len(searchable),'searchable commands',len(rows),'visible methods')
+          PY
+          cat > /tmp/PreviewParity.java <<'EOF'
+          import java.lang.reflect.*; import java.nio.file.*; import java.util.*;
+          public class PreviewParity {
+            @SuppressWarnings("unchecked") public static void main(String[] a) throws Exception {
+              Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");
+              Method pm=c.getDeclaredMethod("previewMethodsForCategory",String.class); pm.setAccessible(true);
+              Method pc=c.getDeclaredMethod("previewCommandsForMethod",String.class); pc.setAccessible(true);
+              for(String line:Files.readAllLines(Paths.get("/tmp/method_expected.tsv"))){ String[] p=line.split("\\t",2); List<String> exp=Arrays.asList(p[1].split("\\|",-1)); List<String> got=(List<String>)pm.invoke(null,p[0]); if(!got.equals(exp)) throw new AssertionError("METHOD_PARITY "+p[0]+" exp="+exp+" got="+got); }
+              for(String line:Files.readAllLines(Paths.get("/tmp/preview_expected.tsv"))){ String[] p=line.split("\\t",3); List<String> exp=p.length<3||p[2].isEmpty()?Collections.emptyList():Arrays.asList(p[2].split(" ")); List<String> got=(List<String>)pc.invoke(null,p[1]); if(!got.equals(exp)) throw new AssertionError("COMMAND_PARITY "+p[0]+"/"+p[1]+" exp="+exp+" got="+got); }
+              System.out.println("JAVA_PREVIEW_FULL_PARITY_OK");
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/PreviewParity.java
+          java -cp /tmp/classes PreviewParity
+
+      - name: Verify release metadata
+        shell: bash
+        run: |
+          grep -F 'd Version 1.4.8' hxempirical.pkg
+          grep -F 'public static final String VERSION = "1.4.8";' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F '版本：" as result "1.4.8"' hxempirical.ado
+          grep -F '**当前发布版本：1.4.8**' README.md
+
+      - name: Commit repaired production tree
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hxregistry.ado src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar hxempirical.ado hxempirical.sthlp hxempirical.pkg README.md
+          git commit -m 'Fix exhaustive catalog and preview parity v1.4.8 [selfcheck]' || exit 0
+          git push origin HEAD:selfcheck-v148
