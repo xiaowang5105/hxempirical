@@ -1,4 +1,4 @@
-*! hxempirical 1.4.6  13aug2026
+*! hxempirical 1.4.6  14aug2026
 *! Public entry point for the HX empirical workbench
 program define hxempirical, rclass
     version 13.0
