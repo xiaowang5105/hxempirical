@@ -18,7 +18,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply self-check repairs
-        run: python .github/scripts/selfcheck_fix_v148.py
+        run: |
+          python .github/scripts/selfcheck_fix_v148.py
+          python .github/scripts/selfcheck_fix_v148_data.py
 
       - name: Create complete Stata SFI compile stubs
         shell: bash
