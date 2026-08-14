@@ -1,0 +1,119 @@
+name: Functional UI path audit v1.4.8
+
+on:
+  push:
+    branches: [selfcheck-v148]
+
+permissions:
+  contents: read
+
+jobs:
+  ui-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v148
+
+      - name: Create complete Stata SFI compile stubs
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes /tmp/ui-audit
+          cat > /tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double d){return false;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return 0;} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }
+          EOF
+          cat > /tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }
+          EOF
+
+      - name: Compile application and UI harness
+        shell: bash
+        run: |
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          cat > /tmp/UiPathAudit.java <<'EOF'
+          import java.awt.*;
+          import java.awt.image.BufferedImage;
+          import java.io.File;
+          import java.lang.reflect.*;
+          import java.util.*;
+          import javax.imageio.ImageIO;
+          import javax.swing.*;
+
+          public class UiPathAudit {
+            static java.util.List<JButton> buttons(Component root){
+              java.util.List<JButton> out=new ArrayList<>();
+              if(root instanceof JButton) out.add((JButton)root);
+              if(root instanceof Container) for(Component c:((Container)root).getComponents()) out.addAll(buttons(c));
+              return out;
+            }
+            static JButton findButton(Component root,String needle){
+              for(JButton b:buttons(root)){ String t=b.getText(); if(t!=null && t.contains(needle) && b.isVisible()) return b; }
+              throw new AssertionError("button not found: "+needle+" visible buttons="+buttons(root).size());
+            }
+            static void layout(Component root){
+              if(root instanceof Container){ Container c=(Container)root; c.doLayout(); for(Component x:c.getComponents()) layout(x); }
+            }
+            static Field field(Class<?> c,String n)throws Exception{ Field f=c.getDeclaredField(n); f.setAccessible(true); return f; }
+            public static void main(String[] args)throws Exception{
+              SwingUtilities.invokeAndWait(()->{
+                try{
+                  Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");
+                  Constructor<?> k=c.getDeclaredConstructor(boolean.class); k.setAccessible(true);
+                  JFrame f=(JFrame)k.newInstance(true);
+                  f.setSize(1672,901); f.addNotify(); f.getContentPane().setSize(1672,901);
+                  Method browse=c.getDeclaredMethod("browseCategoryOverview",String.class); browse.setAccessible(true);
+                  browse.invoke(f,"stats"); layout(f.getContentPane());
+                  JButton count=findButton(f.getContentPane(),"计数结果"); count.doClick(); layout(f.getContentPane());
+                  JButton ppml=findButton(f.getContentPane(),"ppmlhdfe"); ppml.doClick(); layout(f.getContentPane());
+                  String current=(String)field(c,"currentCommand").get(f);
+                  if(!"ppmlhdfe".equals(current)) throw new AssertionError("ppmlhdfe click ended at "+current);
+
+                  browse.invoke(f,"graph"); layout(f.getContentPane());
+                  JButton pie=findButton(f.getContentPane(),"饼图"); pie.doClick(); layout(f.getContentPane());
+                  JButton graph=findButton(f.getContentPane(),"graph"); graph.doClick(); layout(f.getContentPane());
+                  current=(String)field(c,"currentCommand").get(f);
+                  if(!"graph".equals(current)) throw new AssertionError("graph click ended at "+current);
+
+                  browse.invoke(f,"stats"); layout(f.getContentPane());
+                  BufferedImage img=new BufferedImage(f.getContentPane().getWidth(),f.getContentPane().getHeight(),BufferedImage.TYPE_INT_RGB);
+                  Graphics2D g=img.createGraphics(); f.getContentPane().printAll(g); g.dispose();
+                  ImageIO.write(img,"png",new File("/tmp/ui-audit/stats-directory-v148.png"));
+                  f.dispose();
+                  System.out.println("UI_PATH_AUDIT_OK stats->计数结果->ppmlhdfe and graph->饼图->graph");
+                }catch(Throwable e){ throw new RuntimeException(e); }
+              });
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/UiPathAudit.java
+
+      - name: Run functional Swing path audit
+        shell: bash
+        run: xvfb-run -a java -cp /tmp/classes UiPathAudit
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-path-audit-v148
+          path: /tmp/ui-audit/stats-directory-v148.png
