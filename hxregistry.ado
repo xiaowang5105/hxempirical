@@ -1,4 +1,4 @@
-*! hxregistry 3.1.0  14aug2026
+*! hxregistry 3.1.1  14aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -12,7 +12,7 @@ program define hxregistry, rclass
     /* Legacy/HX shortcuts remain searchable but are no longer the primary taxonomy. */
     local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
     local post_cmds "test lincom predict margins"
-    local graph_cmds "twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
+    local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
@@ -144,6 +144,7 @@ program define hxregistry, rclass
         local key_lincom "lincom 线性组合 系数"
         local key_predict "predict 预测值 残差"
         local key_margins "margins 边际效应 调节效应"
+        local key_graph "graph 饼图 散点图矩阵 质量控制 图形组合 管理图形 图形方案 图形大小"
         local key_histogram "histogram 直方图 分布 频数 密度"
         local key_kdensity "kdensity 核密度 平滑 分布"
         local key_scatter "scatter 散点图 二维图 变量关系"

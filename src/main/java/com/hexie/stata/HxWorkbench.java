@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.7";
+   public static final String VERSION = "1.4.8";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -348,7 +348,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.7");
+      SFIToolkit.displayln("HxWorkbench 1.4.8");
       return 0;
    }
 
@@ -5818,10 +5818,124 @@ public final class HxWorkbench {
       }
 
       private static List<String> previewCommandsForMethod(String var0) {
-         if ("导入与转换".equals(var0)) {
+         if ("汇总，表格和假设检验".equals(var0)) {
+            return Arrays.asList("summarize", "tabstat", "tabulate", "table", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest");
+         }          else if ("线性模型及相关".equals(var0)) {
+            return Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "qreg", "iqreg", "bsqreg", "vwls", "eivreg", "sureg", "mvreg", "correlate", "pwcorr");
+         }          else if ("二元结果".equals(var0)) {
+            return Arrays.asList("logit", "logistic", "probit", "hetprobit", "scobit", "cloglog");
+         }          else if ("序数结果".equals(var0)) {
+            return Arrays.asList("ologit", "oprobit");
+         }          else if ("分类结果".equals(var0)) {
+            return Arrays.asList("mlogit", "mprobit", "asclogit", "asmprobit");
+         }          else if ("计数结果".equals(var0)) {
+            return Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg");
+         }          else if ("分数结果".equals(var0)) {
+            return Arrays.asList("fracreg", "betareg");
+         }          else if ("广义线性模型".equals(var0)) {
+            return Collections.singletonList("glm");
+         }          else if ("选择模型".equals(var0)) {
+            return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
+         }          else if ("时间序列".equals(var0)) {
+            return Arrays.asList("arima", "newey", "prais", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram");
+         }          else if ("多元时间序列".equals(var0)) {
+            return Arrays.asList("var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf");
+         }          else if ("空间自回归模型".equals(var0)) {
+            return Arrays.asList("spregress", "spivregress", "spxtregress");
+         }          else if ("纵向/面板数据".equals(var0)) {
+            return Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys");
+         }          else if ("多层混合效应模型".equals(var0)) {
+            return Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm");
+         }          else if ("生存分析".equals(var0)) {
+            return Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg");
+         }          else if ("流行病学及相关".equals(var0)) {
+            return Arrays.asList("cc", "cs", "ir");
+         }          else if ("内生协变量".equals(var0)) {
+            return Arrays.asList("eregress", "eprobit", "eoprobit", "epoisson", "eintreg");
+         }          else if ("样本选择模型".equals(var0)) {
+            return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
+         }          else if ("因果推断/处理效应".equals(var0)) {
+            return Arrays.asList("teffects", "etregress", "etpoisson", "didregress", "xtdidregress");
+         }          else if ("结构方程模型(SEM)".equals(var0)) {
+            return Arrays.asList("sem", "gsem");
+         }          else if ("潜在类别分析(LCA)".equals(var0)) {
+            return Collections.singletonList("gsem");
+         }          else if ("有限混合模型(FMM)".equals(var0)) {
+            return Collections.singletonList("fmm");
+         }          else if ("项目反应理论(IRT)".equals(var0)) {
+            return Collections.singletonList("irt");
+         }          else if ("多元分析".equals(var0)) {
+            return Arrays.asList("factor", "pca", "canon", "cca", "manova", "mvreg", "discrim", "cluster");
+         }          else if ("调查数据分析".equals(var0)) {
+            return Collections.singletonList("svy");
+         }          else if ("Lasso回归".equals(var0)) {
+            return Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress");
+         }          else if ("Meta分析".equals(var0)) {
+            return Collections.singletonList("meta");
+         }          else if ("多重插补".equals(var0)) {
+            return Collections.singletonList("mi");
+         }          else if ("非参数分析".equals(var0)) {
+            return Arrays.asList("ranksum", "median", "signrank", "signtest", "npregress", "kdensity", "lowess", "lpoly");
+         }          else if ("精确统计".equals(var0)) {
+            return Arrays.asList("bitesti", "tabi");
+         }          else if ("重抽样".equals(var0)) {
+            return Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby");
+         }          else if ("效能，精度和样品含量".equals(var0)) {
+            return Collections.singletonList("power");
+         }          else if ("贝叶斯分析".equals(var0)) {
+            return Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph");
+         }          else if ("贝叶斯模型平均".equals(var0)) {
+            return Collections.singletonList("bma");
+         }          else if ("工具变量与内生性".equals(var0)) {
+            return Arrays.asList("ivregress", "ivreghdfe");
+         }          else if ("估计后分析".equals(var0)) {
+            return Arrays.asList("test", "lincom", "predict", "margins");
+         }          else if ("二维图(散点图，折线图等)".equals(var0)) {
+            return Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly");
+         }          else if ("条形图".equals(var0)) {
+            return Collections.singletonList("twoway");
+         }          else if ("点图".equals(var0)) {
+            return Collections.singletonList("dotplot");
+         }          else if ("饼图".equals(var0)) {
+            return Collections.singletonList("graph");
+         }          else if ("直方图".equals(var0)) {
+            return Collections.singletonList("histogram");
+         }          else if ("箱线图".equals(var0)) {
+            return Collections.singletonList("graph_box");
+         }          else if ("等高线图".equals(var0)) {
+            return Collections.singletonList("twoway");
+         }          else if ("散点图矩阵".equals(var0)) {
+            return Collections.singletonList("graph");
+         }          else if ("分布图".equals(var0)) {
+            return Arrays.asList("histogram", "kdensity");
+         }          else if ("平滑和密度".equals(var0)) {
+            return Arrays.asList("kdensity", "lowess", "lpoly");
+         }          else if ("回归诊断图".equals(var0)) {
+            return Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot");
+         }          else if ("时间序列图".equals(var0)) {
+            return Collections.singletonList("tsline");
+         }          else if ("面板数据折线图".equals(var0)) {
+            return Collections.singletonList("xtline");
+         }          else if ("生存分析图".equals(var0)) {
+            return Collections.singletonList("sts");
+         }          else if ("ROC分析".equals(var0)) {
+            return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg");
+         }          else if ("多元分析图".equals(var0)) {
+            return Arrays.asList("pca", "factor", "cluster");
+         }          else if ("质量控制".equals(var0)) {
+            return Collections.singletonList("graph");
+         }          else if ("更多统计图形".equals(var0)) {
+            return Arrays.asList("marginsplot", "coefplot", "event_plot");
+         }          else if ("图形组合".equals(var0)) {
+            return Collections.singletonList("graph");
+         }          else if ("管理图形".equals(var0)) {
+            return Collections.singletonList("graph");
+         }          else if ("更改方案/大小".equals(var0)) {
+            return Collections.singletonList("graph");
+         } else if ("导入与转换".equals(var0)) {
             return Collections.singletonList("hxconvert");
          } else if ("数据检查".equals(var0)) {
-            return Arrays.asList("缺失值分析", "duplicates");
+            return Arrays.asList("misstable", "duplicates");
          } else if ("变量处理".equals(var0)) {
             return Arrays.asList("generate", "replace", "encode", "decode", "destring", "tostring", "winsor2");
          } else if ("样本处理".equals(var0)) {
@@ -5829,7 +5943,7 @@ public final class HxWorkbench {
          } else if ("合并与追加".equals(var0)) {
             return Arrays.asList("merge", "append");
          } else if ("数据结构".equals(var0)) {
-            return Arrays.asList("reshape", "collapse", "xtset");
+            return Arrays.asList("reshape", "collapse", "xtset", "tsset");
          } else if ("描述统计".equals(var0)) {
             return Arrays.asList("summarize", "tabstat");
          } else if ("相关分析".equals(var0)) {
@@ -5894,7 +6008,10 @@ public final class HxWorkbench {
          } else if ("post".equals(var0)) {
             return Arrays.asList("系数检验", "预测边际");
          } else if ("graph".equals(var0)) {
-            return Arrays.asList("数据分布", "变量关系", "分组趋势", "回归结果");
+            return Arrays.asList(
+               "二维图(散点图，折线图等)", "条形图", "点图", "饼图", "直方图", "箱线图", "等高线图", "散点图矩阵", "分布图", "平滑和密度",
+               "回归诊断图", "时间序列图", "面板数据折线图", "生存分析图", "ROC分析", "多元分析图", "质量控制", "更多统计图形", "图形组合", "管理图形", "更改方案/大小"
+            );
          } else if ("did".equals(var0)) {
             return Arrays.asList("DID分步构建", "平行趋势与动态图");
          } else {
