@@ -46,4 +46,4 @@ if _rc {
 }
 
 display as text "正在从本地离线包安装：`source'"
-do `"`installer'"' auto `"`source'"'
+quietly do `"`installer'"' auto `"`source'"'
