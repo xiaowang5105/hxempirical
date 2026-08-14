@@ -1,7 +1,7 @@
 v 3
 d hxempirical: HX empirical workbench for Stata 17 and later
-d Version 1.4.5
-d Distribution-Date: 20260813
+d Version 1.4.6
+d Distribution-Date: 20260814
 d
 d A launcher-style empirical workbench with task search, persistent recent-work restore,
 d visual regress builders, postestimation diagnostics, live command preview, data view, DID and external OneClick.
