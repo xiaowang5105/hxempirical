@@ -16,7 +16,7 @@ hxempirical about
 hxempirical
 ```
 
-安装器会把文件放进当前用户的 `PERSONAL` ado 目录，通常不需要管理员权限。它会先下载完整发布包，再统一写入正式目录；更新中途发生写入错误时，会恢复原有文件。
+安装器会把文件放进当前用户的 `PERSONAL` ado 目录，通常不需要管理员权限。它会先下载完整发布包，再统一写入正式目录；更新中途发生写入错误时，会恢复原有文件。同一条命令会自动识别首次安装和已有安装，成功后自动建立 **用户（User） > 我的实证工具箱** 菜单入口。
 
 如果这是全新的 Stata 用户环境，安装器和 `hxempirical menu persist` 会先创建 `PERSONAL` 目录并验证写权限。这个处理同时适用于 Windows 和 macOS。
 
@@ -31,16 +31,16 @@ hxempirical
 
 ## 更新
 
-在已安装 hxempirical 的 Stata 中运行：
+先关闭已经打开的 Java 工作台，然后继续运行首次安装使用的同一条命令：
+
+```stata
+do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
+```
+
+检测到 `PERSONAL` 中已有安装清单后，安装器会自动进入更新流程。也可以在已安装 hxempirical 的 Stata 中运行：
 
 ```stata
 hxempirical update
-```
-
-也可以直接运行安装器的更新模式：
-
-```stata
-do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" update
 ```
 
 如果已经打开 Java 工作台，请先关闭工作台。遇到 JAR 正在使用或 `r(602)` 时，关闭 Stata，重新打开后先执行更新命令。
@@ -94,7 +94,7 @@ adopath
 hxempirical, classic
 ```
 
-经典界面提供基础兼容操作，最新工作台功能以 Java 界面为准。
+经典界面提供基础兼容操作，最新工作台功能以 Java 界面为准。Java 启动失败时会显示返回码和 `hxempirical doctor` 提示；程序不会自动切换到功能范围较小的经典界面。
 
 ## macOS / 干净用户目录验证
 
@@ -105,6 +105,14 @@ do "tests/cross_platform_core_smoke.do"
 ```
 
 脚本会把 `PERSONAL` 临时指向测试目录，检查目录自动创建、菜单持久化幂等性、菜单移除和核心/可选依赖诊断，最后恢复原来的 `PERSONAL` 设置并清理测试文件。
+
+维护者还可以运行完整安装生命周期测试：
+
+```stata
+do "tests/installer_lifecycle_smoke.do"
+```
+
+该脚本在隔离的临时 `PERSONAL` 中执行首次安装、同命令自动更新、核心诊断、菜单去重和卸载，不修改电脑上的正式安装。
 
 GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，因此安装说明统一使用 GitHub Pages 地址。
 

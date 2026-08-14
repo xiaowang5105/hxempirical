@@ -211,9 +211,10 @@ when the user attempts to run that command.
 Minimum version: Stata 17. The Java workbench is compiled for Java 11 bytecode
 and uses Stata's bundled Java/SFI interface. It contains no COM Automation,
 native C plugin, drive-letter path, or platform-specific font. If Java cannot
-start, {cmd:hxempirical, classic} opens the included Stata dialog. The classic
-dialog is a basic compatibility fallback; new workflow, monitor, and data-link
-features are maintained in the Java workbench.
+start, the launcher reports the return code and recommends {cmd:hxempirical doctor}.
+The included basic compatibility dialog remains available explicitly through
+{cmd:hxempirical, classic}; new workflow, monitor, and data-link features are
+maintained in the Java workbench.
 
 {pstd}
 On a clean Windows or macOS account, {cmd:hxempirical menu persist} creates and
@@ -222,11 +223,13 @@ Expected missing-file probes are captured and replaced by a concise diagnostic.
 
 {title:Update and uninstall}
 
+{phang2}{cmd:. do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"}
 {phang2}{cmd:. hxempirical update}
 {phang2}{cmd:. hxempirical uninstall}
 
 {pstd}
-The maintained installer writes its file manifest into PERSONAL, retries
+The same one-line installer automatically selects install or update from the
+local manifest, writes its managed files into PERSONAL, retries
 transient downloads, stages all files before replacement, and restores the
 previous installation if a write fails. Uninstall also removes the managed
 startup-menu block when present. Restart Stata after an update or uninstall so

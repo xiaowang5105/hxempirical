@@ -1,18 +1,27 @@
-*! hxinstall 1.1.0  14aug2026
+*! hxinstall 1.2.0  14aug2026
 *! Transactional bootstrap installer for hxempirical
 version 17.0
 set more off
 
-args action
+args action source
 local action = lower(trim(`"`action'"'))
-if `"`action'"' == "" local action "install"
-if !inlist(`"`action'"', "install", "update", "uninstall") {
-    display as error "用法：do hxinstall.do [install|update|uninstall]"
+if `"`action'"' == "" local action "auto"
+if !inlist(`"`action'"', "auto", "install", "update", "uninstall") {
+    display as error "用法：do hxinstall.do [auto|install|update|uninstall]"
     exit 198
 }
 
 local pages "https://xiaowang5105.github.io/hxempirical"
 local raw   "https://raw.githubusercontent.com/xiaowang5105/hxempirical/main"
+local source = trim(`"`source'"')
+if substr(`"`source'"', 1, 1) == char(34) & substr(`"`source'"', -1, 1) == char(34) {
+    local source = substr(`"`source'"', 2, strlen(`"`source'"') - 2)
+}
+if `"`source'"' != "" {
+    /* Maintainer-only local/release-source override used by lifecycle tests. */
+    local pages `"`source'"'
+    local raw   `"`source'"'
+}
 
 if c(stata_version) < 17 {
     display as error "hxempirical 需要 Stata 17 或更高版本。"
@@ -26,14 +35,14 @@ if `"`target'"' == "" {
     display as error "Stata 没有返回 PERSONAL ado 目录。请先运行 sysdir 检查安装环境。"
     exit 603
 }
-capture mkdir `"`target'"'
+capture quietly mkdir `"`target'"'
 local lastchar = substr(`"`target'"', strlen(`"`target'"'), 1)
 if !inlist(`"`lastchar'"', "/", "\") local target `"`target'/"'
 
 /* Fail early when PERSONAL is not writable. */
 local probe `"`target'__hxempirical_write_test.tmp"'
 tempname probehandle
-capture file open `probehandle' using `"`probe'"', write text replace
+capture quietly file open `probehandle' using `"`probe'"', write text replace
 if _rc {
     display as error "无法写入 Stata PERSONAL 目录：`target'"
     display as text  "请运行 sysdir 查看目录设置，或联系管理员检查该目录权限。"
@@ -41,13 +50,26 @@ if _rc {
 }
 file write `probehandle' "hxempirical write test" _n
 file close `probehandle'
-capture erase `"`probe'"'
+capture quietly erase `"`probe'"'
+
+/* The public one-line command is safe for both a clean installation and an
+   existing installation.  An existing local manifest is the strongest signal;
+   a leftover entry ado also counts as an update so rollback protection applies. */
+if `"`action'"' == "auto" {
+    capture quietly confirm file `"`target'hxempirical.pkg"'
+    if !_rc local action "update"
+    else {
+        capture quietly confirm file `"`target'hxempirical.ado"'
+        if !_rc local action "update"
+        else local action "install"
+    }
+}
 
 /* Uninstall works offline when the locally stored manifest is available. */
 tempfile pkg
 local manifest_source ""
 if `"`action'"' == "uninstall" {
-    capture confirm file `"`target'hxempirical.pkg"'
+    capture quietly confirm file `"`target'hxempirical.pkg"'
     if !_rc {
         capture quietly copy `"`target'hxempirical.pkg"' `"`pkg'"', replace
         if !_rc local manifest_source "本地安装清单"
@@ -114,21 +136,21 @@ if `"`action'"' == "uninstall" {
 
     local erase_failed 0
     foreach f of local files {
-        capture erase `"`target'`f'"'
+        capture quietly erase `"`target'`f'"'
         if _rc {
-            capture confirm file `"`target'`f'"'
+            capture quietly confirm file `"`target'`f'"'
             if !_rc {
                 display as error "暂时无法删除：`target'`f'"
                 local erase_failed 1
             }
         }
     }
-    capture erase `"`target'hxempirical.pkg"'
+    capture quietly erase `"`target'hxempirical.pkg"'
     /* Remove one legacy PLUS registration when it is unambiguous. Older
        machines may contain several registrations; leave those records to
        Stata's package manager and report the exact cleanup command. */
     capture quietly ado uninstall hxempirical, from(PLUS)
-    capture discard
+    capture quietly discard
 
     if `erase_failed' {
         display as error _newline "部分文件正在被 Stata 使用。"
@@ -150,10 +172,10 @@ if `"`action'"' == "uninstall" {
 /* Read the previous manifest so obsolete managed files can be removed only
    after a successful update. */
 local oldfiles ""
-capture confirm file `"`target'hxempirical.pkg"'
+capture quietly confirm file `"`target'hxempirical.pkg"'
 if !_rc {
     tempname oldmanifest
-    capture file open `oldmanifest' using `"`target'hxempirical.pkg"', read text
+    capture quietly file open `oldmanifest' using `"`target'hxempirical.pkg"', read text
     if !_rc {
         file read `oldmanifest' oldline
         while r(eof) == 0 {
@@ -175,8 +197,8 @@ local oldfiles = trim(itrim(`"`oldfiles'"'))
 tempfile runbase
 local stage `"`runbase'_stage"'
 local backup `"`runbase'_backup"'
-capture mkdir `"`stage'"'
-capture mkdir `"`backup'"'
+capture quietly mkdir `"`stage'"'
+capture quietly mkdir `"`backup'"'
 local slast = substr(`"`stage'"', strlen(`"`stage'"'), 1)
 if !inlist(`"`slast'"', "/", "\") local stage `"`stage'/"'
 local blast = substr(`"`backup'"', strlen(`"`backup'"'), 1)
@@ -221,7 +243,7 @@ if `download_failed' {
 
 /* Back up every file that this release may replace. */
 foreach f of local files {
-    capture confirm file `"`target'`f'"'
+    capture quietly confirm file `"`target'`f'"'
     if !_rc {
         capture quietly copy `"`target'`f'"' `"`backup'`f'"', replace
         if _rc {
@@ -232,11 +254,11 @@ foreach f of local files {
 }
 foreach f of local oldfiles {
     if !strpos(`" `files' "', `" `f' "') {
-        capture confirm file `"`target'`f'"'
+        capture quietly confirm file `"`target'`f'"'
         if !_rc capture quietly copy `"`target'`f'"' `"`backup'`f'"', replace
     }
 }
-capture confirm file `"`target'hxempirical.pkg"'
+capture quietly confirm file `"`target'hxempirical.pkg"'
 if !_rc capture quietly copy `"`target'hxempirical.pkg"' `"`backup'hxempirical.pkg"', replace
 
 /* Commit the JAR first. A loaded/locked JAR therefore stops the update before
@@ -268,17 +290,17 @@ if !`install_failed' {
 /* Restore the complete previous installation when any commit step fails. */
 if `install_failed' {
     foreach f of local files {
-        capture confirm file `"`backup'`f'"'
+        capture quietly confirm file `"`backup'`f'"'
         if !_rc capture quietly copy `"`backup'`f'"' `"`target'`f'"', replace
-        else capture erase `"`target'`f'"'
+        else capture quietly erase `"`target'`f'"'
     }
     foreach f of local oldfiles {
-        capture confirm file `"`backup'`f'"'
+        capture quietly confirm file `"`backup'`f'"'
         if !_rc capture quietly copy `"`backup'`f'"' `"`target'`f'"', replace
     }
-    capture confirm file `"`backup'hxempirical.pkg"'
+    capture quietly confirm file `"`backup'hxempirical.pkg"'
     if !_rc capture quietly copy `"`backup'hxempirical.pkg"' `"`target'hxempirical.pkg"', replace
-    else capture erase `"`target'hxempirical.pkg"'
+    else capture quietly erase `"`target'hxempirical.pkg"'
 
     display as error "更新未完成，安装器已恢复原有文件。"
     display as text  "若 hxworkbench.jar 正在使用，请关闭 Stata，重新打开后先运行更新命令。"
@@ -287,21 +309,26 @@ if `install_failed' {
 
 /* Remove files that belonged to an older release but are absent now. */
 foreach f of local oldfiles {
-    if !strpos(`" `files' "', `" `f' "') capture erase `"`target'`f'"'
+    if !strpos(`" `files' "', `" `f' "') capture quietly erase `"`target'`f'"'
 }
 
-capture confirm file `"`target'hxempirical.ado"'
+capture quietly confirm file `"`target'hxempirical.ado"'
 if _rc {
     display as error "安装校验失败：未找到 hxempirical.ado。"
     exit 601
 }
-capture confirm file `"`target'hxworkbench.jar"'
+capture quietly confirm file `"`target'hxworkbench.jar"'
 if _rc {
     display as error "安装校验失败：未找到 hxworkbench.jar。"
     exit 601
 }
 
-capture discard
+capture quietly discard
+
+/* A successful install/update also establishes the single persistent User-menu
+   entry.  Package files remain usable if profile persistence is unavailable. */
+capture noisily hxsetup, persist
+local menu_rc = _rc
 
 local verb "安装"
 if `"`action'"' == "update" local verb "更新"
@@ -312,4 +339,8 @@ display as text "清单来源：" as result "`manifest_source'"
 if `fallback_count' > 0 display as text "网络回退：" as result "有 `fallback_count' 个文件改用 GitHub Raw 下载。"
 display as text _newline "验证命令：" as result "which hxempirical"
 display as text "启动命令：" as result "hxempirical"
+if `menu_rc' {
+    display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"
+}
+else display as text "顶部入口：" as result "用户(U) > 我的实证工具箱"
 display as text "如本次更新前已打开工作台，请重新启动 Stata。"

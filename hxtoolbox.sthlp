@@ -83,7 +83,8 @@ Data Browser。Stata Results 继续显示原生命令结果，History 继续记�
 报告，逐值高亮使用有上限的快照，避免占用过多内存。
 
 {pstd}
-如果 Java 组件不可用，启动器自动打开原有 Stata 对话框。也可以运行
+如果 Java 组件缺失或启动失败，启动器显示返回码并提示运行
+{cmd:hxempirical doctor}。需要基础兼容操作时，可以运行
 {cmd:hxtoolbox, classic} 手动打开经典界面。
 
 {title:前置检查}
