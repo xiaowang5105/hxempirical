@@ -1,4 +1,4 @@
-*! hxregistry 3.0.0  13aug2026
+*! hxregistry 3.1.0  14aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,25 +8,25 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest regress areg cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit epoisson eintreg teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bma"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit epoisson eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bma predict margins"
     /* Legacy/HX shortcuts remain searchable but are no longer the primary taxonomy. */
     local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
     local post_cmds "test lincom predict margins"
-    local graph_cmds "twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot"
+    local graph_cmds "twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
 
     local all_cmds ""
-    foreach cmd in `data_cmds' `stats_cmds' `reg_cmds' `post_cmds' `graph_cmds' `did_cmds' `oneclick_cmds' {
+    foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `oneclick_cmds' {
         if !strpos(" `all_cmds' ", " `cmd' ") local all_cmds "`all_cmds' `cmd'"
     }
     local all_cmds = trim(itrim("`all_cmds'"))
 
     local data_methods "导入与转换 数据检查 变量处理 样本处理 合并与追加 数据结构"
 
-    /* Exact top-level order shown by Stata 18 Statistics menu. */
-    local stats_methods "汇总，表格和假设检验 线性模型及相关 二元结果 序数结果 分类结果 计数结果 分数结果 广义线性模型 选择模型 时间序列 多元时间序列 空间自回归模型 纵向/面板数据 多层混合效应模型 生存分析 流行病学及相关 内生协变量 样本选择模型 因果推断/处理效应 结构方程模型(SEM) 潜在类别分析(LCA) 有限混合模型(FMM) 项目反应理论(IRT) 多元分析 调查数据分析 Lasso回归 Meta分析 多重插补 非参数分析 精确统计 重抽样 效能，精度和样品含量 贝叶斯分析 贝叶斯模型平均"
+    /* Stata 18 Statistics menu order, followed by explicit HX navigation entries for searchable extensions. */
+    local stats_methods "汇总，表格和假设检验 线性模型及相关 二元结果 序数结果 分类结果 计数结果 分数结果 广义线性模型 选择模型 时间序列 多元时间序列 空间自回归模型 纵向/面板数据 多层混合效应模型 生存分析 流行病学及相关 内生协变量 样本选择模型 因果推断/处理效应 结构方程模型(SEM) 潜在类别分析(LCA) 有限混合模型(FMM) 项目反应理论(IRT) 多元分析 调查数据分析 Lasso回归 Meta分析 多重插补 非参数分析 精确统计 重抽样 效能，精度和样品含量 贝叶斯分析 贝叶斯模型平均 工具变量与内生性 估计后分析"
 
     /* Kept as compatibility aliases for existing HX quick-entry buttons. */
     local reg_methods "线性模型 面板模型 二元结果 计数模型 工具变量 双重差分"
@@ -242,11 +242,11 @@ program define hxregistry, rclass
 
     /* Stata Statistics menu. */
     else if inlist(`"`method'"', "汇总，表格和假设检验", "summary_tests") local view "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest"
-    else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr"
+    else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr"
     else if inlist(`"`method'"', "二元结果", "binary_outcomes") local view "logit logistic probit hetprobit scobit cloglog"
     else if inlist(`"`method'"', "序数结果", "ordinal_outcomes") local view "ologit oprobit"
     else if inlist(`"`method'"', "分类结果", "categorical_outcomes") local view "mlogit mprobit asclogit asmprobit"
-    else if inlist(`"`method'"', "计数结果", "count_outcomes") local view "poisson nbreg zip zinb tpoisson tnbreg"
+    else if inlist(`"`method'"', "计数结果", "count_outcomes") local view "poisson nbreg ppmlhdfe zip zinb tpoisson tnbreg"
     else if inlist(`"`method'"', "分数结果", "fractional_outcomes") local view "fracreg betareg"
     else if inlist(`"`method'"', "广义线性模型", "glm_models") local view "glm"
     else if inlist(`"`method'"', "选择模型", "selection_models") local view "heckman heckprobit heckoprobit heckpoisson"
@@ -275,6 +275,8 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") local view "power"
     else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
     else if inlist(`"`method'"', "贝叶斯模型平均", "bma") local view "bma"
+    else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") local view "ivregress ivreghdfe"
+    else if inlist(`"`method'"', "估计后分析", "postestimation") local view "test lincom predict margins"
 
     /* Stata Graphics menu. Multiword graph families use the native one-token
        entry point where the generic parser cannot safely represent a subcommand. */
@@ -295,7 +297,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "ROC分析", "roc_graph") local view "roctab rocfit roccomp rocgold rocreg"
     else if inlist(`"`method'"', "多元分析图", "multivariate_graph") local view "pca factor cluster"
     else if inlist(`"`method'"', "质量控制", "quality_graph") local view "graph"
-    else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "marginsplot coefplot"
+    else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "marginsplot coefplot event_plot"
     else if inlist(`"`method'"', "图形组合", "graph_combine") local view "graph"
     else if inlist(`"`method'"', "管理图形", "graph_manage") local view "graph"
     else if inlist(`"`method'"', "更改方案/大小", "graph_scheme") local view "graph"
