@@ -1,0 +1,51 @@
+name: Robust installer audit
+
+on:
+  push:
+    branches: [robust-installer-v149-20260814]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify package manifest and installer invariants
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          pkg = Path('hxempirical.pkg').read_text(encoding='utf-8')
+          files = []
+          for line in pkg.splitlines():
+              m = re.match(r'^[fF]\s+(.+?)\s*$', line)
+              if m:
+                  files.append(m.group(1))
+          assert files, 'empty package manifest'
+          missing = [f for f in files if not Path(f).is_file()]
+          assert not missing, f'missing package files: {missing}'
+          src = Path('hxinstall.do').read_text(encoding='utf-8')
+          required = [
+              'c(sysdir_personal)',
+              'hxempirical.pkg',
+              'xiaowang5105.github.io/hxempirical',
+              'raw.githubusercontent.com/xiaowang5105/hxempirical/main',
+              'hxempirical_stage',
+              'hxworkbench.jar',
+              'capture discard',
+          ]
+          absent = [x for x in required if x not in src]
+          assert not absent, f'installer invariant missing: {absent}'
+          assert 'c(sysdir_plus)' not in src.lower(), 'installer must not depend on PLUS'
+          print('MANIFEST_OK', len(files), 'files')
+          print('INSTALLER_INVARIANTS_OK')
+          PY
+      - name: Verify raw bootstrap is downloadable
+        run: |
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/xiaowang5105/hxempirical/robust-installer-v149-20260814/hxinstall.do \
+            -o /tmp/hxinstall.do
+          cmp hxinstall.do /tmp/hxinstall.do
+          echo RAW_BOOTSTRAP_OK
