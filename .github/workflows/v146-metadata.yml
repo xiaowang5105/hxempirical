@@ -1,0 +1,35 @@
+name: v1.4.6 metadata consistency
+on:
+  push:
+    branches: [selfcheck-v146-command-sync-20260814]
+    paths: ['.github/workflows/v146-metadata.yml']
+permissions:
+  contents: write
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update and verify release metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('README.md'); s=p.read_text(encoding='utf-8'); s=s.replace('**上次修改时间：2026-08-13 16:12（UTC+8）**','**上次修改时间：2026-08-14 14:36（UTC+8）**'); p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.pkg'); s=p.read_text(encoding='utf-8').replace('d Distribution-Date: 20260813','d Distribution-Date: 20260814'); p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.ado'); s=p.read_text(encoding='utf-8').replace('*! hxempirical 1.4.6  13aug2026','*! hxempirical 1.4.6  14aug2026'); p.write_text(s,encoding='utf-8')
+          p=Path('hxempirical.sthlp'); s=p.read_text(encoding='utf-8').replace('{* *! version 1.4.6  13aug2026}{...}','{* *! version 1.4.6  14aug2026}{...}'); p.write_text(s,encoding='utf-8')
+          PY
+          grep -q '当前发布版本：1.4.6' README.md
+          grep -q '2026-08-14 14:36' README.md
+          grep -q '^d Distribution-Date: 20260814$' hxempirical.pkg
+          grep -q '^\*! hxempirical 1.4.6  14aug2026$' hxempirical.ado
+          grep -Fq '{* *! version 1.4.6  14aug2026}{...}' hxempirical.sthlp
+      - name: Commit metadata correction
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md hxempirical.pkg hxempirical.ado hxempirical.sthlp
+          git commit -m 'Synchronize v1.4.6 release metadata'
+          git push origin HEAD:selfcheck-v146-command-sync-20260814
