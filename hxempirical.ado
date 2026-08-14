@@ -1,12 +1,12 @@
-*! hxempirical 1.4.9  14aug2026
+*! hxempirical 1.5.0  14aug2026
 *! Public entry point for the HX empirical workbench
 program define hxempirical, rclass
     version 13.0
     syntax [anything(name=request)] [, CLASSIC]
 
     if c(stata_version) < 17 {
-        display as error "hxempirical 需要 Stata 17 或更高版本。"
-        display as text  "当前版本：Stata `c(stata_version)'。"
+        display as error ustrunescape("hxempirical \u9700\u8981 Stata 17 \u6216\u66f4\u9ad8\u7248\u672c\u3002")
+        display as text ustrunescape("\u5f53\u524d\u7248\u672c\uff1a") as result "Stata `c(stata_version)'" ustrunescape("\u3002")
         exit 9
     }
 
@@ -31,8 +31,8 @@ program define hxempirical, rclass
     if `"`action'"' == "menu" {
         if `"`rest'"' == "" {
             hxmenu
-            display as result "本次 Stata 会话已添加：用户(U) > 我的实证工具箱。"
-            display as text "如需以后每次启动 Stata 都显示：hxempirical menu persist"
+            display as result ustrunescape("\u672c\u6b21 Stata \u4f1a\u8bdd\u5df2\u6dfb\u52a0\uff1a\u7528\u6237(U) > \u6211\u7684\u5b9e\u8bc1\u5de5\u5177\u7bb1\u3002")
+            display as text ustrunescape("\u5982\u9700\u4ee5\u540e\u6bcf\u6b21\u542f\u52a8 Stata \u90fd\u663e\u793a\uff1ahxempirical menu persist")
             exit
         }
         if `"`rest'"' == "persist" {
@@ -43,18 +43,18 @@ program define hxempirical, rclass
             hxsetup, remove
             exit
         }
-        display as error "菜单用法：hxempirical menu | hxempirical menu persist | hxempirical menu remove"
+        display as error ustrunescape("\u83dc\u5355\u7528\u6cd5\uff1ahxempirical menu | hxempirical menu persist | hxempirical menu remove")
         exit 198
     }
 
     if `"`action'"' == "about" {
-        display as text _newline "hxempirical：我的实证工具箱"
-        display as text "版本：" as result "1.4.9"
-        display as text "Stata：" as result "`c(stata_version)' (`c(os)')"
-        display as text "最低支持：" as result "Stata 17"
-        display as text "界面：" as result "Java 单窗口工作台；经典 .dlg 自动后备"
+        display as text _newline ustrunescape("hxempirical\uff1a\u6211\u7684\u5b9e\u8bc1\u5de5\u5177\u7bb1")
+        display as text ustrunescape("\u7248\u672c\uff1a") as result "1.5.0"
+        display as text ustrunescape("Stata\uff1a") as result "`c(stata_version)' (`c(os)')"
+        display as text ustrunescape("\u6700\u4f4e\u652f\u6301\uff1a") as result "Stata 17"
+        display as text ustrunescape("\u754c\u9762\uff1a") as result ustrunescape("Java \u5355\u7a97\u53e3\u5de5\u4f5c\u53f0\uff1b\u7ecf\u5178 .dlg \u81ea\u52a8\u540e\u5907")
         return local package "hxempirical"
-        return local version "1.4.9"
+        return local version "1.5.0"
         return local os "`c(os)'"
         return scalar stata_version = c(stata_version)
         exit
@@ -67,7 +67,7 @@ program define hxempirical, rclass
 
     if `"`action'"' == "install" {
         if `"`rest'"' == "" {
-            display as error "请指定扩展命令，例如：hxempirical install reghdfe"
+            display as error ustrunescape("\u8bf7\u6307\u5b9a\u6269\u5c55\u547d\u4ee4\uff0c\u4f8b\u5982\uff1ahxempirical install reghdfe")
             exit 198
         }
         hxdependency install `rest'
@@ -81,13 +81,13 @@ program define hxempirical, rclass
         capture noisily do `"`installer'"' `action'
         local rc = _rc
         if `rc' {
-            display as error "hxempirical `action' 失败，返回码 `rc'。"
+            display as error "hxempirical `action' " ustrunescape("\u5931\u8d25\uff0c\u8fd4\u56de\u7801") " `rc'" ustrunescape("\u3002")
             exit `rc'
         }
         exit
     }
 
-    display as error "无法识别子命令：`action'"
-    display as text  "可用：hxempirical | about | doctor | menu [persist|remove] | classic | install 命令名 | update | uninstall"
+    display as error ustrunescape("\u65e0\u6cd5\u8bc6\u522b\u5b50\u547d\u4ee4\uff1a") "`action'"
+    display as text ustrunescape("\u53ef\u7528\uff1ahxempirical | about | doctor | menu [persist|remove] | classic | install \u547d\u4ee4\u540d | update | uninstall")
     exit 198
 end

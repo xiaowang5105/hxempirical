@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.4.9  14aug2026}{...}
+{* *! version 1.5.0  14aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,10 +27,10 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.4.9 interface uses a stable desktop-workbench layout: a collapsible left
-navigation sidebar, a task-focused main workspace, and one shared right-side
-Current Data inspector. OneClick and ordinary command pages reuse that same
-inspector instead of maintaining separate look-alike data/result panels.
+The 1.5.0 interface uses a compact desktop-workbench layout: a collapsible left
+navigation sidebar, dense command tables with search and source filters, a
+contextual command preview panel, and one shared right-side Current Data inspector.
+OneClick and ordinary command pages reuse the same data/result components.
 
 {pstd}
 Research tasks can open a task workspace directly. The baseline-regression

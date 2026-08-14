@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.4.9";
+   public static final String VERSION = "1.5.0";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -149,6 +149,7 @@ public final class HxWorkbench {
             && !"--render-convert-preview".equals(var0[0])
             && !"--render-home-preview".equals(var0[0])
             && !"--render-method-preview".equals(var0[0])
+            && !"--render-panel-preview".equals(var0[0])
             && !"--render-correlation-preview".equals(var0[0])
             && !"--render-workflow-preview".equals(var0[0])
             && !"--render-cluster-preview".equals(var0[0])
@@ -172,6 +173,7 @@ public final class HxWorkbench {
          boolean var3 = "--render-convert-preview".equals(var0[0]);
          boolean var4 = "--render-home-preview".equals(var0[0]);
          boolean var5 = "--render-method-preview".equals(var0[0]);
+         boolean var5b = "--render-panel-preview".equals(var0[0]);
          boolean var6 = "--render-correlation-preview".equals(var0[0]);
          boolean var7 = "--render-workflow-preview".equals(var0[0]);
          boolean var8 = "--render-cluster-preview".equals(var0[0]);
@@ -208,6 +210,10 @@ public final class HxWorkbench {
 
                if (var5) {
                   var19x.browseMethod("reg", "线性模型");
+               }
+
+               if (var5b) {
+                  var19x.browseMethod("stats", "纵向/面板数据");
                }
 
                if (var6) {
@@ -348,7 +354,7 @@ public final class HxWorkbench {
    }
 
    public static int version(String[] var0) {
-      SFIToolkit.displayln("HxWorkbench 1.4.9");
+      SFIToolkit.displayln("HxWorkbench " + VERSION);
       return 0;
    }
 
@@ -2461,6 +2467,23 @@ public final class HxWorkbench {
       private final JLabel chooserHint = new JLabel("选择后进入该命令自己的设置页面");
       private final JButton chooserBackButton = new JButton("← 上一级");
       private final JButton chooserHomeButton = new JButton("首页");
+      private final JTextField chooserSearchField = new JTextField();
+      private final JPanel chooserResultsHost = new JPanel();
+      private final Map<String, JButton> chooserFilterButtons = new LinkedHashMap<>();
+      private final List<String> chooserAvailableCommands = new ArrayList<>();
+      private final JLabel chooserInspectorCommand = new JLabel("请选择命令");
+      private final JLabel chooserInspectorTitle = new JLabel("从左侧目录选择一项");
+      private final JLabel chooserInspectorSource = new JLabel("命令来源");
+      private final JTextArea chooserInspectorPurpose = readonlyArea();
+      private final JTextArea chooserInspectorBestFor = readonlyArea();
+      private final JTextArea chooserInspectorDifference = readonlyArea();
+      private final JTextArea chooserInspectorExample = readonlyArea();
+      private final JButton chooserInspectorHelpButton = new JButton("在帮助中打开");
+      private final JButton chooserInspectorOpenButton = new JButton("进入命令设置");
+      private String chooserFilterMode = "全部";
+      private String selectedChooserCommand = "";
+      private int chooserPage = 0;
+      private static final int CHOOSER_PAGE_SIZE = 6;
       private String activeCategoryCode = "";
       private String activeCategoryName = "";
       private String activeMethodName = "";
@@ -3515,20 +3538,33 @@ public final class HxWorkbench {
 
 
       private JComponent buildSidebarToggleBar() {
-         JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
-         bar.setOpaque(false);
-         bar.setPreferredSize(new Dimension(0, 46));
-         bar.setMinimumSize(new Dimension(0, 46));
+         JPanel bar = new JPanel(new BorderLayout());
+         bar.setBackground(SURFACE);
+         bar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)));
+         bar.setPreferredSize(new Dimension(0, 36));
+         bar.setMinimumSize(new Dimension(0, 36));
+         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+         left.setOpaque(false);
          this.sidebarToggleButton = new JButton("☰");
          this.sidebarToggleButton.setToolTipText("隐藏左侧导航");
          this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, new Color(226, 232, 240)));
-         this.sidebarToggleButton.setBorder(new EmptyBorder(7, 11, 7, 11));
+         this.sidebarToggleButton.setBorder(new EmptyBorder(5, 9, 5, 9));
          this.sidebarToggleButton.setFocusPainted(false);
          this.sidebarToggleButton.setContentAreaFilled(false);
          this.sidebarToggleButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-         this.sidebarToggleButton.setPreferredSize(new Dimension(42, 32));
+         this.sidebarToggleButton.setPreferredSize(new Dimension(36, 27));
          this.sidebarToggleButton.addActionListener(e -> this.toggleSidebarCollapsed());
-         bar.add(this.sidebarToggleButton);
+         JLabel brand = new JLabel("HX 实证工作台");
+         brand.setForeground(TEXT);
+         brand.setFont(brand.getFont().deriveFont(Font.BOLD, 11.5F));
+         left.add(this.sidebarToggleButton);
+         left.add(brand);
+         bar.add(left, BorderLayout.WEST);
+         JLabel history = new JLabel("完整命令写入 Stata History");
+         history.setForeground(MUTED);
+         history.setFont(history.getFont().deriveFont(9.5F));
+         history.setBorder(new EmptyBorder(0, 0, 0, 14));
+         bar.add(history, BorderLayout.EAST);
          return bar;
       }
 
@@ -3536,32 +3572,32 @@ public final class HxWorkbench {
          this.sidebarButtons.clear();
          JPanel sidebar = new JPanel(new BorderLayout());
          sidebar.setBackground(SURFACE);
-         sidebar.setPreferredSize(new Dimension(205, 0));
+         sidebar.setPreferredSize(new Dimension(210, 0));
          this.sidebarPanel = sidebar;
          sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(226, 232, 240)));
 
          JPanel nav = new JPanel();
          nav.setOpaque(false);
-         nav.setBorder(new EmptyBorder(22, 11, 8, 11));
+         nav.setBorder(new EmptyBorder(14, 11, 8, 11));
          nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-         nav.add(this.sidebarButton("home", "⌂", "工作台", this::showHomePage));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("data", "▤", "数据", () -> this.browseCategoryOverview("data")));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("stats", "▥", "统计", () -> this.browseCategoryOverview("stats")));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("graph", "▧", "图形", () -> this.browseCategoryOverview("graph")));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("oneclick", "◇", "OneClick", () -> this.browseMethodCategory("oneclick")));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("history", "◷", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
-         nav.add(Box.createVerticalStrut(8));
-         nav.add(this.sidebarButton("settings", "⚙", "设置", () -> this.openHomeTask("special", "performance")));
+         nav.add(this.sidebarButton("home", "首", "工作台", this::showHomePage));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("data", "数", "数据", () -> this.browseCategoryOverview("data")));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("stats", "统", "统计", () -> this.browseCategoryOverview("stats")));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("graph", "图", "图形", () -> this.browseCategoryOverview("graph")));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("oneclick", "O", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("history", "历", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
+         nav.add(Box.createVerticalStrut(4));
+         nav.add(this.sidebarButton("settings", "设", "设置", () -> this.openHomeTask("special", "performance")));
          sidebar.add(nav, BorderLayout.NORTH);
 
          JPanel bottom = new JPanel();
          bottom.setOpaque(false);
-         bottom.setBorder(new EmptyBorder(8, 18, 20, 18));
+         bottom.setBorder(new EmptyBorder(8, 16, 16, 16));
          bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
          JButton guide = new JButton("<html><div style='text-align:left'><b>新手指引</b><br><span style='font-size:9px;color:#718096'>5 分钟快速上手</span><br><span style='font-size:9px;color:#226df6'>立即查看  →</span></div></html>");
          guide.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(new Color(248, 251, 255), new Color(242, 247, 255), new Color(234, 242, 255), TEXT, new Color(210, 225, 248)));
@@ -3571,8 +3607,8 @@ public final class HxWorkbench {
          guide.setFocusPainted(false);
          guide.setContentAreaFilled(false);
          guide.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-         guide.setMaximumSize(new Dimension(Integer.MAX_VALUE, 176));
-         guide.setPreferredSize(new Dimension(168, 176));
+         guide.setMaximumSize(new Dimension(Integer.MAX_VALUE, 150));
+         guide.setPreferredSize(new Dimension(176, 150));
          guide.setAlignmentX(0.0F);
          guide.addActionListener(e -> {
             HxWorkbench.StataBridge.execute("help hxempirical", false);
@@ -3606,7 +3642,7 @@ public final class HxWorkbench {
       private void applySidebarCollapsedState() {
          if (this.sidebarPanel == null) return;
          this.sidebarPanel.setVisible(!this.sidebarCollapsed);
-         int width = this.sidebarCollapsed ? 0 : 205;
+         int width = this.sidebarCollapsed ? 0 : 210;
          this.sidebarPanel.setPreferredSize(new Dimension(width, 0));
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
@@ -3620,7 +3656,7 @@ public final class HxWorkbench {
             String expanded = glyph.isBlank() ? label : glyph + "   " + label;
             button.setText("<html><b>" + html(expanded) + "</b></html>");
             button.setHorizontalAlignment(SwingConstants.LEFT);
-            button.setBorder(new EmptyBorder(11, 14, 11, 14));
+            button.setBorder(new EmptyBorder(9, 12, 9, 12));
             button.setToolTipText(null);
          }
          this.sidebarPanel.revalidate();
@@ -3635,8 +3671,8 @@ public final class HxWorkbench {
          button.putClientProperty("hx.sidebar.label", label);
          button.putClientProperty("hx.sidebar.glyph", glyph);
          button.setHorizontalAlignment(SwingConstants.LEFT);
-         button.setBorder(new EmptyBorder(11, 14, 11, 14));
-         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+         button.setBorder(new EmptyBorder(9, 12, 9, 12));
+         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
          button.setAlignmentX(0.0F);
          button.setFocusPainted(false);
          button.setContentAreaFilled(false);
@@ -5359,47 +5395,225 @@ public final class HxWorkbench {
          this.activeCategoryCode="reg"; this.activeCategoryName="回归"; this.activeMethodName="线性模型"; this.chooserReady=false; this.setSidebarActive("reg"); this.inspectorToggle.setVisible(false); this.stageLayout.show(this.stageCards,"linear_exact"); this.statusLabel.setText("数据检查不停歇保障数据质量，仅用于质量评估与诊断。");
       }
 
-      private JPanel buildChooserTipPanel() {
-         JPanel right = this.refCard();
-         right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
-         right.setPreferredSize(new Dimension(190, 0));
-         right.setMaximumSize(new Dimension(190, Integer.MAX_VALUE));
-         JLabel title = new JLabel("☼  小贴士");
-         title.setForeground(new Color(225, 133, 18));
-         title.setFont(title.getFont().deriveFont(Font.BOLD, 12.5F));
-         title.setAlignmentX(0.0F);
-         right.add(title);
-         right.add(Box.createVerticalStrut(12));
-         JLabel text = new JLabel("<html><div style='width:145px;color:#718096'>命令太多时，先从常用命令开始，再逐步深入。</div></html>");
-         text.setFont(text.getFont().deriveFont(10.0F));
-         text.setAlignmentX(0.0F);
-         right.add(text);
-         right.add(Box.createVerticalGlue());
+      private JPanel buildChooserInfoBlock(String title, JTextArea body, int rows) {
+         JPanel block = new JPanel(new BorderLayout(0, 5));
+         block.setOpaque(false);
+         JLabel label = new JLabel(title);
+         label.setForeground(ACCENT);
+         label.setFont(label.getFont().deriveFont(Font.BOLD, 10.5F));
+         block.add(label, BorderLayout.NORTH);
+         body.setRows(rows);
+         body.setEditable(false);
+         body.setFocusable(false);
+         body.setOpaque(false);
+         body.setBorder(null);
+         body.setForeground(new Color(54, 68, 88));
+         body.setFont(body.getFont().deriveFont(10.5F));
+         block.add(body, BorderLayout.CENTER);
+         block.setAlignmentX(0.0F);
+         block.setMaximumSize(new Dimension(Integer.MAX_VALUE, rows * 28 + 28));
+         return block;
+      }
+
+      private JComponent buildChooserInspectorPanel() {
+         JPanel right = new JPanel(new BorderLayout(0, 10));
+         right.setBackground(SURFACE);
+         right.setPreferredSize(new Dimension(238, 0));
+         right.setMinimumSize(new Dimension(220, 0));
+         right.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 226, 238), 8),
+            new EmptyBorder(14, 14, 14, 14)
+         ));
+
+         JPanel head = new JPanel();
+         head.setOpaque(false);
+         head.setLayout(new BoxLayout(head, BoxLayout.Y_AXIS));
+         JLabel heading = new JLabel("命令速览");
+         heading.setForeground(TEXT);
+         heading.setFont(heading.getFont().deriveFont(Font.BOLD, 13.0F));
+         this.chooserInspectorCommand.setForeground(ACCENT);
+         this.chooserInspectorCommand.setFont(new Font("Monospaced", Font.BOLD, 16));
+         this.chooserInspectorTitle.setForeground(TEXT);
+         this.chooserInspectorTitle.setFont(this.chooserInspectorTitle.getFont().deriveFont(Font.BOLD, 11.5F));
+         this.chooserInspectorSource.setForeground(SUCCESS);
+         this.chooserInspectorSource.setFont(this.chooserInspectorSource.getFont().deriveFont(Font.BOLD, 9.5F));
+         head.add(heading);
+         head.add(Box.createVerticalStrut(16));
+         head.add(this.chooserInspectorCommand);
+         head.add(Box.createVerticalStrut(4));
+         head.add(this.chooserInspectorTitle);
+         head.add(Box.createVerticalStrut(5));
+         head.add(this.chooserInspectorSource);
+         right.add(head, BorderLayout.NORTH);
+
+         JPanel details = new JPanel();
+         details.setOpaque(false);
+         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
+         details.add(this.buildChooserInfoBlock("主要用途", this.chooserInspectorPurpose, 3));
+         details.add(Box.createVerticalStrut(10));
+         details.add(this.buildChooserInfoBlock("适用场景", this.chooserInspectorBestFor, 3));
+         details.add(Box.createVerticalStrut(10));
+         details.add(this.buildChooserInfoBlock("核心特性", this.chooserInspectorDifference, 4));
+         details.add(Box.createVerticalStrut(10));
+         JPanel exampleBlock = this.buildChooserInfoBlock("示例语法", this.chooserInspectorExample, 3);
+         this.chooserInspectorExample.setOpaque(true);
+         this.chooserInspectorExample.setBackground(new Color(248, 250, 253));
+         this.chooserInspectorExample.setFont(new Font("Monospaced", Font.PLAIN, 10));
+         this.chooserInspectorExample.setBorder(new EmptyBorder(8, 8, 8, 8));
+         details.add(exampleBlock);
+         details.add(Box.createVerticalGlue());
+         JScrollPane detailScroll = new JScrollPane(details);
+         detailScroll.setBorder(null);
+         detailScroll.setOpaque(false);
+         detailScroll.getViewport().setOpaque(false);
+         detailScroll.getVerticalScrollBar().setUnitIncrement(14);
+         right.add(detailScroll, BorderLayout.CENTER);
+
+         JPanel actions = new JPanel(new GridLayout(0, 1, 0, 8));
+         actions.setOpaque(false);
+         styleSecondaryButton(this.chooserInspectorHelpButton);
+         stylePrimaryButton(this.chooserInspectorOpenButton);
+         this.chooserInspectorHelpButton.addActionListener(e -> {
+            if (!this.selectedChooserCommand.isBlank()) {
+               HxWorkbench.StataBridge.execute("help " + this.selectedChooserCommand, false);
+               HxWorkbench.StataBridge.execute("window manage forward viewer", false);
+            }
+         });
+         this.chooserInspectorOpenButton.addActionListener(e -> {
+            if (!this.selectedChooserCommand.isBlank()) this.openCommandPage(this.selectedChooserCommand);
+         });
+         actions.add(this.chooserInspectorHelpButton);
+         actions.add(this.chooserInspectorOpenButton);
+         right.add(actions, BorderLayout.SOUTH);
          return right;
       }
 
+      private void styleChooserFilterButton(JButton button, boolean active) {
+         Color bg = active ? ACCENT : SURFACE;
+         Color hover = active ? new Color(28, 94, 222) : new Color(247, 250, 254);
+         Color pressed = active ? new Color(24, 82, 198) : new Color(239, 244, 250);
+         Color fg = active ? Color.WHITE : new Color(55, 69, 89);
+         Color border = active ? ACCENT : new Color(218, 226, 238);
+         button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(bg, hover, pressed, fg, border));
+         button.setBorder(new EmptyBorder(6, 12, 6, 12));
+         button.setFocusPainted(false);
+         button.setContentAreaFilled(false);
+      }
+
+      private JComponent buildChooserToolbar() {
+         JPanel toolbar = new JPanel(new BorderLayout(0, 8));
+         toolbar.setBackground(SURFACE);
+         toolbar.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 226, 238), 8),
+            new EmptyBorder(10, 10, 9, 10)
+         ));
+
+         JPanel searchRow = new JPanel(new BorderLayout(8, 0));
+         searchRow.setOpaque(false);
+         styleTextField(this.chooserSearchField);
+         this.chooserSearchField.putClientProperty("JTextField.placeholderText", "搜索命令，例如 xtreg、logit、probit");
+         this.chooserSearchField.setToolTipText("按命令名、中文说明、适用场景或示例搜索");
+         JButton advanced = this.refButton("高级筛选", false);
+         advanced.addActionListener(e -> {
+            this.chooserFilterMode = "进阶";
+            this.chooserPage = 0;
+            this.refreshChooserFilterStyles();
+            this.renderChooserCatalog();
+         });
+         searchRow.add(this.chooserSearchField, BorderLayout.CENTER);
+         searchRow.add(advanced, BorderLayout.EAST);
+         toolbar.add(searchRow, BorderLayout.NORTH);
+
+         JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 0));
+         filterRow.setOpaque(false);
+         for (String mode : Arrays.asList("全部", "常用", "官方", "外部扩展", "进阶")) {
+            JButton button = new JButton(mode);
+            button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            button.addActionListener(e -> {
+               this.chooserFilterMode = mode;
+               this.chooserPage = 0;
+               this.refreshChooserFilterStyles();
+               this.renderChooserCatalog();
+            });
+            this.chooserFilterButtons.put(mode, button);
+            filterRow.add(button);
+         }
+         toolbar.add(filterRow, BorderLayout.SOUTH);
+         this.refreshChooserFilterStyles();
+         this.chooserSearchField.getDocument().addDocumentListener(new HxWorkbench.SimpleDocumentListener(() -> {
+            if (this.chooserReady) {
+               this.chooserPage = 0;
+               this.renderChooserCatalog();
+            }
+         }));
+         return toolbar;
+      }
+
+      private void refreshChooserFilterStyles() {
+         for (Entry<String, JButton> entry : this.chooserFilterButtons.entrySet()) {
+            this.styleChooserFilterButton(entry.getValue(), entry.getKey().equals(this.chooserFilterMode));
+         }
+      }
+
       private JComponent buildChooserContainer() {
-         JPanel root = new JPanel(new BorderLayout(18, 0));
+         JPanel root = new JPanel(new BorderLayout(12, 0));
          root.setBackground(APP_BG);
-         root.setBorder(new EmptyBorder(18, 22, 14, 22));
+         root.setBorder(new EmptyBorder(12, 16, 10, 16));
 
-         JPanel center = new JPanel(new BorderLayout(0, 12)); center.setOpaque(false);
-         JPanel header = new JPanel(); header.setOpaque(false); header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-         this.chooserBreadcrumbBar.setOpaque(false); this.chooserBreadcrumbBar.setAlignmentX(0.0F); header.add(this.chooserBreadcrumbBar); header.add(Box.createVerticalStrut(8));
-         JPanel titleRow = new JPanel(new BorderLayout()); titleRow.setOpaque(false);
-         JPanel titles = new JPanel(); titles.setOpaque(false); titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
-         this.chooserTitle.setForeground(TEXT); this.chooserTitle.setFont(this.chooserTitle.getFont().deriveFont(Font.BOLD, 26.0F)); titles.add(this.chooserTitle); titles.add(Box.createVerticalStrut(5));
-         this.chooserHint.setForeground(MUTED); this.chooserHint.setFont(this.chooserHint.getFont().deriveFont(11.0F)); titles.add(this.chooserHint); titleRow.add(titles, BorderLayout.WEST);
-         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT,8,0)); actions.setOpaque(false);
-         JButton back = this.refButton("←  返回上一级", false); back.addActionListener(e -> this.showHomePage());
-         JButton home = this.refButton("⌂  首页", false); home.addActionListener(e -> this.showHomePage());
-         JButton help = this.refButton("?  帮助", false); help.addActionListener(e -> this.openHelp()); actions.add(back); actions.add(home); actions.add(help); titleRow.add(actions, BorderLayout.EAST);
-         header.add(titleRow); center.add(header, BorderLayout.NORTH);
+         JPanel center = new JPanel(new BorderLayout(0, 10));
+         center.setOpaque(false);
+         JPanel header = new JPanel();
+         header.setOpaque(false);
+         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
+         this.chooserBreadcrumbBar.setOpaque(false);
+         this.chooserBreadcrumbBar.setAlignmentX(0.0F);
+         header.add(this.chooserBreadcrumbBar);
+         header.add(Box.createVerticalStrut(6));
+         JPanel titleRow = new JPanel(new BorderLayout());
+         titleRow.setOpaque(false);
+         JPanel titles = new JPanel();
+         titles.setOpaque(false);
+         titles.setLayout(new BoxLayout(titles, BoxLayout.Y_AXIS));
+         this.chooserTitle.setForeground(TEXT);
+         this.chooserTitle.setFont(this.chooserTitle.getFont().deriveFont(Font.BOLD, 23.0F));
+         this.chooserHint.setForeground(MUTED);
+         this.chooserHint.setFont(this.chooserHint.getFont().deriveFont(10.5F));
+         titles.add(this.chooserTitle);
+         titles.add(Box.createVerticalStrut(3));
+         titles.add(this.chooserHint);
+         titleRow.add(titles, BorderLayout.WEST);
+         JPanel headerActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 7, 0));
+         headerActions.setOpaque(false);
+         this.chooserBackButton.setText("← 返回上一级");
+         this.chooserHomeButton.setText("首页");
+         styleSecondaryButton(this.chooserBackButton);
+         styleSecondaryButton(this.chooserHomeButton);
+         this.chooserBackButton.addActionListener(e -> this.handleChooserBack());
+         this.chooserHomeButton.addActionListener(e -> this.showHomePage());
+         JButton help = this.refButton("帮助", false);
+         help.addActionListener(e -> this.openHelp());
+         headerActions.add(this.chooserBackButton);
+         headerActions.add(this.chooserHomeButton);
+         headerActions.add(help);
+         titleRow.add(headerActions, BorderLayout.EAST);
+         header.add(titleRow);
+         center.add(header, BorderLayout.NORTH);
 
-         this.chooserContent.setOpaque(false); this.chooserContent.setLayout(new BoxLayout(this.chooserContent, BoxLayout.Y_AXIS));
-         JScrollPane scroll = new JScrollPane(this.chooserContent); scroll.setBorder(null); scroll.setOpaque(false); scroll.getViewport().setOpaque(false); scroll.getVerticalScrollBar().setUnitIncrement(18); center.add(scroll, BorderLayout.CENTER);
+         JPanel catalog = new JPanel(new BorderLayout(0, 10));
+         catalog.setOpaque(false);
+         catalog.add(this.buildChooserToolbar(), BorderLayout.NORTH);
+         this.chooserResultsHost.setOpaque(false);
+         this.chooserResultsHost.setLayout(new BoxLayout(this.chooserResultsHost, BoxLayout.Y_AXIS));
+         this.chooserResultsHost.setAlignmentX(0.0F);
+         JScrollPane scroll = new JScrollPane(this.chooserResultsHost);
+         scroll.setBorder(null);
+         scroll.setOpaque(false);
+         scroll.getViewport().setOpaque(false);
+         scroll.getVerticalScrollBar().setUnitIncrement(18);
+         catalog.add(scroll, BorderLayout.CENTER);
+         center.add(catalog, BorderLayout.CENTER);
          root.add(center, BorderLayout.CENTER);
-         root.add(this.buildChooserTipPanel(), BorderLayout.EAST);
+         root.add(this.buildChooserInspectorPanel(), BorderLayout.EAST);
          return root;
       }
 
@@ -5500,6 +5714,268 @@ public final class HxWorkbench {
          return picks;
       }
 
+      private List<String> filteredChooserCommands() {
+         ArrayList<String> filtered = new ArrayList<>();
+         String query = this.chooserSearchField.getText() == null ? "" : this.chooserSearchField.getText().trim().toLowerCase(Locale.ROOT);
+         String method = this.activeMethodName == null || this.activeMethodName.isBlank() ? this.activeCategoryName : this.activeMethodName;
+         List<String> preferred = this.preferredCommandsForMethod(method, this.chooserAvailableCommands);
+         for (String command : this.chooserAvailableCommands) {
+            CommandGuide guide = commandGuide(command);
+            String source = commandSource(command);
+            if (!query.isBlank() && !guide.searchableText(command).contains(query) && !source.toLowerCase(Locale.ROOT).contains(query)) continue;
+            if ("常用".equals(this.chooserFilterMode) && !preferred.contains(command)) continue;
+            if ("官方".equals(this.chooserFilterMode) && !"Stata 官方".equals(source)) continue;
+            if ("外部扩展".equals(this.chooserFilterMode) && "Stata 官方".equals(source)) continue;
+            if ("进阶".equals(this.chooserFilterMode) && preferred.contains(command)) continue;
+            filtered.add(command);
+         }
+         return filtered;
+      }
+
+      private void updateChooserInspector(String command) {
+         if (command == null || command.isBlank()) {
+            this.selectedChooserCommand = "";
+            this.chooserInspectorCommand.setText("请选择命令");
+            this.chooserInspectorTitle.setText("当前目录没有匹配项");
+            this.chooserInspectorSource.setText("调整搜索或筛选条件");
+            this.chooserInspectorPurpose.setText("");
+            this.chooserInspectorBestFor.setText("");
+            this.chooserInspectorDifference.setText("");
+            this.chooserInspectorExample.setText("");
+            this.chooserInspectorHelpButton.setEnabled(false);
+            this.chooserInspectorOpenButton.setEnabled(false);
+            return;
+         }
+         this.selectedChooserCommand = command;
+         CommandGuide guide = commandGuide(command);
+         String source = commandSource(command);
+         this.chooserInspectorCommand.setText(command);
+         this.chooserInspectorTitle.setText(guide.title);
+         this.chooserInspectorSource.setText(source);
+         this.chooserInspectorSource.setForeground("Stata 官方".equals(source) ? SUCCESS : new Color(119, 76, 190));
+         this.chooserInspectorPurpose.setText(guide.purpose);
+         this.chooserInspectorBestFor.setText(guide.bestFor);
+         this.chooserInspectorDifference.setText(guide.difference);
+         this.chooserInspectorExample.setText(guide.example);
+         this.chooserInspectorPurpose.setCaretPosition(0);
+         this.chooserInspectorBestFor.setCaretPosition(0);
+         this.chooserInspectorDifference.setCaretPosition(0);
+         this.chooserInspectorExample.setCaretPosition(0);
+         this.chooserInspectorHelpButton.setEnabled(true);
+         this.chooserInspectorOpenButton.setEnabled(true);
+      }
+
+      private JTable chooserCommandTable(List<String> commands, boolean selectFirst) {
+         DefaultTableModel model = new DefaultTableModel(new String[]{"命令", "中文说明", "适用场景", "示例", "操作"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+         };
+         for (String command : commands) {
+            CommandGuide guide = commandGuide(command);
+            model.addRow(new Object[]{command, guide.title, guide.bestFor, guide.example, "打开"});
+         }
+
+         JTable table = new JTable(model);
+         table.setRowHeight(38);
+         table.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+         table.setShowGrid(false);
+         table.setShowHorizontalLines(true);
+         table.setGridColor(new Color(232, 237, 244));
+         table.setIntercellSpacing(new Dimension(0, 0));
+         table.setFillsViewportHeight(true);
+         table.setBackground(SURFACE);
+         table.setSelectionBackground(new Color(237, 244, 255));
+         table.setSelectionForeground(TEXT);
+         table.getTableHeader().setReorderingAllowed(false);
+         table.getTableHeader().setResizingAllowed(true);
+         table.getTableHeader().setPreferredSize(new Dimension(0, 30));
+         table.getTableHeader().setBackground(new Color(248, 250, 253));
+         table.getTableHeader().setForeground(new Color(55, 69, 89));
+         table.getTableHeader().setFont(table.getTableHeader().getFont().deriveFont(Font.BOLD, 10.0F));
+         table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+
+         int[] widths = new int[]{150, 240, 250, 235, 72};
+         for (int i = 0; i < widths.length; i++) table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
+         table.getColumnModel().getColumn(4).setMaxWidth(82);
+
+         DefaultTableCellRenderer renderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable owner, Object value, boolean selected, boolean focus, int row, int column) {
+               JLabel cell = (JLabel)super.getTableCellRendererComponent(owner, value, selected, focus, row, column);
+               int modelColumn = owner.convertColumnIndexToModel(column);
+               String text = Objects.toString(value, "");
+               cell.setBorder(new EmptyBorder(0, 10, 0, 8));
+               cell.setFont(cell.getFont().deriveFont(modelColumn == 0 ? Font.BOLD : Font.PLAIN, modelColumn == 0 ? 11.0F : 10.0F));
+               cell.setForeground(modelColumn == 0 ? ACCENT : modelColumn == 4 ? new Color(48, 73, 111) : new Color(48, 62, 82));
+               cell.setHorizontalAlignment(modelColumn == 4 ? SwingConstants.CENTER : SwingConstants.LEFT);
+               if (modelColumn == 0) {
+                  String source = commandSource(text);
+                  String tagColor = "Stata 官方".equals(source) ? "#16845f" : "#7650b8";
+                  String shortSource = "Stata 官方".equals(source) ? "官方" : "扩展";
+                  cell.setText("<html><span style='color:#226df6'><b>" + html(text) + "</b></span>&nbsp;&nbsp;<span style='color:" + tagColor + ";font-size:9px'>" + shortSource + "</span></html>");
+               } else if (modelColumn == 4) {
+                  cell.setText("打开  ›");
+               } else {
+                  cell.setText(text);
+               }
+               if (!selected) cell.setBackground(row % 2 == 0 ? SURFACE : new Color(252, 253, 255));
+               return cell;
+            }
+         };
+         for (int i = 0; i < model.getColumnCount(); i++) table.getColumnModel().getColumn(i).setCellRenderer(renderer);
+         table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+               int viewRow = table.rowAtPoint(event.getPoint());
+               int viewColumn = table.columnAtPoint(event.getPoint());
+               if (viewRow < 0) return;
+               int row = table.convertRowIndexToModel(viewRow);
+               String command = Objects.toString(model.getValueAt(row, 0), "");
+               WorkbenchFrame.this.updateChooserInspector(command);
+               if (event.getClickCount() >= 2 || table.convertColumnIndexToModel(viewColumn) == 4) {
+                  WorkbenchFrame.this.openCommandPage(command);
+               }
+            }
+         });
+         table.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && table.getSelectedRow() >= 0) {
+               int row = table.convertRowIndexToModel(table.getSelectedRow());
+               WorkbenchFrame.this.updateChooserInspector(Objects.toString(model.getValueAt(row, 0), ""));
+            }
+         });
+         if (selectFirst && model.getRowCount() > 0) table.setRowSelectionInterval(0, 0);
+         return table;
+      }
+
+      private JComponent chooserCatalogSection(String title, String caption, List<String> commands, boolean selectFirst) {
+         JPanel section = new JPanel(new BorderLayout(0, 8));
+         section.setBackground(SURFACE);
+         section.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 226, 238), 8),
+            new EmptyBorder(10, 10, 10, 10)
+         ));
+         section.setAlignmentX(0.0F);
+
+         JPanel heading = new JPanel(new BorderLayout());
+         heading.setOpaque(false);
+         JPanel text = new JPanel();
+         text.setOpaque(false);
+         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+         JLabel name = new JLabel(title);
+         name.setForeground(TEXT);
+         name.setFont(name.getFont().deriveFont(Font.BOLD, 12.5F));
+         JLabel description = new JLabel(caption);
+         description.setForeground(MUTED);
+         description.setFont(description.getFont().deriveFont(9.5F));
+         text.add(name);
+         text.add(Box.createVerticalStrut(2));
+         text.add(description);
+         heading.add(text, BorderLayout.WEST);
+         if (title.startsWith("常用")) {
+            JButton manage = new JButton("管理常用");
+            styleSecondaryButton(manage);
+            manage.addActionListener(e -> this.browseCommandCategory("favorites", "常用命令"));
+            heading.add(manage, BorderLayout.EAST);
+         }
+         section.add(heading, BorderLayout.NORTH);
+
+         JTable table = this.chooserCommandTable(commands, selectFirst);
+         JScrollPane scroll = new JScrollPane(table);
+         scroll.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(228, 234, 243), 6));
+         scroll.getViewport().setBackground(SURFACE);
+         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+         int tableHeight = 31 + commands.size() * 38;
+         scroll.setPreferredSize(new Dimension(900, tableHeight));
+         section.add(scroll, BorderLayout.CENTER);
+         int sectionHeight = tableHeight + 62;
+         section.setMaximumSize(new Dimension(Integer.MAX_VALUE, sectionHeight));
+         section.setPreferredSize(new Dimension(980, sectionHeight));
+         return section;
+      }
+
+      private JComponent chooserPagination(int total, int totalPages) {
+         JPanel footer = new JPanel(new BorderLayout());
+         footer.setOpaque(false);
+         footer.setAlignmentX(0.0F);
+         footer.setBorder(new EmptyBorder(2, 6, 0, 6));
+         JLabel count = new JLabel("共 " + total + " 个命令");
+         count.setForeground(MUTED);
+         count.setFont(count.getFont().deriveFont(9.5F));
+         footer.add(count, BorderLayout.WEST);
+         JPanel pages = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+         pages.setOpaque(false);
+         JButton previous = this.refButton("<", false);
+         JButton next = this.refButton(">", false);
+         previous.setEnabled(this.chooserPage > 0);
+         next.setEnabled(this.chooserPage + 1 < totalPages);
+         previous.addActionListener(e -> { this.chooserPage--; this.renderChooserCatalog(); });
+         next.addActionListener(e -> { this.chooserPage++; this.renderChooserCatalog(); });
+         JLabel page = new JLabel((this.chooserPage + 1) + " / " + Math.max(1, totalPages));
+         page.setForeground(TEXT);
+         page.setFont(page.getFont().deriveFont(Font.BOLD, 10.0F));
+         page.setBorder(new EmptyBorder(0, 8, 0, 8));
+         pages.add(previous);
+         pages.add(page);
+         pages.add(next);
+         footer.add(pages, BorderLayout.EAST);
+         footer.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+         return footer;
+      }
+
+      private JComponent chooserVerticalSpace(int height) {
+         JComponent space = (JComponent)Box.createVerticalStrut(height);
+         space.setAlignmentX(0.0F);
+         return space;
+      }
+
+      private void renderChooserCatalog() {
+         this.chooserResultsHost.removeAll();
+         List<String> filtered = this.filteredChooserCommands();
+         if (filtered.isEmpty()) {
+            JPanel empty = new JPanel(new BorderLayout());
+            empty.setBackground(SURFACE);
+            empty.setAlignmentX(0.0F);
+            empty.setBorder(BorderFactory.createCompoundBorder(
+               new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 226, 238), 8),
+               new EmptyBorder(34, 24, 34, 24)
+            ));
+            JLabel text = new JLabel("<html><div style='text-align:center'><b>没有找到匹配命令</b><br><span style='color:#697891'>请调整搜索词或筛选条件。</span></div></html>", SwingConstants.CENTER);
+            empty.add(text, BorderLayout.CENTER);
+            empty.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+            this.chooserResultsHost.add(empty);
+            this.updateChooserInspector("");
+         } else {
+            String method = this.activeMethodName == null || this.activeMethodName.isBlank() ? this.activeCategoryName : this.activeMethodName;
+            List<String> preferred = this.preferredCommandsForMethod(method, this.chooserAvailableCommands);
+            ArrayList<String> common = new ArrayList<>();
+            for (String command : preferred) if (filtered.contains(command) && common.size() < 4) common.add(command);
+            LinkedHashSet<String> restSet = new LinkedHashSet<>(filtered);
+            restSet.removeAll(common);
+            ArrayList<String> rest = new ArrayList<>(restSet);
+
+            String initial = common.isEmpty() ? "" : common.get(0);
+            if (!common.isEmpty()) {
+               this.chooserResultsHost.add(this.chooserCatalogSection("常用命令", "高频使用，快速访问。", common, true));
+               this.chooserResultsHost.add(this.chooserVerticalSpace(8));
+            }
+
+            int totalPages = Math.max(1, (rest.size() + CHOOSER_PAGE_SIZE - 1) / CHOOSER_PAGE_SIZE);
+            this.chooserPage = Math.max(0, Math.min(this.chooserPage, totalPages - 1));
+            int start = Math.min(rest.size(), this.chooserPage * CHOOSER_PAGE_SIZE);
+            int end = Math.min(rest.size(), start + CHOOSER_PAGE_SIZE);
+            List<String> page = rest.subList(start, end);
+            if (!page.isEmpty()) {
+               if (initial.isBlank()) initial = page.get(0);
+               this.chooserResultsHost.add(this.chooserCatalogSection("全部命令", "按当前筛选浏览，点击行查看命令速览。", page, common.isEmpty()));
+               this.chooserResultsHost.add(this.chooserVerticalSpace(5));
+            }
+            this.chooserResultsHost.add(this.chooserPagination(filtered.size(), totalPages));
+            this.updateChooserInspector(initial);
+         }
+         this.chooserResultsHost.revalidate();
+         this.chooserResultsHost.repaint();
+      }
+
       private JComponent chooserMethodLead(String detail) {
          JPanel lead = new JPanel(new BorderLayout(12, 0));
          lead.setBackground(new Color(248, 251, 255));
@@ -5592,66 +6068,21 @@ public final class HxWorkbench {
 
       private void renderCommandChooser(String var1, String var2, List<String> var3) {
          this.setChooserBreadcrumb("首页  /  " + (this.activeCategoryName.isBlank() ? var1 : this.activeCategoryName) + (var2.isBlank() ? "" : "  /  " + var2));
-         boolean linear = "reg".equals(this.activeCategoryCode) && ("线性模型".equals(var2) || "线性模型".equals(var1));
-         this.chooserTitle.setText(linear ? "线性模型" : (var2.isBlank() ? var1 : var2));
-         this.chooserHint.setText(linear ? "先选分析目的，再进入具体命令。常用命令优先展示，其余命令按类别收纳。" : "先看常用命令，再继续浏览完整命令列表。");
-         this.chooserContent.removeAll();
-
-         JPanel search = this.refCard(); search.setLayout(new BorderLayout(12,0)); search.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58)); search.setAlignmentX(0.0F);
-         JTextField field = new JTextField(); styleTextField(field); field.setToolTipText("搜索命令或分析目的"); field.setPreferredSize(new Dimension(600,38)); search.add(field, BorderLayout.CENTER);
-         JPanel filters = new JPanel(new FlowLayout(FlowLayout.RIGHT,6,0)); filters.setOpaque(false); filters.add(this.refButton("全部", true)); filters.add(this.refButton("常用", false)); filters.add(this.refButton("进阶", false)); filters.add(this.refButton("筛选排序", false)); search.add(filters, BorderLayout.EAST);
-         this.chooserContent.add(search); this.chooserContent.add(Box.createVerticalStrut(10));
-
-         if (linear) {
-            JPanel choose = this.refCard(); choose.setLayout(new FlowLayout(FlowLayout.LEFT,10,2)); choose.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60)); choose.setAlignmentX(0.0F);
-            JLabel how = new JLabel("●  怎么选？"); how.setForeground(TEXT); how.setFont(how.getFont().deriveFont(Font.BOLD,14.0F)); choose.add(how);
-            choose.add(this.refButton("普通 OLS → regress", false)); choose.add(this.refButton("单组固定效应 → areg", false)); choose.add(this.refButton("多维固定效应 → reghdfe", false)); choose.add(this.refButton("关注分布位置 → qreg", false));
-            this.chooserContent.add(choose); this.chooserContent.add(Box.createVerticalStrut(10));
-
-            JPanel common = this.refCard(); common.setLayout(new BorderLayout(0,10)); common.setAlignmentX(0.0F);
-            JLabel ct = new JLabel("常用命令"); ct.setForeground(TEXT); ct.setFont(ct.getFont().deriveFont(Font.BOLD,14.0F)); common.add(ct, BorderLayout.NORTH);
-            JPanel grid = new JPanel(new GridLayout(2,2,16,12)); grid.setOpaque(false);
-            grid.add(this.chooserCommandCard("regress", "普通线性回归", "用 OLS 估计连续因变量与解释变量的线性关系。", "regress y x c1 c2, vce(robust)", new Color(54,114,236)));
-            grid.add(this.chooserCommandCard("areg", "单组固定效应", "在回归中吸收一组大量类别固定效应。", "areg y x c, absorb(firm)", new Color(29,164,101)));
-            grid.add(this.chooserCommandCard("reghdfe", "高维固定效应回归", "高效吸收多组固定效应并支持聚类标准误。", "reghdfe y x c, absorb(firm year) vce(cluster firm)", new Color(245,125,30)));
-            grid.add(this.chooserCommandCard("qreg", "分位数回归", "估计解释变量对条件分布不同分位点的影响。", "qreg y x c, quantile(.5)", new Color(134,84,225)));
-            common.add(grid, BorderLayout.CENTER); common.setMaximumSize(new Dimension(Integer.MAX_VALUE, 292)); this.chooserContent.add(common); this.chooserContent.add(Box.createVerticalStrut(10));
-
-            JPanel more = this.refCard(); more.setLayout(new BorderLayout(0,10)); more.setAlignmentX(0.0F); JLabel mt = new JLabel("更多线性模型"); mt.setForeground(TEXT); mt.setFont(mt.getFont().deriveFont(Font.BOLD,14.0F)); more.add(mt, BorderLayout.NORTH);
-            JPanel groups = new JPanel(new GridLayout(1,4,12,0)); groups.setOpaque(false);
-            groups.add(this.chooserGroup("◈  稳健与异常值处理", new String[][]{{"rreg","稳健回归（M-估计）"},{"cnsreg","截面回归（修正样本选择）"},{"newey","Newey-West 标准误"}}, new Color(47,104,213)));
-            groups.add(this.chooserGroup("⚖  加权与广义最小二乘", new String[][]{{"regressw","加权最小二乘"},{"vwls","可变加权最小二乘"},{"gls","广义最小二乘"},{"prais","可行广义最小二乘"}}, new Color(37,172,92)));
-            groups.add(this.chooserGroup("⚑  工具变量与内生性", new String[][]{{"ivregress","工具变量回归"},{"ivreg","2SLS 回归"},{"ivprobit","工具变量 Probit"},{"control","控制函数法"}}, new Color(245,128,30)));
-            groups.add(this.chooserGroup("▦  其他线性扩展", new String[][]{{"sureg","联立方程回归"},{"seemingly","似不相关回归"},{"seemingly2","似不相关回归（扩展）"},{"ml","最大似然回归"}}, new Color(132,85,220)));
-            more.add(groups, BorderLayout.CENTER); more.setMaximumSize(new Dimension(Integer.MAX_VALUE, 205)); this.chooserContent.add(more);
-         } else {
-            String methodName = var2.isBlank() ? var1 : var2;
-            List<String> featured = this.preferredCommandsForMethod(methodName, var3);
-            LinkedHashSet<String> restSet = new LinkedHashSet<>(var3);
-            restSet.removeAll(featured);
-            ArrayList<String> rest = new ArrayList<>(restSet);
-
-            this.chooserContent.add(this.chooserMethodLead(
-               "先从常用命令进入；需要完整目录时继续向下浏览。当前方法常见命令：" + statsMethodPreview(methodName)
-            ));
-            this.chooserContent.add(Box.createVerticalStrut(10));
-
-            if (!featured.isEmpty()) {
-               this.chooserContent.add(this.chooserListSection(
-                  "常用命令", "优先展示更常用、更容易上手的命令。", featured, true
-               ));
-               this.chooserContent.add(Box.createVerticalStrut(10));
-            }
-            if (!rest.isEmpty()) {
-               this.chooserContent.add(this.chooserListSection(
-                  featured.isEmpty() ? "可用命令" : "全部命令",
-                  featured.isEmpty() ? "当前方法下可直接使用的命令。" : "完整保留该方法下的其他 Stata 命令。",
-                  rest, false
-               ));
-            }
-         }
-         this.chooserContent.add(Box.createVerticalGlue());
-         this.chooserContent.revalidate(); this.chooserContent.repaint(); this.chooserReady = true; this.inspectorToggle.setVisible(false); this.stageLayout.show(this.stageCards, "chooser"); this.syncSidebarFromContext();
+         String methodName = var2.isBlank() ? var1 : var2;
+         this.chooserTitle.setText(methodName);
+         this.chooserHint.setText("快速定位命令，支持搜索、筛选和分类浏览。");
+         this.chooserReady = false;
+         this.chooserAvailableCommands.clear();
+         this.chooserAvailableCommands.addAll(var3);
+         this.chooserFilterMode = "全部";
+         this.chooserPage = 0;
+         this.chooserSearchField.setText("");
+         this.refreshChooserFilterStyles();
+         this.renderChooserCatalog();
+         this.chooserReady = true;
+         this.inspectorToggle.setVisible(false);
+         this.stageLayout.show(this.stageCards, "chooser");
+         this.syncSidebarFromContext();
       }
 
       private JButton commandChoiceButton(String command, int cols) {
@@ -7058,8 +7489,8 @@ public final class HxWorkbench {
          } else {
             this.rightPaneTitle.setText("当前数据");
             this.refreshButton.setVisible(true);
-            long n = Data.getObsTotal();
-            int k = Data.getVarCount();
+            long n = this.previewMode ? this.dataModel.getRowCount() : Data.getObsTotal();
+            int k = this.previewMode ? this.dataModel.getColumnCount() : Data.getVarCount();
             String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
             this.dataLabel.setText(n != 0L && k != 0 ? n + " 行 × " + k + " 列" + dataHint : "尚未载入数据");
          }
@@ -10727,7 +11158,9 @@ public final class HxWorkbench {
       }
 
       private void refreshVariableControls() {
-         List var1 = HxWorkbench.StataBridge.variableNames();
+         List var1 = this.previewMode
+            ? Arrays.asList("price", "mpg", "weight", "length", "turn", "foreign", "rep78")
+            : HxWorkbench.StataBridge.variableNames();
          replaceComboItems(this.depvar, var1);
          replaceComboItems(this.panel, var1);
          replaceComboItems(this.time, var1);
