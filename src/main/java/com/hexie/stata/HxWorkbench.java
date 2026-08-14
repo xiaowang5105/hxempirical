@@ -5157,7 +5157,6 @@ public final class HxWorkbench {
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
          this.syncSidebarFromContext();
-         this.syncSidebarFromContext();
          this.activeMethodName = "";
          this.selectCategoryCode(var1);
          ArrayList<String> var2 = new ArrayList<>();
@@ -5408,7 +5407,6 @@ public final class HxWorkbench {
          if ("reg".equals(var1) && "线性模型".equals(var2)) { this.showExactLinearPage(); return; }
          this.activeCategoryCode = var1;
          this.activeCategoryName = categoryLabel(var1);
-         this.syncSidebarFromContext();
          this.syncSidebarFromContext();
          this.activeMethodName = var2;
          this.selectCategoryCode(var1);

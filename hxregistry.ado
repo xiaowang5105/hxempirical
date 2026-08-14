@@ -18,7 +18,7 @@ program define hxregistry, rclass
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
 
     local all_cmds ""
-    foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `oneclick_cmds' {
+    foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `did_cmds' `oneclick_cmds' {
         if !strpos(" `all_cmds' ", " `cmd' ") local all_cmds "`all_cmds' `cmd'"
     }
     local all_cmds = trim(itrim("`all_cmds'"))
