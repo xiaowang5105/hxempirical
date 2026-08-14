@@ -10,6 +10,7 @@ permissions:
 jobs:
   ui-paths:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
         with:
@@ -104,6 +105,7 @@ jobs:
                   System.out.println("UI_PATH_AUDIT_OK stats->计数结果->ppmlhdfe and graph->饼图->graph");
                 }catch(Throwable e){ throw new RuntimeException(e); }
               });
+              System.exit(0);
             }
           }
           EOF
