@@ -1,4 +1,4 @@
-*! hxinstall 1.2.0  14aug2026
+*! hxinstall 1.3.0  14aug2026
 *! Transactional bootstrap installer for hxempirical
 version 17.0
 set more off
@@ -14,11 +14,12 @@ if !inlist(`"`action'"', "auto", "install", "update", "uninstall") {
 local pages "https://xiaowang5105.github.io/hxempirical"
 local raw   "https://raw.githubusercontent.com/xiaowang5105/hxempirical/main"
 local source = trim(`"`source'"')
+local remote_source = (`"`source'"' == "")
 if substr(`"`source'"', 1, 1) == char(34) & substr(`"`source'"', -1, 1) == char(34) {
     local source = substr(`"`source'"', 2, strlen(`"`source'"') - 2)
 }
 if `"`source'"' != "" {
-    /* Maintainer-only local/release-source override used by lifecycle tests. */
+    /* Local release-source override used by the offline launcher and tests. */
     local pages `"`source'"'
     local raw   `"`source'"'
 }
@@ -76,31 +77,35 @@ if `"`action'"' == "uninstall" {
     }
 }
 
-/* Pages is the stable primary source. Retry transient failures before using
-   Raw as a best-effort fallback for networks where it is reachable. */
+/* Bound each network wait.  Stata's default transfer timeout is 180 seconds,
+   which makes a blocked GitHub request look like an application freeze. */
+local old_timeout1 = c(timeout1)
+local old_timeout2 = c(timeout2)
+if `remote_source' {
+    quietly set timeout1 10
+    quietly set timeout2 20
+}
+
+/* Pages is the primary source. Raw is one bounded fallback. */
 if `"`manifest_source'"' == "" {
-    forvalues attempt = 1/3 {
-        capture quietly copy `"`pages'/hxempirical.pkg"' `"`pkg'"', replace
-        if !_rc {
-            local manifest_source "GitHub Pages"
-            continue, break
-        }
-        if `attempt' < 3 sleep 300
+    capture quietly copy `"`pages'/hxempirical.pkg"' `"`pkg'"', replace
+    if !_rc {
+        if `remote_source' local manifest_source "GitHub Pages"
+        else local manifest_source "本地离线包"
     }
 }
 if `"`manifest_source'"' == "" {
-    forvalues attempt = 1/2 {
-        capture quietly copy `"`raw'/hxempirical.pkg"' `"`pkg'"', replace
-        if !_rc {
-            local manifest_source "GitHub Raw"
-            continue, break
-        }
-        if `attempt' < 2 sleep 300
-    }
+    capture quietly copy `"`raw'/hxempirical.pkg"' `"`pkg'"', replace
+    if !_rc local manifest_source "GitHub Raw"
+}
+if `remote_source' {
+    quietly set timeout1 `old_timeout1'
+    quietly set timeout2 `old_timeout2'
 }
 if `"`manifest_source'"' == "" {
     display as error "无法读取 hxempirical 安装清单。"
-    display as text  "请确认能访问 `pages'/hxempirical.pkg 后重试。"
+    display as text  "当前网络未能在限定时间内连接 GitHub。"
+    display as text  "请用浏览器打开安装说明：`pages'/INSTALL.md"
     exit 603
 }
 
@@ -204,40 +209,144 @@ if !inlist(`"`slast'"', "/", "\") local stage `"`stage'/"'
 local blast = substr(`"`backup'"', strlen(`"`backup'"'), 1)
 if !inlist(`"`blast'"', "/", "\") local backup `"`backup'/"'
 
-/* Download the complete release before changing the existing installation. */
+/* Download one release as small Base64 text segments.  This avoids the long,
+   silent binary-JAR transfer that can be blocked by TLS inspection software. */
+tempfile bundle_index bundle_b64 bundle_zip
 local download_failed 0
 local fallback_count 0
-display as text "正在下载 hxempirical `package_version'（`nfiles' 个文件）..."
-foreach f of local files {
+local index_source ""
+local failure_stage ""
+
+if `remote_source' {
+    quietly set timeout1 10
+    quietly set timeout2 20
+}
+capture quietly copy `"`pages'/hxempirical-release.index"' `"`bundle_index'"', replace
+if !_rc local index_source "GitHub Pages"
+if `"`index_source'"' == "" {
+    capture quietly copy `"`raw'/hxempirical-release.index"' `"`bundle_index'"', replace
+    if !_rc local index_source "GitHub Raw"
+}
+if `"`index_source'"' == "" {
+    local download_failed 1
+    local failure_stage "读取发布包索引"
+}
+
+local parts ""
+if !`download_failed' {
+    tempname index_handle
+    file open `index_handle' using `"`bundle_index'"', read text
+    file read `index_handle' index_line
+    while r(eof) == 0 {
+        local index_line = trim(`"`index_line'"')
+        gettoken index_tag index_rest : index_line
+        if lower(`"`index_tag'"') == "f" {
+            gettoken part_name index_unused : index_rest
+            if `"`part_name'"' != "" local parts `"`parts' `part_name'"'
+        }
+        file read `index_handle' index_line
+    }
+    file close `index_handle'
+}
+local parts = trim(itrim(`"`parts'"'))
+local nparts : word count `parts'
+if `nparts' == 0 {
+    local download_failed 1
+    local failure_stage "解析发布包索引"
+}
+
+tempname bundle_out
+local bundle_open 0
+if !`download_failed' {
+    file open `bundle_out' using `"`bundle_b64'"', write text replace
+    local bundle_open 1
+}
+local part_number 0
+foreach part of local parts {
+    if `download_failed' continue, break
+    local ++part_number
+    display as text "正在取得发布包：`part_number'/`nparts'（每段网络等待上限 20 秒）"
+    local part_file `"`stage'__hx_release_part"'
     local got 0
-    forvalues attempt = 1/3 {
-        capture quietly copy `"`pages'/`f'"' `"`stage'`f'"', replace
+    capture quietly copy `"`pages'/`part'"' `"`part_file'"', replace
+    if !_rc local got 1
+    if !`got' {
+        capture quietly copy `"`raw'/`part'"' `"`part_file'"', replace
         if !_rc {
             local got 1
-            continue, break
-        }
-        if `attempt' < 3 sleep 250
-    }
-    if !`got' {
-        forvalues attempt = 1/2 {
-            capture quietly copy `"`raw'/`f'"' `"`stage'`f'"', replace
-            if !_rc {
-                local got 1
-                local ++fallback_count
-                continue, break
-            }
-            if `attempt' < 2 sleep 250
+            local ++fallback_count
         }
     }
     if !`got' {
-        display as error "下载失败：`f'"
         local download_failed 1
+        local failure_stage "下载第 `part_number'/`nparts' 段"
         continue, break
     }
+
+    tempname part_in
+    file open `part_in' using `"`part_file'"', read text
+    file read `part_in' part_line
+    while r(eof) == 0 {
+        file write `bundle_out' `"`part_line'"' _n
+        file read `part_in' part_line
+    }
+    file close `part_in'
+    capture quietly erase `"`part_file'"'
 }
+if `bundle_open' capture file close `bundle_out'
+
+if `remote_source' {
+    quietly set timeout1 `old_timeout1'
+    quietly set timeout2 `old_timeout2'
+}
+
+if !`download_failed' {
+    local bundle_b64_java : subinstr local bundle_b64 "\" "\\", all
+    local bundle_zip_java : subinstr local bundle_zip "\" "\\", all
+    capture java: java.nio.file.Files.write(java.nio.file.Paths.get("`bundle_zip_java'"), java.util.Base64.getMimeDecoder().decode(java.nio.file.Files.readString(java.nio.file.Paths.get("`bundle_b64_java'"))))
+    local decode_rc = _rc
+    if `decode_rc' {
+        local download_failed 1
+        local failure_stage "Base64 解码，r(`decode_rc')"
+    }
+}
+
+if !`download_failed' {
+    local install_pwd `"`c(pwd)'"'
+    capture quietly cd `"`stage'"'
+    if _rc {
+        local download_failed 1
+        local failure_stage "进入临时目录"
+    }
+    if !`download_failed' {
+        capture quietly unzipfile `"`bundle_zip'"', replace
+        if _rc {
+            local unzip_rc = _rc
+            local download_failed 1
+            local failure_stage "解压发布包，r(`unzip_rc')"
+        }
+    }
+    capture quietly cd `"`install_pwd'"'
+}
+
+if !`download_failed' {
+    foreach f of local files {
+        capture quietly confirm file `"`stage'`f'"'
+        if _rc {
+            display as error "发布包校验失败：缺少 `f'"
+            local download_failed 1
+            local failure_stage "校验发布文件"
+            continue, break
+        }
+    }
+}
+
 if `download_failed' {
-    display as error "下载未完成，现有 hxempirical 安装保持不变。"
-    display as text  "请检查网络后重新运行同一条命令。"
+    display as error "发布包未能完整取得，现有 hxempirical 安装保持不变。"
+    if `"`failure_stage'"' != "" display as text "失败阶段：`failure_stage'"
+    display as text  "当前网络对 Stata 的 GitHub 下载有限制。请使用浏览器离线安装："
+    display as result "  `pages'/hxempirical-release.zip"
+    display as text  "下载并解压后，在 Stata 中运行其中的 hxinstall_offline.do。"
     exit 603
 }
 

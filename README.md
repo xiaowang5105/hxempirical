@@ -4,21 +4,41 @@
 
 **当前发布版本：1.5.0**<br>
 **支持：Stata 17 及以上版本**<br>
-**上次修改时间：2026-08-14 23:17（UTC+8）**
+**上次修改时间：2026-08-14 23:55（UTC+8）**
 
-### 安装或更新（同一条命令）
+### 安装或更新
 
-首次安装和以后更新都在 **Stata 17 或更高版本**的命令窗口运行：
+#### 方法 A：在线安装
+
+网络能够稳定访问 GitHub Pages 时，在 **Stata 17 或更高版本**的命令窗口运行：
 
 ```stata
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 ```
 
-安装器会自动识别当前电脑是否已有 hxempirical：
+安装器会自动识别当前电脑是否已有 hxempirical。在线发布包被拆成带进度的文本分段，每段网络等待上限为 20 秒，安装器完成全部校验后才写入 `PERSONAL`：
 
 - 第一次运行：安装到当前用户的 `PERSONAL`；
 - 已经安装：备份现有版本后安全更新；
 - 两种情况完成后都会建立唯一的 **用户（User） > 我的实证工具箱** 菜单入口。
+
+Stata 在一次 HTTPS 传输期间可能短暂显示“正忙”。请观察 Results 中的 `正在取得发布包：#/11`，让当前分段返回。需要中断时使用 Stata 工具栏的红色 **Break/停止** 按钮；安装器会保留原有安装。
+
+#### 方法 B：浏览器离线安装（校园网、代理和卡顿环境推荐）
+
+1. 用浏览器下载 [hxempirical 完整离线包](https://xiaowang5105.github.io/hxempirical/hxempirical-release.zip)。
+2. 完整解压 ZIP。
+3. 在 Stata 选择 **文件（File） > 执行 do 文件（Do...）**，打开解压目录中的 `hxinstall_offline.do`。
+4. 文件选择框出现后，选择同一目录中的 `hxempirical.pkg`。
+5. 安装完成后重新启动 Stata。
+
+也可以直接运行解压后的启动文件；它会让你选择 `hxempirical.pkg`：
+
+```stata
+do "D:/你的解压目录/hxinstall_offline.do"
+```
+
+离线安装全过程从解压目录读取文件，不再由 Stata 访问 GitHub。以后更新时下载新的 ZIP 并重复相同步骤即可。
 
 完成后重启 Stata，验证并启动：
 
@@ -37,12 +57,12 @@ hxempirical
 
 `reghdfe`、`winsor2`、`oneclick`、`coefplot` 等属于可选扩展。它们未安装时，Stata 官方命令、数据处理和核心工作台仍可使用；进入对应功能并点击运行时，程序再询问是否安装。
 
-安装器先完整下载并校验发布清单，再统一写入正式目录；任何写入步骤失败都会恢复原有文件。Windows 和 macOS 使用同一条安装命令。
+安装器先完整取得并校验发布包，再统一写入正式目录；任何写入步骤失败都会恢复原有文件。Windows 和 macOS 使用相同的在线入口和离线包。
 
 ### 给朋友安装时只需要这四步
 
 1. 关闭已经打开的“我的实证工具箱”窗口。
-2. 在 Stata 命令窗口粘贴上面的一行安装命令。
+2. 网络稳定时粘贴在线安装命令；校园网、代理或曾经卡顿时使用浏览器离线包。
 3. 安装完成后重启 Stata。
 4. 从 **用户（User） > 我的实证工具箱** 打开；遇到问题时运行下面三条命令并保存输出：
 
@@ -52,7 +72,7 @@ hxempirical doctor
 sysdir
 ```
 
-GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，安装说明统一使用 GitHub Pages 地址。请勿把 Raw 地址用于 `net install`。
+GitHub 的 JAR/ZIP 二进制传输在部分学校网络、代理、杀毒软件和 Stata TLS 环境中可能被延迟。在线安装器使用分段文本发布包并设置传输上限；浏览器离线包是此类环境下的稳定入口。请勿把 GitHub Raw 地址用于 `net install`。
 
 详细的更新、卸载和故障排查见 [INSTALL.md](INSTALL.md)。
 
@@ -208,7 +228,7 @@ OneClick 专区执行的是作者发布的真实外部命令。候选控制变�
 
 ## 更新
 
-关闭已经打开的工作台，然后继续运行与首次安装完全相同的一行命令：
+关闭已经打开的工作台，然后继续运行在线命令：
 
 ```stata
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
@@ -220,7 +240,7 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 hxempirical update
 ```
 
-安装器会重试临时网络错误、先下载完整发布包、备份已有文件，并在写入失败时恢复原安装。已经打开 Java 工作台时，请先关闭工作台；如遇到 JAR 正在使用或 `r(602)`，关闭 Stata，重新打开后先执行更新命令。
+安装器会在限定时间内取得分段发布包、备份已有文件，并在写入失败时恢复原安装。使用离线包更新时，下载最新 ZIP 并重新运行 `hxinstall_offline.do`。已经打开 Java 工作台时，请先关闭工作台；如遇到 JAR 正在使用或 `r(602)`，关闭 Stata，重新打开后先执行更新命令。
 
 ## 常用管理命令
 
@@ -510,6 +530,7 @@ do "tests/cross_platform_core_smoke.do"
 - 命令目录改为紧凑表格与分页浏览。
 - 新增随选择更新的命令速览和统一筛选工具栏。
 - 压缩外壳留白并修复导航缺字风险。
+- 重构安装发布链路：在线安装改为 11 个带进度、20 秒传输上限的文本分段，绕开部分网络对 JAR 二进制的阻塞；新增浏览器完整离线包、`hxinstall_offline.do` 启动器和离线生命周期测试。
 
 ### 1.2.4
 
