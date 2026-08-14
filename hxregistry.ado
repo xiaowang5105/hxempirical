@@ -1,4 +1,4 @@
-*! hxregistry 3.1.1  14aug2026
+*! hxregistry 3.1.2  14aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
