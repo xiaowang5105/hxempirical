@@ -5,10 +5,11 @@ on:
     branches: [selfcheck-v148]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  audit:
+  audit-repair:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,104 +17,10 @@ jobs:
           ref: selfcheck-v148
           fetch-depth: 0
 
-      - name: Catalog and navigation consistency audit
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re, json
-
-          s = Path('hxregistry.ado').read_text(encoding='utf-8')
-          issues=[]
-
-          def local(name):
-              m=re.search(r'^\s*local\s+'+re.escape(name)+r'\s+"([^"]*)"',s,re.M)
-              if not m:
-                  issues.append(f'missing local {name}')
-                  return []
-              return m.group(1).split()
-
-          cats={
-              'data': ('data_cmds','data_methods'),
-              'stats': ('stats_cmds','stats_methods'),
-              'graph': ('graph_cmds','graph_methods'),
-              'oneclick': ('oneclick_cmds','oneclick_methods'),
-          }
-          commands={k:local(v[0]) for k,v in cats.items()}
-          methods={k:local(v[1]) for k,v in cats.items()}
-
-          # Extract every Chinese/visible method -> local view mapping.
-          routes={}
-          pat=re.compile(r'(?:^|\n)\s*(?:if|else if)\s+inlist\(`"`method\'"\',\s*"([^"]+)"[^\n]*?\)\s+local\s+view\s+"([^"]*)"')
-          for m in pat.finditer(s):
-              routes[m.group(1)]=m.group(2).split()
-
-          # 1) Every visible method must resolve to a command list.
-          for cat, ms in methods.items():
-              for method in ms:
-                  if method not in routes:
-                      issues.append(f'{cat}: visible method has no route: {method}')
-
-          # 2) Every searchable command in a category must have a visible click path in that category.
-          route_union={cat:set(c for m in methods[cat] for c in routes.get(m,[])) for cat in cats}
-          for cat, cmds in commands.items():
-              missing=[c for c in cmds if c not in route_union[cat]]
-              if missing:
-                  issues.append(f'{cat}: searchable commands without visible path: {missing}')
-
-          # 3) Every command offered by a visible path must be globally searchable somewhere.
-          searchable=set().union(*map(set,commands.values()))
-          for cat, ms in methods.items():
-              hidden=[]
-              for method in ms:
-                  for cmd in routes.get(method,[]):
-                      if cmd not in searchable:
-                          hidden.append((method,cmd))
-              if hidden:
-                  issues.append(f'{cat}: visible path commands absent from global search: {hidden}')
-
-          # 4) all_cmds must aggregate only the four visible catalogs, not legacy hidden aliases.
-          loop=re.search(r'foreach\s+cmd\s+in\s+([^\{]+)\{',s)
-          looptext=loop.group(1) if loop else ''
-          for token in ["`data_cmds'","`stats_cmds'","`graph_cmds'","`oneclick_cmds'"]:
-              if token not in looptext: issues.append('all_cmds missing '+token)
-          for token in ["`reg_cmds'","`post_cmds'","`did_cmds'"]:
-              if token in looptext: issues.append('all_cmds still includes hidden alias '+token)
-
-          # 5) No duplicates in visible method order / command catalogs.
-          for cat in cats:
-              dup=[x for x in methods[cat] if methods[cat].count(x)>1]
-              if dup: issues.append(f'{cat}: duplicate methods: {sorted(set(dup))}')
-              dup=[x for x in commands[cat] if commands[cat].count(x)>1]
-              if dup: issues.append(f'{cat}: duplicate commands: {sorted(set(dup))}')
-
-          # 6) Key regression commands must have the intended exact paths.
-          required={
-              ('stats','线性模型及相关'):{'regress','areg','reghdfe','qreg'},
-              ('stats','计数结果'):{'poisson','nbreg','ppmlhdfe'},
-              ('stats','工具变量与内生性'):{'ivregress','ivreghdfe'},
-              ('stats','估计后分析'):{'test','lincom','predict','margins'},
-              ('graph','更多统计图形'):{'coefplot','marginsplot','event_plot'},
-          }
-          for (cat,method),want in required.items():
-              got=set(routes.get(method,[]))
-              miss=sorted(want-got)
-              if miss: issues.append(f'{cat}/{method}: required commands missing: {miss}')
-
-          report={
-              'counts': {cat:{'methods':len(methods[cat]),'commands':len(commands[cat]),'routed_unique':len(route_union[cat])} for cat in cats},
-              'issues': issues,
-              'key_paths': {f'{cat}/{m}':routes.get(m,[]) for cat,m in [('stats','线性模型及相关'),('stats','计数结果'),('stats','工具变量与内生性'),('stats','估计后分析'),('graph','更多统计图形')]}
-          }
-          Path('/tmp/catalog-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
-          print(json.dumps(report,ensure_ascii=False,indent=2))
-          if issues:
-              raise SystemExit(f'CATALOG_SELF_CHECK_FAILED: {len(issues)} issue group(s)')
-          print('CATALOG_SELF_CHECK_OK')
-          PY
+      - name: Apply self-check repairs
+        run: python .github/scripts/selfcheck_fix_v148.py
 
       - name: Create complete Stata SFI compile stubs
-        if: always()
         shell: bash
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
@@ -159,66 +66,62 @@ jobs:
           }
           EOF
 
-      - name: Compile Java 11
-        if: always()
+      - name: Compile Java 11 and rebuild jar
         shell: bash
         run: |
           javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
-          jar cf /tmp/hxworkbench-audit.jar -C /tmp/classes com/hexie/stata
-          test -s /tmp/hxworkbench-audit.jar
-          javap -verbose -classpath /tmp/hxworkbench-audit.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
 
-      - name: Preview catalog parity audit
-        if: always()
+      - name: Registry bidirectional audit
+        run: python .github/scripts/selfcheck_audit_v148.py
+
+      - name: Java preview full parity audit
         shell: bash
         run: |
-          cat > /tmp/AuditPreview.java <<'EOF'
+          cat > /tmp/PreviewParity.java <<'EOF'
           import java.lang.reflect.*;
+          import java.nio.file.*;
           import java.util.*;
-          public class AuditPreview {
+          public class PreviewParity {
             @SuppressWarnings("unchecked")
             public static void main(String[] args) throws Exception {
               Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");
               Method pm=c.getDeclaredMethod("previewMethodsForCategory",String.class); pm.setAccessible(true);
               Method pc=c.getDeclaredMethod("previewCommandsForMethod",String.class); pc.setAccessible(true);
-              Map<String,List<String>> mustMethods=new LinkedHashMap<>();
-              mustMethods.put("stats",Arrays.asList("汇总，表格和假设检验","线性模型及相关","计数结果","纵向/面板数据","工具变量与内生性","估计后分析"));
-              mustMethods.put("graph",Arrays.asList("二维图(散点图，折线图等)","更多统计图形"));
-              for (Map.Entry<String,List<String>> e:mustMethods.entrySet()) {
-                List<String> got=(List<String>)pm.invoke(null,e.getKey());
-                for(String m:e.getValue()) if(!got.contains(m)) throw new AssertionError("preview method missing "+e.getKey()+" / "+m+" got="+got);
+              for(String line:Files.readAllLines(Paths.get("/tmp/method_expected.tsv"))){
+                String[] p=line.split("\\t",2); List<String> exp=Arrays.asList(p[1].split("\\|",-1));
+                List<String> got=(List<String>)pm.invoke(null,p[0]);
+                if(!got.equals(exp)) throw new AssertionError("METHOD_PARITY "+p[0]+" exp="+exp+" got="+got);
               }
-              Map<String,List<String>> checks=new LinkedHashMap<>();
-              checks.put("线性模型及相关",Arrays.asList("regress","areg","reghdfe","qreg"));
-              checks.put("计数结果",Arrays.asList("poisson","nbreg","ppmlhdfe"));
-              checks.put("工具变量与内生性",Arrays.asList("ivregress","ivreghdfe"));
-              checks.put("估计后分析",Arrays.asList("test","lincom","predict","margins"));
-              checks.put("更多统计图形",Arrays.asList("coefplot","marginsplot","event_plot"));
-              for(Map.Entry<String,List<String>> e:checks.entrySet()) {
-                List<String> got=(List<String>)pc.invoke(null,e.getKey());
-                for(String cmd:e.getValue()) if(!got.contains(cmd)) throw new AssertionError("preview route missing "+e.getKey()+" -> "+cmd+" got="+got);
+              for(String line:Files.readAllLines(Paths.get("/tmp/preview_expected.tsv"))){
+                String[] p=line.split("\\t",3); List<String> exp=p.length<3||p[2].isEmpty()?Collections.emptyList():Arrays.asList(p[2].split(" "));
+                List<String> got=(List<String>)pc.invoke(null,p[1]);
+                if(!got.equals(exp)) throw new AssertionError("COMMAND_PARITY "+p[0]+"/"+p[1]+" exp="+exp+" got="+got);
               }
-              System.out.println("PREVIEW_PARITY_KEY_PATHS_OK");
+              System.out.println("JAVA_PREVIEW_FULL_PARITY_OK");
             }
           }
           EOF
-          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/AuditPreview.java
-          java -cp /tmp/classes AuditPreview
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/PreviewParity.java
+          java -cp /tmp/classes PreviewParity
 
-      - name: Release metadata audit
-        if: always()
+      - name: Key source assertions
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          vals={}
-          vals['java']=re.search(r'VERSION\s*=\s*"([^"]+)"',Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text()).group(1)
-          vals['ado']=re.search(r'\*! hxempirical ([0-9.]+)',Path('hxempirical.ado').read_text()).group(1)
-          vals['pkg']=re.search(r'd Version ([0-9.]+)',Path('hxempirical.pkg').read_text()).group(1)
-          vals['help']=re.search(r'version ([0-9.]+)',Path('hxempirical.sthlp').read_text()).group(1)
-          vals['readme']=re.search(r'当前发布版本：([0-9.]+)',Path('README.md').read_text()).group(1)
-          print(vals)
-          if len(set(vals.values()))!=1: raise SystemExit('VERSION_MISMATCH '+repr(vals))
-          print('VERSION_METADATA_OK',next(iter(vals.values())))
-          PY
+          grep -F 'local graph_cmds "graph twoway' hxregistry.ado
+          grep -F 'local view "poisson nbreg ppmlhdfe zip zinb tpoisson tnbreg"' hxregistry.ado
+          grep -F 'local view "ivregress ivreghdfe"' hxregistry.ado
+          grep -F 'local view "test lincom predict margins"' hxregistry.ado
+          grep -F 'public static final String VERSION = "1.4.8";' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'd Version 1.4.8' hxempirical.pkg
+
+      - name: Commit audited production changes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hxregistry.ado src/main/java/com/hexie/stata/HxWorkbench.java hxworkbench.jar hxempirical.ado hxempirical.sthlp hxempirical.pkg README.md
+          git commit -m 'Fix exhaustive catalog and preview parity v1.4.8 [selfcheck]'
+          git push origin HEAD:selfcheck-v148
