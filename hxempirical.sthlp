@@ -196,6 +196,12 @@ installed after user confirmation. {cmd:oneclick_robustness} is detected when
 present but is not downloaded from an unverified source. Nothing is downloaded
 merely by installing {cmd:hxempirical}.
 
+{pstd}
+Optional commands are not core-health failures. {cmd:hxempirical doctor}
+reports the core workbench separately from these extensions. A command page can
+be inspected without installing its extension; installation is offered only
+when the user attempts to run that command.
+
 {phang2}{cmd:. hxempirical doctor}
 {phang2}{cmd:. hxempirical install reghdfe}
 
@@ -205,7 +211,14 @@ merely by installing {cmd:hxempirical}.
 Minimum version: Stata 17. The Java workbench is compiled for Java 11 bytecode
 and uses Stata's bundled Java/SFI interface. It contains no COM Automation,
 native C plugin, drive-letter path, or platform-specific font. If Java cannot
-start, {cmd:hxempirical, classic} opens the included Stata dialog.
+start, {cmd:hxempirical, classic} opens the included Stata dialog. The classic
+dialog is a basic compatibility fallback; new workflow, monitor, and data-link
+features are maintained in the Java workbench.
+
+{pstd}
+On a clean Windows or macOS account, {cmd:hxempirical menu persist} creates and
+write-tests PERSONAL before editing the HX-managed block in {cmd:profile.do}.
+Expected missing-file probes are captured and replaced by a concise diagnostic.
 
 {title:Update and uninstall}
 

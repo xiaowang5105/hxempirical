@@ -1,4 +1,4 @@
-*! hxprecheck 1.0.0  09aug2026
+*! hxprecheck 1.1.0  14aug2026
 *! Beginner-facing preflight checks for commands with structural prerequisites.
 program define hxprecheck, rclass
     version 16.0
@@ -28,8 +28,17 @@ program define hxprecheck, rclass
             display as error "请选择副表文件。"
             exit 198
         }
-        confirm file `"`usingfile'"'
-        confirm variable `keys'
+        capture quietly confirm file `"`usingfile'"'
+        if _rc {
+            display as error "无法读取所选副表：`usingfile'"
+            display as text "请重新选择文件，并确认路径和读取权限。"
+            exit 601
+        }
+        capture quietly confirm variable `keys'
+        if _rc {
+            display as error "当前主表中没有完整的关联变量：`keys'"
+            exit 111
+        }
 
         local master_unique 1
         if inlist("`type'", "1:1", "1:m") {
@@ -39,17 +48,21 @@ program define hxprecheck, rclass
 
         local using_unique 1
         preserve
-        capture noisily {
-            quietly use `"`usingfile'"', clear
-            confirm variable `keys'
-            if inlist("`type'", "1:1", "m:1") {
-                capture isid `keys'
-                if _rc local using_unique 0
-            }
-        }
+        capture quietly use `"`usingfile'"', clear
         local using_rc = _rc
+        if !`using_rc' {
+            capture quietly confirm variable `keys'
+            local using_rc = _rc
+        }
+        if !`using_rc' & inlist("`type'", "1:1", "m:1") {
+            capture quietly isid `keys'
+            if _rc local using_unique 0
+        }
         restore
-        if `using_rc' exit `using_rc'
+        if `using_rc' {
+            display as error "副表中没有完整的关联变量，或该文件无法作为 Stata 数据读取：`keys'"
+            exit `using_rc'
+        }
 
         if !`master_unique' {
             char _dta[hxtoolbox_precheck] "检查未通过：当前主表的关联变量不唯一。"

@@ -4,7 +4,7 @@
 
 **当前发布版本：1.5.0**<br>
 **支持：Stata 17 及以上版本**<br>
-**上次修改时间：2026-08-14 18:30（UTC+8）**
+**上次修改时间：2026-08-14 22:40（UTC+8）**
 
 ### 一行安装（推荐）
 
@@ -151,6 +151,8 @@ regress price mpg weight
 
 安装 hxempirical 本身不会一次性安装全部社区命令。进入相关功能时，工作台会检查目标命令是否已经安装；对于已配置可靠安装来源的命令，可以按需安装。
 
+这些命令全部属于**可选扩展**。未安装时，核心工作台、Stata 官方命令和数据管理功能仍可使用。工作台允许先查看可选命令的说明和参数页，只有点击运行时才询问是否安装，诊断结果也会把“核心组件”和“可选扩展”分开显示。
+
 当前登记的可选命令包括：
 
 - `reghdfe`
@@ -204,6 +206,8 @@ hxempirical about
 hxempirical, classic
 ```
 
+经典界面是基础兼容后备，保留常用操作；最新页面、运行监控和数据联动以 Java 工作台为准。
+
 仅在当前 Stata 会话添加菜单入口：
 
 ```stata
@@ -249,6 +253,12 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 hxempirical, classic
 ```
 
+在全新用户环境中运行 `hxempirical menu persist` 时，程序会先创建并验证 `PERSONAL` 目录，再写入自己管理的 `profile.do` 区块。仓库维护者可以在 Windows 或 macOS 的 Stata 中运行以下脚本，检查干净目录下的持久菜单、重复执行、移除和依赖诊断：
+
+```stata
+do "tests/cross_platform_core_smoke.do"
+```
+
 ## 当前开发方向
 
 当前开发继续围绕以下方向推进：
@@ -263,6 +273,14 @@ hxempirical, classic
 ---
 
 ## 修改记录
+
+### 2026-08-14 22:40（UTC+8）
+
+- 修复全新 macOS / Windows 用户目录下 `hxempirical menu persist` 可能因 `PERSONAL` 尚未创建而报 `r(603)` 的问题；写入前增加目录创建、写权限探测和可读错误说明。
+- `hxempirical doctor` 改为分别汇报核心组件与可选扩展；八个社区命令未安装不再被表述成工作台故障。
+- 可选命令页面允许直接浏览，只有点击运行时才询问安装，取消或安装失败不会影响其他核心功能。
+- 经典 `.dlg` 明确定位为基础兼容后备；批处理模式提示用户运行正式 Stata 命令或 `.do` 文件。
+- 合并前检查收起预期的文件探测错误，并增加 Windows / macOS 共用的干净 `PERSONAL` 冒烟测试脚本。
 
 ### 2026-08-14 18:30（UTC+8）
 

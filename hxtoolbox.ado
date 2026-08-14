@@ -1,4 +1,4 @@
-*! hxtoolbox 4.5.0  11aug2026
+*! hxtoolbox 4.6.0  14aug2026
 *! Open the Java single-window workbench; keep the native dialog as fallback.
 program define hxtoolbox
     version 17.0
@@ -10,10 +10,16 @@ program define hxtoolbox
     quietly hxpick, target(all) action(clear)
     quietly hxmonitor, action(refresh)
 
-    /* Batch runs and explicit classic mode use the tested native dialog. */
-    if "`classic'" != "" | "`c(mode)'" == "batch" {
+    /* Classic is a compatibility fallback with a deliberately smaller scope. */
+    if "`classic'" != "" {
+        display as text "正在打开经典兼容界面。该界面保留基础操作；最新工作台功能以 Java 界面为准。"
         db hxtoolbox_v2
         exit
+    }
+    if "`c(mode)'" == "batch" {
+        display as error "hxempirical 图形工作台只能在 Stata 交互模式中打开。"
+        display as text "批处理实证请直接运行生成的 Stata 命令或正式 .do 文件。"
+        exit 198
     }
 
     local jarfile ""

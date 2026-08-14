@@ -2689,7 +2689,6 @@ public final class HxWorkbench {
       private HxWorkbench.DatasetSnapshot beforeSnapshot;
       private final Set<String> changedCells = new HashSet<>();
       private final Set<String> addedVariables = new HashSet<>();
-      private final Set<String> declinedDependencies = new HashSet<>();
       private final boolean previewMode;
       private static final Set<String> OPTIONAL_DEPENDENCIES = new HashSet<>(
          Arrays.asList("reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "coefplot", "event_plot")
@@ -7910,7 +7909,6 @@ public final class HxWorkbench {
             if (var2 != 0) {
                this.setBusy(false, "解析失败，返回码 " + var2 + "。可以在搜索框输入其他命令。");
             } else {
-               this.offerOptionalDependency(var1);
                this.currentCommand = var1;
                String var3 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_title"));
                this.commandTitle.setText(var3);
@@ -7940,6 +7938,7 @@ public final class HxWorkbench {
                this.rebuildForm();
                this.updatePreview();
                this.setBusy(false, "已由统一解析流程生成 " + var1 + " 页面。");
+               this.offerOptionalDependency(var1);
             }
          }
       }
@@ -9813,24 +9812,50 @@ public final class HxWorkbench {
       }
 
       private void offerOptionalDependency(String var1) {
-         if (OPTIONAL_DEPENDENCIES.contains(var1)
-            && !"1".equals(HxWorkbench.StataBridge.characteristic("hxtoolbox_resolve_installed_flag"))
-            && !this.declinedDependencies.contains(var1)) {
-            int var2 = JOptionPane.showConfirmDialog(this, var1 + " 尚未安装。\n现在从 SSC 安装它及所需依赖吗？", "安装可选命令", 0, 3);
-            if (var2 != 0) {
-               this.declinedDependencies.add(var1);
-            } else {
-               this.setBusy(true, "正在安装 " + var1 + "…");
-               int var3 = HxWorkbench.StataBridge.execute("hxdependency install " + var1, false);
-               if (var3 == 0) {
-                  HxWorkbench.StataBridge.execute("quietly hxresolve " + var1 + ", refresh", false);
-                  JOptionPane.showMessageDialog(this, var1 + " 已安装。", "安装完成", 1);
-               } else {
-                  this.declinedDependencies.add(var1);
-                  JOptionPane.showMessageDialog(this, "安装未完成，Stata 返回码 " + var3 + "。\n命令资料页仍可查看。", "安装失败", 2);
-               }
+         if (OPTIONAL_DEPENDENCIES.contains(var1) && !this.optionalDependencyInstalled(var1)) {
+            this.statusLabel.setText(var1 + " 是可选扩展，当前尚未安装；可以先查看参数，点击运行时再决定是否安装。");
+            if (this.baselineEstimatorSource != null && var1.equals(selected(this.baselineEstimator))) {
+               this.baselineEstimatorSource.setText("第三方 · 需要安装");
+               this.baselineEstimatorSource.setForeground(new Color(143, 91, 24));
             }
          }
+      }
+
+      private boolean optionalDependencyInstalled(String command) {
+         return !OPTIONAL_DEPENDENCIES.contains(command)
+            || HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0;
+      }
+
+      private boolean ensureOptionalDependencyBeforeRun(String command) {
+         if (!OPTIONAL_DEPENDENCIES.contains(command) || this.optionalDependencyInstalled(command)) {
+            return true;
+         }
+         String message = command + " 是当前操作需要的可选扩展，尚未安装。\n\n"
+            + "工作台核心功能仍然正常。是否现在安装 " + command + " 及其必要依赖？";
+         int choice = JOptionPane.showConfirmDialog(this, message, "运行前安装可选扩展", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+         if (choice != JOptionPane.YES_OPTION) {
+            this.statusLabel.setText("已取消运行：" + command + " 尚未安装。其他核心功能可以继续使用。");
+            return false;
+         }
+         this.setBusy(true, "正在安装 " + command + "…");
+         int rc = HxWorkbench.StataBridge.execute("hxdependency install " + command, true);
+         if (rc != 0) {
+            this.setBusy(false, command + " 安装未完成，返回码 " + rc + "。");
+            JOptionPane.showMessageDialog(
+               this,
+               "安装未完成，Stata 返回码 " + rc + "。\n请检查网络，或查看该命令作者的安装说明。\n工作台核心功能不受影响。",
+               "可选扩展安装失败",
+               JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+         }
+         HxWorkbench.StataBridge.execute("quietly hxresolve " + command + ", refresh", false);
+         this.setBusy(false, command + " 已安装，可以运行。");
+         if (this.baselineEstimatorSource != null && command.equals(selected(this.baselineEstimator))) {
+            this.baselineEstimatorSource.setText(commandSource(command));
+            this.baselineEstimatorSource.setForeground(new Color(143, 91, 24));
+         }
+         return true;
       }
 
       private void rebuildForm() {
@@ -11608,7 +11633,9 @@ public final class HxWorkbench {
       }
 
       private void runCurrentCommand() {
-         if ("__convert_dta__".equals(this.currentCommand)) {
+         if (!this.ensureOptionalDependencyBeforeRun(this.currentCommand)) {
+            return;
+         } else if ("__convert_dta__".equals(this.currentCommand)) {
             this.runConvertDta();
          } else if ("__missing_analysis__".equals(this.currentCommand)) {
             this.runMissingAnalysis();

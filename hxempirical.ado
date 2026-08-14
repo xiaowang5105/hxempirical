@@ -61,7 +61,36 @@ program define hxempirical, rclass
     }
 
     if `"`action'"' == "doctor" {
+        local core "hxtoolbox hxmenu hxsetup hxregistry hxresolve hxexecute hxmonitor hxrefresh hxpick"
+        local core_total 11
+        local core_ok 0
+        local core_missing ""
+        foreach component of local core {
+            capture quietly which `component'
+            if _rc local core_missing `"`core_missing' `component'"'
+            else local ++core_ok
+        }
+        capture quietly findfile hxworkbench.jar
+        if _rc local core_missing `"`core_missing' hxworkbench.jar"'
+        else local ++core_ok
+        capture quietly findfile hxtoolbox_v2.dlg
+        if _rc local core_missing `"`core_missing' hxtoolbox_v2.dlg"'
+        else local ++core_ok
+
+        display as text _newline ustrunescape("\u6838\u5fc3\u5de5\u4f5c\u53f0\u68c0\u67e5")
+        if `core_ok' == `core_total' {
+            display as result ustrunescape("[\u6838\u5fc3\u7ec4\u4ef6\uff1a\u6b63\u5e38] ") "`core_ok'/`core_total'"
+        }
+        else {
+            display as error ustrunescape("[\u6838\u5fc3\u7ec4\u4ef6\uff1a\u4e0d\u5b8c\u6574] ") "`core_ok'/`core_total'"
+            display as error ustrunescape("\u7f3a\u5c11\uff1a") trim(`"`core_missing'"')
+        }
         hxdependency check
+        local optional_missing = r(optional_missing)
+        return scalar core_healthy = (`core_ok' == `core_total')
+        return scalar core_installed = `core_ok'
+        return scalar core_total = `core_total'
+        return scalar optional_missing = `optional_missing'
         exit
     }
 

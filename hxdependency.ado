@@ -1,4 +1,4 @@
-*! hxdependency 0.4.0  11aug2026
+*! hxdependency 0.5.0  14aug2026
 *! Lazy checks and user-approved installation of optional community commands
 program define hxdependency, rclass
     version 17.0
@@ -12,13 +12,34 @@ program define hxdependency, rclass
     if `"`action'"' == "check" {
         if `"`target'"' == "" local targets "`supported'"
         else local targets "`target'"
+        local optional_total 0
+        local optional_installed 0
+        local missing ""
+        display as text _newline "可选扩展检查"
+        display as text "这些命令不影响 hxempirical 启动；只有进入对应功能时才需要安装。"
         foreach cmd of local targets {
             capture quietly which `cmd'
             local installed = cond(_rc, 0, 1)
-            if `installed' display as result "[已安装] `cmd'"
-            else display as text "[可选，尚未安装] `cmd'"
+            local ++optional_total
+            if `installed' {
+                local ++optional_installed
+                display as result "[可选扩展：已安装] `cmd'"
+            }
+            else {
+                local missing `"`missing' `cmd'"'
+                local note "进入对应功能时可按提示安装"
+                if `"`cmd'"' == "oneclick_robustness" local note "需按命令作者说明手动安装"
+                display as text "[可选扩展：未安装] `cmd' — `note'"
+            }
             return scalar `cmd' = `installed'
         }
+        local optional_missing = `optional_total' - `optional_installed'
+        display as text "可选扩展：`optional_installed'/`optional_total' 已安装；`optional_missing' 个未安装。"
+        if `optional_missing' display as text "当前核心工作台仍可正常使用。"
+        return local missing = trim(`"`missing'"')
+        return scalar optional_total = `optional_total'
+        return scalar optional_installed = `optional_installed'
+        return scalar optional_missing = `optional_missing'
         exit
     }
 

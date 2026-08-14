@@ -18,6 +18,8 @@ hxempirical
 
 安装器会把文件放进当前用户的 `PERSONAL` ado 目录，通常不需要管理员权限。它会先下载完整发布包，再统一写入正式目录；更新中途发生写入错误时，会恢复原有文件。
 
+如果这是全新的 Stata 用户环境，安装器和 `hxempirical menu persist` 会先创建 `PERSONAL` 目录并验证写权限。这个处理同时适用于 Windows 和 macOS。
+
 安装器还会：
 
 - 检查 Stata 版本和 `PERSONAL` 写权限；
@@ -80,6 +82,29 @@ https://xiaowang5105.github.io/hxempirical/hxempirical.pkg
 sysdir
 adopath
 ```
+
+`hxempirical doctor` 会分别显示：
+
+- **核心组件**：缺失时代表安装不完整；
+- **可选扩展**：`reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot`、`event_plot`。这些命令未安装不会影响工作台启动，只影响对应功能。
+
+如果 Java 工作台在某台电脑上无法启动，可以运行：
+
+```stata
+hxempirical, classic
+```
+
+经典界面提供基础兼容操作，最新工作台功能以 Java 界面为准。
+
+## macOS / 干净用户目录验证
+
+从仓库根目录启动 Stata 后运行：
+
+```stata
+do "tests/cross_platform_core_smoke.do"
+```
+
+脚本会把 `PERSONAL` 临时指向测试目录，检查目录自动创建、菜单持久化幂等性、菜单移除和核心/可选依赖诊断，最后恢复原来的 `PERSONAL` 设置并清理测试文件。
 
 GitHub Raw 在部分学校网络、代理环境和 Stata TLS 环境中可能无法稳定读取，因此安装说明统一使用 GitHub Pages 地址。
 
