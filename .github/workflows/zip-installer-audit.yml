@@ -1,0 +1,40 @@
+name: ZIP installer audit
+
+on:
+  push:
+    branches: [zip-installer-v149-20260814]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and inspect archive
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            https://codeload.github.com/xiaowang5105/hxempirical/zip/refs/heads/zip-installer-v149-20260814 \
+            -o /tmp/hx.zip
+          unzip -q /tmp/hx.zip -d /tmp/hx-unpack
+          test -f /tmp/hx-unpack/hxempirical-zip-installer-v149-20260814/hxempirical.pkg
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path('/tmp/hx-unpack/hxempirical-zip-installer-v149-20260814')
+          pkg = (root/'hxempirical.pkg').read_text(encoding='utf-8')
+          files=[]
+          for line in pkg.splitlines():
+              m=re.match(r'^f\s+(.+?)\s*$', line)
+              if m: files.append(m.group(1))
+          assert files
+          missing=[f for f in files if not (root/f).is_file()]
+          assert not missing, missing
+          src=(root/'hxinstall_zip.do').read_text(encoding='utf-8')
+          for token in ['codeload.github.com','c(sysdir_personal)','unzipfile','hxempirical.pkg','hxworkbench.jar']:
+              assert token in src, token
+          assert 'net install' not in src.lower()
+          print('ZIP_ARCHIVE_OK', len(files))
+          PY
