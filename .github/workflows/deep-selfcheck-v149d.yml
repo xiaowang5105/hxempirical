@@ -1,0 +1,132 @@
+name: Deep self-check v1.4.9 continuation 2
+
+on:
+  push:
+    branches: [selfcheck-v149-deep]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v149-deep
+          fetch-depth: 0
+
+      - name: Apply known fixes in workspace
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('hxregistry.ado'); s=p.read_text(encoding='utf-8')
+          old="foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `oneclick_cmds' {"
+          if s.count(old)!=1: raise SystemExit('unexpected all_cmds loop count '+str(s.count(old)))
+          s=s.replace(old,"foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `did_cmds' `oneclick_cmds' {",1); p.write_text(s,encoding='utf-8')
+          p=Path('src/main/java/com/hexie/stata/HxWorkbench.java'); j=p.read_text(encoding='utf-8')
+          dup='this.syncSidebarFromContext();\n         this.syncSidebarFromContext();'
+          n=j.count(dup)
+          if n<1: raise SystemExit('expected duplicate sidebar sync sequence')
+          j=j.replace(dup,'this.syncSidebarFromContext();'); p.write_text(j,encoding='utf-8')
+          print('WORKSPACE_FIXES', 'duplicate_sync_sequences_removed=',n)
+          PY
+
+      - name: Package and registry bijection
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('.'); pkg=(root/'hxempirical.pkg').read_text(encoding='utf-8')
+          packaged=[m.group(1).strip() for m in re.finditer(r'^f\s+(.+)$',pkg,re.M)]
+          missing=[p for p in packaged if not (root/p).exists()]
+          if missing: raise SystemExit('PKG_MISSING '+repr(missing))
+          runtime=[p.name for p in root.iterdir() if p.is_file() and ((p.name.startswith('hx') and p.suffix in {'.ado','.sthlp','.dlg','.jar'}) or (p.name.startswith('hx_') and p.suffix=='.dta'))]
+          omitted=sorted(set(runtime)-set(packaged))
+          if omitted: raise SystemExit('PKG_OMITS '+repr(omitted))
+          s=(root/'hxregistry.ado').read_text(encoding='utf-8')
+          def local(n):
+              m=re.search(r'^\s*local\s+'+re.escape(n)+r'\s+"([^"]*)"',s,re.M)
+              if not m: raise SystemExit('NO_LOCAL '+n)
+              return m.group(1).split()
+          cats={'data':('data_cmds','data_methods'),'stats':('stats_cmds','stats_methods'),'graph':('graph_cmds','graph_methods'),'did':('did_cmds','did_methods'),'oneclick':('oneclick_cmds','oneclick_methods')}
+          rr=re.compile(r'(?:^|\n)\s*(?:if|else if)\s+inlist\(`"`method\'"\',\s*"([^"]+)"[^\n]*?\)\s+local\s+view\s+"([^"]*)"')
+          routes={m.group(1):m.group(2).split() for m in rr.finditer(s)}
+          rows=[]
+          for cat,(cl,ml) in cats.items():
+              for method in local(ml):
+                  if method not in routes: raise SystemExit(f'NO_ROUTE {cat}/{method}')
+                  rows.append((cat,method,routes[method]))
+          loop=re.search(r'foreach\s+cmd\s+in\s+([^\{]+)\{\s*\n\s*if\s+!strpos\(" `all_cmds\'',s)
+          if not loop: raise SystemExit('NO_ALL_CMDS_LOOP')
+          lists={n for n,_ in cats.values() if ('`'+n+"'") in loop.group(1)}
+          searchable={c for n in lists for c in local(n)}
+          visible={c for _,_,cs in rows for c in cs}
+          if visible-searchable: raise SystemExit('VISIBLE_NOT_SEARCHABLE '+repr(sorted(visible-searchable)))
+          if searchable-visible: raise SystemExit('SEARCH_WITHOUT_VISIBLE_PATH '+repr(sorted(searchable-visible)))
+          Path('/tmp/method_expected.tsv').write_text('\n'.join(cat+'\t'+'|'.join(local(ml)) for cat,(cl,ml) in cats.items()),encoding='utf-8')
+          Path('/tmp/command_expected.tsv').write_text('\n'.join(cat+'\t'+method+'\t'+' '.join(cs) for cat,method,cs in rows),encoding='utf-8')
+          print('CATALOG_BIJECTION_OK',len(searchable),'commands',len(rows),'methods')
+          PY
+
+      - name: Build SFI stubs and Java
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          printf '%s\n' 'package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }' > /tmp/sfi/com/stata/sfi/SFIToolkit.java
+          printf '%s\n' 'package com.stata.sfi; public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }' > /tmp/sfi/com/stata/sfi/Characteristic.java
+          printf '%s\n' 'package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }' > /tmp/sfi/com/stata/sfi/Macro.java
+          printf '%s\n' 'package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return false;} }' > /tmp/sfi/com/stata/sfi/Missing.java
+          printf '%s\n' 'package com.stata.sfi; public class Scalar { public static double getValue(String s){return 0;} }' > /tmp/sfi/com/stata/sfi/Scalar.java
+          printf '%s\n' 'package com.stata.sfi; public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Data.java
+          printf '%s\n' 'package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Frame.java
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          javap -verbose -classpath /tmp/classes com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Preview parity all visible categories
+        shell: bash
+        run: |
+          cat > /tmp/PreviewParity.java <<'EOF'
+          import java.lang.reflect.*; import java.nio.file.*; import java.util.*;
+          public class PreviewParity { @SuppressWarnings("unchecked") public static void main(String[] a)throws Exception{
+            Class<?> c=Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame"); Method pm=c.getDeclaredMethod("previewMethodsForCategory",String.class);pm.setAccessible(true); Method pc=c.getDeclaredMethod("previewCommandsForMethod",String.class);pc.setAccessible(true);
+            for(String line:Files.readAllLines(Paths.get("/tmp/method_expected.tsv"))){String[] p=line.split("\\t",2);List<String> e=Arrays.asList(p[1].split("\\|",-1));List<String> g=(List<String>)pm.invoke(null,p[0]);if(!g.equals(e))throw new AssertionError("METHOD "+p[0]+" exp="+e+" got="+g);}
+            for(String line:Files.readAllLines(Paths.get("/tmp/command_expected.tsv"))){String[] p=line.split("\\t",3);List<String> e=p.length<3?Collections.emptyList():Arrays.asList(p[2].split(" "));List<String> g=(List<String>)pc.invoke(null,p[1]);if(!g.equals(e))throw new AssertionError("COMMAND "+p[0]+"/"+p[1]+" exp="+e+" got="+g);}
+            System.out.println("PREVIEW_PARITY_ALL_VISIBLE_OK"); }}
+          EOF
+          javac --release 11 -cp /tmp/classes -d /tmp/classes /tmp/PreviewParity.java
+          java -cp /tmp/classes PreviewParity
+
+      - name: Dedicated linear chooser catalog audit
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          j=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8'); r=Path('hxregistry.ado').read_text(encoding='utf-8')
+          catalog=set()
+          for n in ['data_cmds','stats_cmds','graph_cmds','did_cmds','oneclick_cmds']:
+              m=re.search(r'^\s*local\s+'+n+r'\s+"([^"]*)"',r,re.M); catalog.update(m.group(1).split())
+          start=j.find('private JComponent buildExactLinearPage()'); end=j.find('private void showExactLinearPage()')
+          if start<0 or end<0: raise SystemExit('EXACT_LINEAR_REGION_NOT_FOUND')
+          region=j[start:end]
+          cmds=set(re.findall(r'\{\{"([A-Za-z_][A-Za-z0-9_]*)","',region)); cmds.update(re.findall(r'exactLinearMainCard\("","([A-Za-z_][A-Za-z0-9_]*)"',region))
+          extra=sorted(cmds-catalog)
+          print('EXACT_LINEAR_BUTTON_COMMANDS',sorted(cmds))
+          if extra: raise SystemExit('EXACT_LINEAR_OUTSIDE_CATALOG '+repr(extra))
+          PY
+
+      - name: Release metadata and hygiene
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          j=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8'); ado=Path('hxempirical.ado').read_text(encoding='utf-8'); pkg=Path('hxempirical.pkg').read_text(encoding='utf-8'); hlp=Path('hxempirical.sthlp').read_text(encoding='utf-8'); rd=Path('README.md').read_text(encoding='utf-8')
+          vals={'java':re.search(r'public static final String VERSION = "([^"]+)"',j).group(1),'ado':re.search(r'^\*! hxempirical ([0-9.]+)',ado,re.M).group(1),'pkg':re.search(r'^d Version ([0-9.]+)',pkg,re.M).group(1),'help':re.search(r'^\{\* \*! version ([0-9.]+)',hlp,re.M).group(1),'readme':re.search(r'当前发布版本：\*\*([0-9.]+)\*\*',rd).group(1)}
+          if len(set(vals.values()))!=1: raise SystemExit('VERSION_DRIFT '+repr(vals))
+          if 'this.syncSidebarFromContext();\n         this.syncSidebarFromContext();' in j: raise SystemExit('DUPLICATE_SIDEBAR_SYNC_REMAINS')
+          print('METADATA_HYGIENE_OK',vals)
+          PY
