@@ -1,0 +1,67 @@
+name: Final metadata and jar audit v1.4.9
+
+on:
+  push:
+    branches: [selfcheck-v149-deep]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: selfcheck-v149-deep
+      - name: Source and metadata checks
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          j=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+          ado=Path('hxempirical.ado').read_text(encoding='utf-8')
+          pkg=Path('hxempirical.pkg').read_text(encoding='utf-8')
+          hlp=Path('hxempirical.sthlp').read_text(encoding='utf-8')
+          rd=Path('README.md').read_text(encoding='utf-8')
+          dup='this.syncSidebarFromContext();\n         this.syncSidebarFromContext();'
+          if dup in j: raise SystemExit('DUPLICATE_SIDEBAR_SYNC')
+          pats={
+            'java':r'public static final String VERSION = "([^"]+)"',
+            'ado':r'^\*! hxempirical ([0-9.]+)',
+            'pkg':r'^d Version ([0-9.]+)',
+            'help':r'^\{\* \*! version ([0-9.]+)',
+            'readme':r'\*\*当前发布版本：([0-9.]+)\*\*',
+          }
+          texts={'java':j,'ado':ado,'pkg':pkg,'help':hlp,'readme':rd}
+          vals={}
+          for k,pat in pats.items():
+              m=re.search(pat,texts[k],re.M)
+              if not m: raise SystemExit('VERSION_PATTERN_MISSING '+k)
+              vals[k]=m.group(1)
+          if len(set(vals.values()))!=1: raise SystemExit('VERSION_DRIFT '+repr(vals))
+          if f'HxWorkbench {vals["java"]}' not in j: raise SystemExit('JAVA_VERSION_METHOD_DRIFT')
+          calls=len(re.findall(r'browseMethod\("reg",\s*"线性模型"\)',j))
+          print('LEGACY_EXACT_LINEAR_CALLS',calls)
+          print('SOURCE_HYGIENE_OK')
+          print('VERSION_METADATA_OK',vals)
+          PY
+      - name: Rebuild and compare every Java class byte-for-byte
+        shell: bash
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes /tmp/old /tmp/new
+          printf '%s\n' 'package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return "";} }' > /tmp/sfi/com/stata/sfi/SFIToolkit.java
+          printf '%s\n' 'package com.stata.sfi; public class Characteristic { public static String getGlobal(String s){return "";} public static String getDtaChar(String s){return "";} }' > /tmp/sfi/com/stata/sfi/Characteristic.java
+          printf '%s\n' 'package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} public static void setGlobal(String a,String b){} }' > /tmp/sfi/com/stata/sfi/Macro.java
+          printf '%s\n' 'package com.stata.sfi; public class Missing { public static boolean isMissing(double d){return false;} }' > /tmp/sfi/com/stata/sfi/Missing.java
+          printf '%s\n' 'package com.stata.sfi; public class Scalar { public static double getValue(String s){return 0;} }' > /tmp/sfi/com/stata/sfi/Scalar.java
+          printf '%s\n' 'package com.stata.sfi; public class Data { public static long getObsTotal(){return 0;} public static int getVarCount(){return 0;} public static String getVarName(int i){return "";} public static int getVarIndex(String s){return 1;} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long n){return 0;} public static String getStr(int i,long n){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static String getValueLabel(int i){return "";} public static String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Data.java
+          printf '%s\n' 'package com.stata.sfi; public class Frame { public static Frame create(String s){return new Frame();} public static Frame connect(String s){return new Frame();} public void drop(){} public int getVarIndex(String s){return 1;} public boolean isVarTypeString(int i){return true;} public String getStr(int i,long n){return "";} public double getNum(int i,long n){return 0;} public long getObsTotal(){return 0;} public int getVarCount(){return 0;} public String getVarName(int i){return "";} public String getFormattedValue(int i,long n,boolean b){return "";} }' > /tmp/sfi/com/stata/sfi/Frame.java
+          javac --release 11 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf /tmp/rebuilt.jar -C /tmp/classes com/hexie/stata
+          (cd /tmp/old && jar xf "$GITHUB_WORKSPACE/hxworkbench.jar")
+          (cd /tmp/new && jar xf /tmp/rebuilt.jar)
+          diff -qr /tmp/old/com /tmp/new/com
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+          echo JAR_CLASS_BYTES_MATCH_SOURCE
