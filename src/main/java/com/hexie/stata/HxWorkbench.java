@@ -10411,6 +10411,12 @@ public final class HxWorkbench {
          return strip;
       }
 
+      private static boolean isCoreModelCommand(String command) {
+         return Arrays.asList(
+            "keep", "drop", "merge", "reshape", "collapse", "ttest", "predict", "winsor2"
+         ).contains(command);
+      }
+
       private static boolean isGenericPanelEstimator(String command) {
          return Arrays.asList(
             "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
@@ -10491,8 +10497,11 @@ public final class HxWorkbench {
          }
          if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) this.vce.addItem("cluster");
 
-         boolean hasMethodSettings = this.model.getItemCount() > 0
-            || this.flag("has_absorb") || this.flag("has_vce") || this.flag("has_cluster");
+         boolean modelIsCore = this.model.getItemCount() > 0 && isCoreModelCommand(this.currentCommand);
+         boolean absorbIsCore = this.flag("has_absorb")
+            && Arrays.asList("collapse", "didregress", "xtdidregress").contains(this.currentCommand);
+         boolean hasMethodSettings = (this.model.getItemCount() > 0 && !modelIsCore)
+            || (this.flag("has_absorb") && !absorbIsCore) || this.flag("has_vce") || this.flag("has_cluster");
 
          this.enableVariableDrop(this.depvar, "因变量");
          this.enableVariableDrop(this.variables, "变量 / 解释变量");
@@ -10511,9 +10520,38 @@ public final class HxWorkbench {
          c.insets = new Insets(0, 0, 10, 0);
          this.formPanel.add(this.genericStepStripV151(hasMethodSettings), c);
 
-         JPanel coreCard = this.xtregWizardCardV130(1, "核心设置", "先完成当前任务最关键的变量、文件或表达式；变量可从右侧变量窗口或数据表表头直接拖入。");
+         String coreTitle = "核心设置";
+         String coreSubtitle = "先完成当前任务最关键的变量、文件或表达式；变量可从右侧变量窗口或数据表表头直接拖入。";
+         if (Arrays.asList("keep", "drop").contains(this.currentCommand)) {
+            coreTitle = "处理对象";
+            coreSubtitle = "先选择处理变量还是处理样本，再填写对应范围；样本条件默认直接展开。";
+         } else if ("merge".equals(this.currentCommand)) {
+            coreTitle = "合并设置";
+            coreSubtitle = "先选择合并关系，再指定关联变量和副表文件；运行前检查键是否满足唯一性要求。";
+         } else if ("reshape".equals(this.currentCommand)) {
+            coreTitle = "转换设置";
+            coreSubtitle = "先选择宽转长或长转宽，再填写 stub、i() 和 j()。";
+         } else if ("collapse".equals(this.currentCommand)) {
+            coreTitle = "汇总设置";
+            coreSubtitle = "先选择统计量，再选择汇总变量和 by() 分组变量。";
+         } else if ("ttest".equals(this.currentCommand)) {
+            coreTitle = "检验设置";
+            coreSubtitle = "先选择单样本、分组比较或配对比较，再填写变量与比较对象。";
+         } else if ("predict".equals(this.currentCommand)) {
+            coreTitle = "生成设置";
+            coreSubtitle = "先选择生成预测值、残差或标准化残差，再填写新变量名。";
+         } else if ("winsor2".equals(this.currentCommand)) {
+            coreTitle = "缩尾设置";
+            coreSubtitle = "先选择覆盖原变量或创建新变量，再设置变量和缩尾分位点。";
+         }
+         JPanel coreCard = this.xtregWizardCardV130(1, coreTitle, coreSubtitle);
          JPanel coreBody = this.genericCardBody();
          boolean hasCore = false;
+
+         if (modelIsCore) {
+            this.addGenericBodyField(coreBody, this.sem("model_label"), this.model);
+            hasCore = true;
+         }
 
          if (this.flag("has_depvar")) {
             this.addGenericBodyField(coreBody, this.sem("dep_label"), this.depvar);
@@ -10566,6 +10604,20 @@ public final class HxWorkbench {
             hasCore = true;
          }
 
+         if (absorbIsCore) {
+            this.addGenericBodyField(coreBody, this.sem("absorb_label"), this.listPane(this.absorb));
+            hasCore = true;
+         }
+
+         if (Arrays.asList("keep", "drop", "merge", "append", "reshape", "collapse", "replace").contains(this.currentCommand)) {
+            JLabel mutationHint = new JLabel("<html>提示：该操作会改变当前内存中的数据。正式数据建议先保存，再执行并检查结果。</html>");
+            mutationHint.setForeground(MUTED);
+            mutationHint.setFont(mutationHint.getFont().deriveFont(9.8F));
+            mutationHint.setAlignmentX(0.0F);
+            coreBody.add(mutationHint);
+            coreBody.add(Box.createVerticalStrut(4));
+         }
+
          if (!hasCore) {
             JLabel noCore = new JLabel("这个命令没有必填变量角色，可直接进入下一步设置参数。");
             noCore.setForeground(MUTED);
@@ -10580,10 +10632,10 @@ public final class HxWorkbench {
             JPanel methodCard = this.xtregWizardCardV130(2, "方法与设置", "当前任务支持的方法、模型、固定效应与标准误集中在这里。只显示实际可用的项目。");
             JPanel methodBody = this.genericCardBody();
 
-            if (this.model.getItemCount() > 0) {
+            if (this.model.getItemCount() > 0 && !modelIsCore) {
                this.addGenericBodyField(methodBody, this.sem("model_label"), this.model);
             }
-            if (this.flag("has_absorb")) {
+            if (this.flag("has_absorb") && !absorbIsCore) {
                this.addGenericBodyField(methodBody, this.sem("absorb_label"), this.listPane(this.absorb));
             }
             if (this.flag("has_vce")) {
@@ -10602,7 +10654,7 @@ public final class HxWorkbench {
          }
 
          int advancedStep = hasMethodSettings ? 3 : 2;
-         boolean advancedExpandedByDefault = Arrays.asList("keep", "drop").contains(this.currentCommand);
+         boolean advancedExpandedByDefault = Arrays.asList("keep", "drop", "replace").contains(this.currentCommand);
          String advancedSubtitle = advancedExpandedByDefault
             ? "当前任务的样本条件直接展开；其余低频参数也在这里。运行前可在下方检查真实 Stata 命令。"
             : "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。";
@@ -10637,7 +10689,7 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.rebuilding = false;
          this.updateConditionalFields();
-         this.statusLabel.setText(this.currentCommand + "：常用参数已按步骤整理；低频设置默认收起，可从右侧直接拖入变量。");
+         this.statusLabel.setText(this.currentCommand + "：核心操作已按任务顺序整理；低频设置集中在最后一步，可从右侧直接拖入变量。");
       }
 
       private void showSpecialPage(String var1) {
