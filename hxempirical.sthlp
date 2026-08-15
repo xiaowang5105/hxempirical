@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.6  15aug2026}{...}
+{* *! version 1.5.7  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -14,7 +14,6 @@
 {p 8 16 2}{cmd:hxempirical menu}
 {p 8 16 2}{cmd:hxempirical menu persist}
 {p 8 16 2}{cmd:hxempirical menu remove}
-{p 8 16 2}{cmd:hxempirical install} {it:command}
 {p 8 16 2}{cmd:hxempirical update}
 {p 8 16 2}{cmd:hxempirical repair}
 {p 8 16 2}{cmd:hxempirical uninstall}
@@ -23,12 +22,12 @@
 
 {pstd}
 {cmd:hxempirical} opens one desktop-style workbench with a collapsible left sidebar,
-task-oriented pages, live command preview, and a read-only view of the dataset
-currently in Stata memory. Commands run in Stata itself. The complete command is
-added to Stata's History window before execution.
+task-oriented pages, live command preview, and an editable spreadsheet-style view of the dataset
+currently in Stata memory. Double-clicked cell edits and the fx formula bar execute real Stata
+{cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.
 
 {pstd}
-The 1.5.6 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.7 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -57,6 +56,11 @@ The workbench uses one resolver/parser/schema/renderer pipeline for official and
 community-contributed commands. Syntax, help, examples, ado source, and an
 official dialog are used when available. Unresolved syntax remains available in
 the advanced-options field.
+
+{pstd}
+External commands are user-managed. The workbench only detects registered third-party commands
+that Stata can currently find and lists them under {bf:外部命令}; it does not automatically install them.
+Install any needed command using its author's instructions, then reopen {bf:外部命令} to detect it.
 
 
 {title:Ordinary linear regression workspace}

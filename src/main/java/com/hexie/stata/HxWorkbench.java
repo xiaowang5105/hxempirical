@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.6";
+   public static final String VERSION = "1.5.7";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -2728,7 +2728,7 @@ public final class HxWorkbench {
          Arrays.asList("reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "coefplot", "event_plot")
       );
       private static final List<String> EXTERNAL_COMMAND_CATALOG = Arrays.asList(
-         "reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "oneclick", "oneclick_robustness", "coefplot", "event_plot"
+         "ftools", "reghdfe", "winsor2", "ranktest", "ivreg2", "ivreghdfe", "ppmlhdfe", "tuples", "oneclick", "oneclick_robustness", "coefplot", "event_plot"
       );
       private static final Map<String, HxWorkbench.WorkbenchFrame.CommandGuide> COMMAND_GUIDES = buildCommandGuides();
 
@@ -5668,7 +5668,7 @@ public final class HxWorkbench {
 
       private void browseInstalledExternalCommands() {
          this.activeCategoryCode = "external";
-         this.activeCategoryName = "已下载外部命令";
+         this.activeCategoryName = "已安装外部命令";
          this.activeMethodName = "已安装";
          this.rebuilding = true;
          this.commandModel.clear();
@@ -5682,14 +5682,14 @@ public final class HxWorkbench {
          }
          for (String command : installed) this.commandModel.addElement(command);
          this.rebuilding = false;
-         this.renderCommandChooser("已下载外部命令", "", installed);
+         this.renderCommandChooser("已安装外部命令", "", installed);
          this.chooserHint.setText(
             installed.isEmpty()
-               ? "当前没有检测到工具箱已登记且 Stata 能找到的外部命令。"
-               : "仅显示工具箱已登记且当前 Stata 能找到的外部命令，共 " + installed.size() + " 个。"
+               ? "当前没有检测到已安装的登记外部命令。本页只检测，不负责安装；需要什么请自行安装后再次进入本页。"
+               : "已检测到 " + installed.size() + " 个已安装外部命令（登记 " + EXTERNAL_COMMAND_CATALOG.size() + " 个）。本页只检测，不负责安装。"
          );
          this.setSidebarActive("external");
-         this.setBusy(false, installed.isEmpty() ? "没有检测到已安装的登记外部命令。" : "已读取当前可用的外部命令。");
+         this.setBusy(false, installed.isEmpty() ? "没有检测到已安装的登记外部命令。" : "外部命令检测完成：" + installed.size() + " 个已安装。");
       }
 
       private void browseCommandCategory(String var1, String var2) {
@@ -10102,9 +10102,9 @@ public final class HxWorkbench {
 
       private void offerOptionalDependency(String var1) {
          if (OPTIONAL_DEPENDENCIES.contains(var1) && !this.optionalDependencyInstalled(var1)) {
-            this.statusLabel.setText(var1 + " 是可选扩展，当前尚未安装；可以先查看参数，点击运行时再决定是否安装。");
+            this.statusLabel.setText(var1 + " 是外部命令，当前尚未安装；请按作者说明自行安装，安装后到“外部命令”重新检测。");
             if (this.baselineEstimatorSource != null && var1.equals(selected(this.baselineEstimator))) {
-               this.baselineEstimatorSource.setText("第三方 · 需要安装");
+               this.baselineEstimatorSource.setText("第三方 · 未安装");
                this.baselineEstimatorSource.setForeground(new Color(143, 91, 24));
             }
          }
@@ -10119,32 +10119,14 @@ public final class HxWorkbench {
          if (!OPTIONAL_DEPENDENCIES.contains(command) || this.optionalDependencyInstalled(command)) {
             return true;
          }
-         String message = command + " 是当前操作需要的可选扩展，尚未安装。\n\n"
-            + "工作台核心功能仍然正常。是否现在安装 " + command + " 及其必要依赖？";
-         int choice = JOptionPane.showConfirmDialog(this, message, "运行前安装可选扩展", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-         if (choice != JOptionPane.YES_OPTION) {
-            this.statusLabel.setText("已取消运行：" + command + " 尚未安装。其他核心功能可以继续使用。");
-            return false;
-         }
-         this.setBusy(true, "正在安装 " + command + "…");
-         int rc = HxWorkbench.StataBridge.execute("hxdependency install " + command, true);
-         if (rc != 0) {
-            this.setBusy(false, command + " 安装未完成，返回码 " + rc + "。");
-            JOptionPane.showMessageDialog(
-               this,
-               "安装未完成，Stata 返回码 " + rc + "。\n请检查网络，或查看该命令作者的安装说明。\n工作台核心功能不受影响。",
-               "可选扩展安装失败",
-               JOptionPane.WARNING_MESSAGE
-            );
-            return false;
-         }
-         HxWorkbench.StataBridge.execute("quietly hxresolve " + command + ", refresh", false);
-         this.setBusy(false, command + " 已安装，可以运行。");
-         if (this.baselineEstimatorSource != null && command.equals(selected(this.baselineEstimator))) {
-            this.baselineEstimatorSource.setText(commandSource(command));
-            this.baselineEstimatorSource.setForeground(new Color(143, 91, 24));
-         }
-         return true;
+         this.statusLabel.setText("已取消运行：" + command + " 尚未安装。请自行安装后到‘外部命令’重新检测。");
+         JOptionPane.showMessageDialog(
+            this,
+            command + " 尚未安装。\n\n工作台不会自动安装第三方命令。\n请按该命令作者的说明自行安装，安装后回到‘外部命令’重新检测即可。",
+            "缺少外部命令",
+            JOptionPane.INFORMATION_MESSAGE
+         );
+         return false;
       }
 
       private void rebuildForm() {
@@ -12458,14 +12440,12 @@ public final class HxWorkbench {
                      this.executeMonitoredCommand(var9, var10, true, var2x -> this.loadExternalOneClickResults(var2x, var1));
                   }
                } else {
-                  if (!var1 && JOptionPane.showConfirmDialog(this, "当前没有安装 oneclick。现在从 SSC 安装吗？", "缺少 OneClick", 0) == 0) {
-                     int var8 = HxWorkbench.StataBridge.execute("hxdependency install oneclick", true);
-                     if (var8 == 0) {
-                        this.runOneClick();
-                     }
-                  } else {
-                     JOptionPane.showMessageDialog(this, var2 + " 尚未安装。请先安装作者提供的外部命令后再运行。", "缺少外部命令", 1);
-                  }
+                  JOptionPane.showMessageDialog(
+                     this,
+                     var2 + " 尚未安装。\n\n工作台不会自动安装外部命令。请按作者说明自行安装，安装后到‘外部命令’重新检测再运行。",
+                     "缺少外部命令",
+                     JOptionPane.INFORMATION_MESSAGE
+                  );
                }
             } else {
                JOptionPane.showMessageDialog(this, "Y、核心 X 与候选控制变量必须使用不同变量。", "变量角色重复", 2);
