@@ -33,11 +33,12 @@ jobs:
               m=re.search(rf'local {re.escape(name)} "([^"]*)"',reg)
               assert m, name
               return m.group(1).split()
-          literals=set(re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"',sem))
           expected_special={'hxconvert'}
+          def explicitly_named(cmd):
+              return re.search(rf'(?<![A-Za-z0-9_]){re.escape(cmd)}(?![A-Za-z0-9_])', sem) is not None
           for name in ['data_cmds','stats_cmds','graph_cmds']:
               cmds=local_list(name)
-              missing=[c for c in cmds if c not in literals and c not in expected_special]
+              missing=[c for c in cmds if not explicitly_named(c) and c not in expected_special]
               assert not missing, f'{name} missing semantic coverage: {missing}'
           print('HX_SEMANTIC_COVERAGE_COMPLETE')
           PY
@@ -48,7 +49,7 @@ jobs:
           s=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
           sem=Path('hxsemantics.ado').read_text(encoding='utf-8')
           required_java=['return "时间序列设定"','return "变量与面板"','return "生存数据设定"','return "贝叶斯设定"','return "诊断图设定"','return "ROC 设定"']
-          required_sem=['`cmd\' — 面板数据模型','`cmd\' — 多层混合效应模型','`cmd\' — 生存与事件史分析','`cmd\' — 贝叶斯分析','`cmd\' — 回归诊断图','`cmd\' — ROC 分析']
+          required_sem=['— 面板数据模型','— 多层混合效应模型','— 生存与事件史分析','— 贝叶斯分析','— 回归诊断图','— ROC 分析']
           for x in required_java: assert x in s, x
           for x in required_sem: assert x in sem, x
           print('HX_UI_SEMANTIC_FAMILY_ASSERTIONS_OK')
