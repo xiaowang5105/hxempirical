@@ -1,0 +1,94 @@
+name: UI semantic families pass 7
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+    paths:
+      - 'tools/ui_semantic_families_pass7.py'
+      - '.github/workflows/ui-semantic-families-pass7.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-consistency-audit-20260815
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply semantic family coverage
+        run: python tools/ui_semantic_families_pass7.py
+      - name: Verify catalog semantic coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          reg=Path('hxregistry.ado').read_text(encoding='utf-8')
+          sem=Path('hxsemantics.ado').read_text(encoding='utf-8')
+          def local_list(name):
+              m=re.search(rf'local {re.escape(name)} "([^"]*)"',reg)
+              assert m, name
+              return m.group(1).split()
+          literals=set(re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"',sem))
+          expected_special={'hxconvert'}
+          for name in ['data_cmds','stats_cmds','graph_cmds']:
+              cmds=local_list(name)
+              missing=[c for c in cmds if c not in literals and c not in expected_special]
+              assert not missing, f'{name} missing semantic coverage: {missing}'
+          print('HX_SEMANTIC_COVERAGE_COMPLETE')
+          PY
+      - name: Validate source assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+          sem=Path('hxsemantics.ado').read_text(encoding='utf-8')
+          required_java=['return "时间序列设定"','return "变量与面板"','return "生存数据设定"','return "贝叶斯设定"','return "诊断图设定"','return "ROC 设定"']
+          required_sem=['`cmd\' — 面板数据模型','`cmd\' — 多层混合效应模型','`cmd\' — 生存与事件史分析','`cmd\' — 贝叶斯分析','`cmd\' — 回归诊断图','`cmd\' — ROC 分析']
+          for x in required_java: assert x in s, x
+          for x in required_sem: assert x in sem, x
+          print('HX_UI_SEMANTIC_FAMILY_ASSERTIONS_OK')
+          PY
+      - name: Validate patch formatting
+        run: git diff --check
+      - name: Verify Stata static contracts
+        run: python tools/verify_static_contracts.py
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return t==null?"":t.toString();} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static int getVarIndex(String s){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame connect(String s){return new Frame();} public static Frame create(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public int getVarIndex(String s){return 0;} public String getVarName(int i){return "";} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+      - name: Commit product changes
+        run: |
+          if git diff --quiet -- src/main/java/com/hexie/stata/HxWorkbench.java hxsemantics.ado; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/main/java/com/hexie/stata/HxWorkbench.java hxsemantics.ado
+          git commit -m 'Improve semantic quality across command families'
+          git push origin HEAD:ui-consistency-audit-20260815
