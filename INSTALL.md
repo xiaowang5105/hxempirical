@@ -34,8 +34,8 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 已经是最新版本时，Results 显示：
 
 ```text
-当前版本：1.5.4
-最新版本：1.5.4
+当前版本：1.5.5
+最新版本：1.5.5
 已是最新版本，无需更新。
 ```
 
@@ -94,7 +94,7 @@ hxempirical
 [核心组件：正常] 11/11
 ```
 
-`reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot`、`event_plot` 是可选扩展。它们缺失时，核心工作台和 Stata 官方命令仍然可用。
+`reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot`、`event_plot` 是可选扩展。它们缺失时，核心工作台和 Stata 官方命令仍然可用。 `oneclick` 可由 hxempirical 从 SSC 按 `tuples → oneclick` 顺序安装；`oneclick_robustness` 当前没有配置经过验证的 SSC 自动安装源，需要按作者发布说明手动安装。
 
 ## 更新
 
