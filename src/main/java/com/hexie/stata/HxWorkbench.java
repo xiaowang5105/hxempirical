@@ -8333,8 +8333,8 @@ public final class HxWorkbench {
          this.commandTitle.setText("基准回归");
          this.commandTitle.setToolTipText("在同一个任务页面切换 xtreg / reghdfe / areg / regress");
          this.setWorkspaceBreadcrumb("回归模型  ›  基准回归");
-         this.exampleLabel.setText("<html>先设定研究问题，再选择估计方法。默认使用 xtreg；切换估计器时公共变量设置保持不变。</html>");
-         this.insightArea.setText("基准回归工作区把研究任务放在前面。默认使用 xtreg（固定效应），也可以在同一页切换 reghdfe、areg 或 regress。切换时保留 Y、核心 X、Controls、样本条件和标准误等公共设置，只替换估计器特有参数和最终 Stata 命令。");
+         this.exampleLabel.setText("<html>按“选择变量 → 模型与推断 → 检查运行”完成基准回归；右上角可随时切换 xtreg / reghdfe / areg / regress。</html>");
+         this.insightArea.setText("基准回归工作区用于在同一研究设定下比较常用线性估计器。默认使用 xtreg（固定效应），也可以切换 reghdfe、areg 或 regress。切换估计器时保留 Y、核心 X、Controls、样本条件和标准误等公共设置，只替换模型或固定效应等估计器特有参数。底部始终生成当前估计器的真实 Stata 命令。");
          this.syntaxArea.setText("任务工作区：xtreg / reghdfe / areg / regress；最终仍执行所选估计器的真实 Stata 命令。");
          if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(true);
          this.refreshVariableControls();
@@ -8346,7 +8346,7 @@ public final class HxWorkbench {
             this.rebuilding = false;
          }
          this.switchBaselineEstimator();
-         this.statusLabel.setText("基准回归：默认 xtreg；可在右上角切换估计方法，公共变量设置不会清空。");
+         this.statusLabel.setText("基准回归：按变量 → 模型与推断 → 检查运行组织；切换估计器时公共变量设置保持不变。");
       }
 
       private void switchBaselineEstimator() {
@@ -8378,42 +8378,100 @@ public final class HxWorkbench {
       private void rebuildBaselineForm() {
          String estimator = selected(this.baselineEstimator);
          this.formPanel.removeAll();
-         int row = 0;
-         this.addField(row++, "因变量 Y", this.depvar);
-         this.addField(row++, "核心解释变量 X", this.regressX);
-         this.addField(row++, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+
+         this.enableVariableDrop(this.depvar, "因变量 Y");
+         this.enableVariableDrop(this.regressX, "核心解释变量 X");
+         this.enableVariableDrop(this.regressControls, "控制变量");
+         this.enableVariableDrop(this.absorb, "固定效应");
+         this.enableVariableDrop(this.cluster, "聚类变量");
+         this.enableVariableDrop(this.regressWeightVar, "权重变量");
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(true, "选择变量", "模型与推断"), c);
+
+         JPanel variableCard = this.xtregWizardCardV130(1, "选择变量", "Y、核心 X 和控制变量在所有估计器之间共享；切换方法时不会清空。");
+         JPanel variableBody = this.genericCardBody();
+         JPanel mainVars = new JPanel(new GridLayout(1, 2, 12, 0));
+         mainVars.setOpaque(false);
+         mainVars.add(this.fieldBlock("因变量 Y", this.depvar));
+         mainVars.add(this.fieldBlock("核心解释变量 X", this.regressX));
+         this.addGenericBodyField(variableBody, "核心变量", mainVars);
+         this.addGenericBodyField(variableBody, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+         variableCard.add(variableBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(variableCard, c);
+
+         String methodSubtitle;
+         if ("xtreg".equals(estimator)) {
+            methodSubtitle = "当前估计器为 xtreg；先选择 FE / RE / BE，再设置标准误。面板结构沿用当前 Stata xtset。";
+         } else if ("reghdfe".equals(estimator)) {
+            methodSubtitle = "当前估计器为 reghdfe；选择一个或多个 absorb() 固定效应，再设置标准误。";
+         } else if ("areg".equals(estimator)) {
+            methodSubtitle = "当前估计器为 areg；选择一个 absorb() 固定效应，再设置标准误。";
+         } else {
+            methodSubtitle = "当前估计器为 regress；无需模型或固定效应选项，直接设置标准误。";
+         }
+         JPanel methodCard = this.xtregWizardCardV130(2, "模型与推断 · " + estimator, methodSubtitle);
+         JPanel methodBody = this.genericCardBody();
          this.baselineXtModelFieldBlock = null;
          this.baselineAbsorbFieldBlock = null;
+
          if ("xtreg".equals(estimator)) {
-            this.baselineXtModelFieldBlock = this.addField(row++, "模型", this.baselineXtModel);
+            this.baselineXtModelFieldBlock = (JPanel)this.fieldBlock("模型", this.baselineXtModel);
+            this.baselineXtModelFieldBlock.setAlignmentX(0.0F);
+            this.baselineXtModelFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.baselineXtModelFieldBlock.getPreferredSize().height)));
+            methodBody.add(this.baselineXtModelFieldBlock);
+            methodBody.add(Box.createVerticalStrut(10));
          } else if ("reghdfe".equals(estimator) || "areg".equals(estimator)) {
             this.absorb.setSelectionMode("areg".equals(estimator) ? 0 : 2);
-            this.baselineAbsorbFieldBlock = this.addField(row++, "固定效应 absorb()", this.listPane(this.absorb));
+            this.baselineAbsorbFieldBlock = (JPanel)this.fieldBlock(
+               "areg".equals(estimator) ? "固定效应 absorb()（选择一个）" : "固定效应 absorb()（可多选）",
+               this.listPane(this.absorb)
+            );
+            this.baselineAbsorbFieldBlock.setAlignmentX(0.0F);
+            this.baselineAbsorbFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.baselineAbsorbFieldBlock.getPreferredSize().height)));
+            methodBody.add(this.baselineAbsorbFieldBlock);
+            methodBody.add(Box.createVerticalStrut(10));
          }
-         this.addField(row++, "标准误", this.vce);
-         this.regressClusterFieldBlock = this.addField(row++, "聚类变量", this.cluster);
 
+         this.addGenericBodyField(methodBody, "标准误", this.vce);
+         this.regressClusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+         this.regressClusterFieldBlock.setAlignmentX(0.0F);
+         this.regressClusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.regressClusterFieldBlock.getPreferredSize().height)));
+         methodBody.add(this.regressClusterFieldBlock);
+         methodBody.add(Box.createVerticalStrut(10));
+         methodCard.add(methodBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(methodCard, c);
+
+         JPanel checkCard = this.xtregWizardCardV130(3, "检查运行与更多设置", "样本条件、分类/交互/滞后项、权重和高级 options 集中在这里；默认收起。");
+         JPanel checkBody = this.genericCardBody();
          JPanel moreSettings = this.buildBaselineMoreSettings(estimator);
-         JToggleButton moreToggle = new JToggleButton("展开更多设置  +");
+         JToggleButton moreToggle = new JToggleButton("展开样本与更多设置  +");
          styleSecondaryButton(moreToggle);
          moreSettings.setVisible(false);
+         moreToggle.setAlignmentX(0.0F);
+         moreSettings.setAlignmentX(0.0F);
          moreToggle.addActionListener(event -> {
             boolean expanded = moreToggle.isSelected();
-            moreToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            moreToggle.setText(expanded ? "收起样本与更多设置  −" : "展开样本与更多设置  +");
             moreSettings.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
-         JPanel moreBlock = new JPanel();
-         moreBlock.setOpaque(false);
-         moreBlock.setLayout(new BoxLayout(moreBlock, BoxLayout.Y_AXIS));
-         moreToggle.setAlignmentX(0.0F);
-         moreSettings.setAlignmentX(0.0F);
-         moreBlock.add(moreToggle);
-         moreBlock.add(Box.createVerticalStrut(7));
-         moreBlock.add(moreSettings);
-         this.addField(row++, "更多设置", moreBlock);
-         GridBagConstraints filler = this.constraints(0, row);
+         checkBody.add(moreToggle);
+         checkBody.add(Box.createVerticalStrut(8));
+         checkBody.add(moreSettings);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
          filler.gridwidth = 2;
          filler.weighty = 1.0;
          this.formPanel.add(Box.createVerticalGlue(), filler);
