@@ -13,14 +13,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ui-consistency-audit-20260815
-      - name: Inspect remaining legacy page builders
+      - name: Inspect page helper methods
         run: |
           python - <<'PY'
           from pathlib import Path
           s = Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
           def body(name):
-              marker=f'      private void {name}('
-              p=s.index(marker)
+              markers=[f'      private void {name}(', f'      private JPanel {name}(', f'      private JComponent {name}(']
+              p=-1
+              for marker in markers:
+                  p=s.find(marker)
+                  if p>=0: break
+              if p<0: raise RuntimeError(name)
               start=s.index('{',p)
               depth=0
               for i in range(start,len(s)):
@@ -30,7 +34,7 @@ jobs:
                       if depth==0:
                           return s[p:i+1]
               raise RuntimeError(name)
-          for name in ['showRegressPage','showSpecialGraphPage']:
+          for name in ['buildRegressMoreSettings','updateRegressConditionalFields','addSpecialGraphAdvancedSettings','updateSpecialGraphPreview']:
               print(f'HX_METHOD_BEGIN {name}')
               print(body(name))
               print(f'HX_METHOD_END {name}')
