@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.2";
+   public static final String VERSION = "1.5.3";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -2461,7 +2461,7 @@ public final class HxWorkbench {
       private JPanel commandDock;
       private final CardLayout stageLayout = new CardLayout();
       private final JPanel stageCards = new JPanel(this.stageLayout);
-      private final JPanel chooserContent = new JPanel();
+      private JComponent chooserToolbar;
       private final JPanel chooserBreadcrumbBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
       private final JLabel chooserTitle = new JLabel("选择具体命令");
       private final JLabel chooserHint = new JLabel("选择后进入该命令自己的设置页面");
@@ -4984,15 +4984,17 @@ public final class HxWorkbench {
       }
 
       private void finishGroupedOverview() {
-         this.chooserContent.add(Box.createVerticalGlue());
+         this.chooserResultsHost.add(Box.createVerticalGlue());
+         if (this.chooserToolbar != null) this.chooserToolbar.setVisible(false);
+         this.updateChooserInspector("");
          this.chooserReady = true;
          this.chooserAtCategoryLevel = true;
          this.configureChooserBack();
          this.homeButton.setVisible(true);
          this.homeButton.setEnabled(true);
          this.inspectorToggle.setVisible(false);
-         this.chooserContent.revalidate();
-         this.chooserContent.repaint();
+         this.chooserResultsHost.revalidate();
+         this.chooserResultsHost.repaint();
          this.stageLayout.show(this.stageCards, "chooser");
          this.syncSidebarFromContext();
       }
@@ -5001,8 +5003,8 @@ public final class HxWorkbench {
          this.setChooserBreadcrumb("首页  >  图形");
          this.chooserTitle.setText("图形");
          this.chooserHint.setText("按 Stata 原图形分类浏览；大类只负责视觉分组，小项保持 Stata 的原始顺序与名称。");
-         this.chooserContent.removeAll();
-         this.chooserContent.add(this.groupedOverviewSearch("搜索图形方法或命令"));
+         this.chooserResultsHost.removeAll();
+         this.chooserResultsHost.add(this.groupedOverviewSearch("搜索图形方法或命令"));
 
          Object[][] groups = new Object[][]{
             {"基础图形", "二维图、条形图、点图、饼图与常见分布图", new Color(54, 114, 236), new String[]{"二维图(散点图，折线图等)", "条形图", "点图", "饼图", "直方图", "箱线图", "等高线图", "散点图矩阵"}},
@@ -5014,8 +5016,8 @@ public final class HxWorkbench {
 
          int groupNo = 1;
          for (Object[] spec : groups) {
-            this.chooserContent.add(this.groupedCategoryBand("graph", (String)spec[0], (String)spec[1], (Color)spec[2], (String[])spec[3], available, groupNo++));
-            this.chooserContent.add(Box.createVerticalStrut(10));
+            this.chooserResultsHost.add(this.groupedCategoryBand("graph", (String)spec[0], (String)spec[1], (Color)spec[2], (String[])spec[3], available, groupNo++));
+            this.chooserResultsHost.add(Box.createVerticalStrut(10));
          }
          this.finishGroupedOverview();
       }
@@ -5024,8 +5026,8 @@ public final class HxWorkbench {
          this.setChooserBreadcrumb("首页  >  数据");
          this.chooserTitle.setText("数据");
          this.chooserHint.setText("按数据处理任务浏览；常用 Stata 命令直接显示在小项右侧。");
-         this.chooserContent.removeAll();
-         this.chooserContent.add(this.groupedOverviewSearch("搜索数据处理方法或命令"));
+         this.chooserResultsHost.removeAll();
+         this.chooserResultsHost.add(this.groupedOverviewSearch("搜索数据处理方法或命令"));
 
          Object[][] groups = new Object[][]{
             {"导入与检查", "先把数据读进来，再检查缺失与重复", new Color(54, 114, 236), new String[]{"导入与转换", "数据检查"}},
@@ -5035,8 +5037,8 @@ public final class HxWorkbench {
 
          int groupNo = 1;
          for (Object[] spec : groups) {
-            this.chooserContent.add(this.groupedCategoryBand("data", (String)spec[0], (String)spec[1], (Color)spec[2], (String[])spec[3], available, groupNo++));
-            this.chooserContent.add(Box.createVerticalStrut(10));
+            this.chooserResultsHost.add(this.groupedCategoryBand("data", (String)spec[0], (String)spec[1], (Color)spec[2], (String[])spec[3], available, groupNo++));
+            this.chooserResultsHost.add(Box.createVerticalStrut(10));
          }
          this.finishGroupedOverview();
       }
@@ -5045,8 +5047,8 @@ public final class HxWorkbench {
          this.setChooserBreadcrumb("首页  >  " + title);
          this.chooserTitle.setText(title);
          this.chooserHint.setText("选择具体方法进入下一步；统一采用列表式导航。");
-         this.chooserContent.removeAll();
-         this.chooserContent.add(this.groupedOverviewSearch("搜索方法或命令"));
+         this.chooserResultsHost.removeAll();
+         this.chooserResultsHost.add(this.groupedOverviewSearch("搜索方法或命令"));
          JPanel section = new JPanel(new BorderLayout());
          section.setBackground(SURFACE);
          section.setAlignmentX(0.0F);
@@ -5063,7 +5065,7 @@ public final class HxWorkbench {
             rows.add(this.groupedMethodRow(category, Integer.toString(i++), method, genericMethodPreview(category, method), new Color(54, 114, 236)));
          }
          section.add(rows, BorderLayout.CENTER);
-         this.chooserContent.add(section);
+         this.chooserResultsHost.add(section);
          this.finishGroupedOverview();
       }
 
@@ -5135,7 +5137,7 @@ public final class HxWorkbench {
          this.setChooserBreadcrumb("首页  >  统计");
          this.chooserTitle.setText("统计");
          this.chooserHint.setText("按 Stata 原分类浏览；大类只负责视觉分组，小项保持 Stata 的原始顺序与名称。");
-         this.chooserContent.removeAll();
+         this.chooserResultsHost.removeAll();
 
          JPanel searchLine = new JPanel(new BorderLayout(10, 0));
          searchLine.setOpaque(false);
@@ -5158,7 +5160,7 @@ public final class HxWorkbench {
          searchLine.add(go, BorderLayout.EAST);
          searchLine.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
          searchLine.setAlignmentX(0.0F);
-         this.chooserContent.add(searchLine);
+         this.chooserResultsHost.add(searchLine);
 
          Object[][] groups = new Object[][]{
             {"描述与比较", "汇总、表格和假设检验", new Color(54, 114, 236), new String[]{"汇总，表格和假设检验"}},
@@ -5173,19 +5175,10 @@ public final class HxWorkbench {
          int groupNo = 1;
          for (Object[] spec : groups) {
             JComponent band = this.statsGroupBand((String)spec[0], (String)spec[1], (Color)spec[2], (String[])spec[3], available, groupNo++);
-            this.chooserContent.add(band);
-            this.chooserContent.add(Box.createVerticalStrut(10));
+            this.chooserResultsHost.add(band);
+            this.chooserResultsHost.add(Box.createVerticalStrut(10));
          }
-         this.chooserContent.add(Box.createVerticalGlue());
-         this.chooserReady = true;
-         this.chooserAtCategoryLevel = true;
-         this.configureChooserBack();
-         this.homeButton.setVisible(true);
-         this.homeButton.setEnabled(true);
-         this.inspectorToggle.setVisible(false);
-         this.chooserContent.revalidate();
-         this.chooserContent.repaint();
-         this.stageLayout.show(this.stageCards, "chooser");
+         this.finishGroupedOverview();
       }
 
       private void browseCategoryOverview(String var1) {
@@ -5194,15 +5187,14 @@ public final class HxWorkbench {
          this.syncSidebarFromContext();
          this.activeMethodName = "";
          this.selectCategoryCode(var1);
-         ArrayList<String> var2 = new ArrayList<>();
-         if (this.previewMode) {
-            var2.addAll(previewMethodsForCategory(var1));
-         } else {
+         LinkedHashSet<String> methodSet = new LinkedHashSet<>(previewMethodsForCategory(var1));
+         if (!this.previewMode) {
             int var3 = HxWorkbench.StataBridge.execute("quietly hxregistry, category(" + var1 + ")", false);
             if (var3 == 0) {
-               var2.addAll(HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_method_view")));
+               methodSet.addAll(HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_method_view")));
             }
          }
+         ArrayList<String> var2 = new ArrayList<>(methodSet);
 
          if ("stats".equals(var1)) {
             this.renderStatsGroupedOverview(var2);
@@ -5592,7 +5584,8 @@ public final class HxWorkbench {
 
          JPanel catalog = new JPanel(new BorderLayout(0, 10));
          catalog.setOpaque(false);
-         catalog.add(this.buildChooserToolbar(), BorderLayout.NORTH);
+         this.chooserToolbar = this.buildChooserToolbar();
+         catalog.add(this.chooserToolbar, BorderLayout.NORTH);
          this.chooserResultsHost.setOpaque(false);
          this.chooserResultsHost.setLayout(new BoxLayout(this.chooserResultsHost, BoxLayout.Y_AXIS));
          this.chooserResultsHost.setAlignmentX(0.0F);
@@ -5619,17 +5612,15 @@ public final class HxWorkbench {
          this.rebuilding = true;
          this.commandList.clearSelection();
          this.commandModel.clear();
-         if (this.previewMode) {
-            for (String var4 : previewCommandsForMethod(var2)) {
-               this.commandModel.addElement(var4);
-            }
-         } else {
+         LinkedHashSet<String> commandSet = new LinkedHashSet<>(previewCommandsForMethod(var2));
+         if (!this.previewMode) {
             int var6 = HxWorkbench.StataBridge.execute("quietly hxregistry, method(" + HxWorkbench.StataBridge.methodCode(var2) + ")", false);
             if (var6 == 0) {
-               for (String var5 : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_command_view"))) {
-                  this.commandModel.addElement(var5);
-               }
+               commandSet.addAll(HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_command_view")));
             }
+         }
+         for (String var5 : commandSet) {
+            if (var5 != null && !var5.isBlank()) this.commandModel.addElement(var5);
          }
 
          this.rebuilding = false;
@@ -6063,6 +6054,8 @@ public final class HxWorkbench {
          this.chooserTitle.setText(methodName);
          this.chooserHint.setText("快速定位命令，支持搜索、筛选和分类浏览。");
          this.chooserReady = false;
+         this.chooserAtCategoryLevel = false;
+         if (this.chooserToolbar != null) this.chooserToolbar.setVisible(true);
          this.chooserAvailableCommands.clear();
          this.chooserAvailableCommands.addAll(var3);
          this.chooserFilterMode = "全部";
