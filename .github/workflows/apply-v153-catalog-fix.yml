@@ -1,0 +1,170 @@
+name: Apply v1.5.3 catalog fix
+
+on:
+  push:
+    branches: [jar-binding-v153-20260815]
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-audit:
+    if: github.event.head_commit.message != 'Fix empty category catalogs [v1.5.3]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: jar-binding-v153-20260815
+          fetch-depth: 0
+
+      - name: Apply catalog patch
+        run: python .github/scripts/apply_v153_catalog_fix.py
+
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses /tmp/hxtest/com/hexie/stata
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit {
+            public static int executeCommand(String s, boolean b){return 0;}
+            public static void displayln(String s){System.out.println(s);}
+            public static void errorln(String s){System.err.println(s);}
+            public static String stackTraceToString(Throwable t){return t==null?"":t.toString();}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0L;}
+            public static int getVarCount(){return 0;}
+            public static int getVarIndex(String s){return 0;}
+            public static String getVarName(int i){return "";}
+            public static String getVarLabel(int i){return "";}
+            public static String getVarFormat(int i){return "";}
+            public static boolean isVarTypeString(int i){return false;}
+            public static double getNum(int i,long j){return Double.NaN;}
+            public static String getStr(int i,long j){return "";}
+            public static String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame {
+            public static Frame connect(String s){return new Frame();}
+            public static Frame create(String s){return new Frame();}
+            public void drop(){}
+            public long getObsTotal(){return 0L;}
+            public int getVarCount(){return 0;}
+            public int getVarIndex(String s){return 0;}
+            public String getVarName(int i){return "";}
+            public boolean isVarTypeString(int i){return false;}
+            public double getNum(int i,long j){return Double.NaN;}
+            public String getStr(int i,long j){return "";}
+            public String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+
+      - name: Build live-path catalog smoke harness
+        run: |
+          cat >/tmp/hxtest/com/hexie/stata/CatalogSmoke.java <<'EOF'
+          package com.hexie.stata;
+          import java.awt.Component;
+          import java.awt.Container;
+          import java.lang.reflect.*;
+          import java.util.List;
+          import javax.swing.*;
+          public class CatalogSmoke {
+            static int buttons(Component c) {
+              int n = c instanceof JButton ? 1 : 0;
+              if (c instanceof Container) for (Component child : ((Container)c).getComponents()) n += buttons(child);
+              return n;
+            }
+            static void check(boolean preview) throws Exception {
+              Class<?> cls = Class.forName("com.hexie.stata.HxWorkbench$WorkbenchFrame");
+              Constructor<?> ctor = cls.getDeclaredConstructor(boolean.class);
+              ctor.setAccessible(true);
+              Object frame = ctor.newInstance(preview);
+              Method overview = cls.getDeclaredMethod("browseCategoryOverview", String.class);
+              Method method = cls.getDeclaredMethod("browseMethod", String.class, String.class);
+              overview.setAccessible(true); method.setAccessible(true);
+              Field hostField = cls.getDeclaredField("chooserResultsHost"); hostField.setAccessible(true);
+              Field commandsField = cls.getDeclaredField("chooserAvailableCommands"); commandsField.setAccessible(true);
+              int[][] expected = {{0,6},{1,30},{2,20}};
+              String[] cats = {"data","stats","graph"};
+              for (int i=0;i<cats.length;i++) {
+                overview.invoke(frame, cats[i]);
+                JPanel host=(JPanel)hostField.get(frame);
+                int b=buttons(host);
+                if (b < expected[i][1]) throw new AssertionError(cats[i]+" overview has only "+b+" buttons preview="+preview);
+                System.out.println("HX_CATALOG_OVERVIEW_OK preview="+preview+" category="+cats[i]+" buttons="+b);
+              }
+              method.invoke(frame, "stats", "计数结果");
+              @SuppressWarnings("unchecked") List<String> cmds=(List<String>)commandsField.get(frame);
+              if (!cmds.contains("poisson") || !cmds.contains("ppmlhdfe")) throw new AssertionError("count commands missing: "+cmds);
+              System.out.println("HX_CATALOG_METHOD_OK preview="+preview+" commands="+cmds.size());
+              ((JFrame)frame).dispose();
+            }
+            public static void main(String[] args) throws Exception {
+              SwingUtilities.invokeAndWait(() -> {
+                try { check(true); check(false); }
+                catch (Exception e) { throw new RuntimeException(e); }
+              });
+            }
+          }
+          EOF
+          javac --release 11 -cp /tmp/hxclasses -d /tmp/hxclasses /tmp/hxtest/com/hexie/stata/CatalogSmoke.java
+
+      - name: Run category and method smoke under Xvfb
+        run: timeout 45s xvfb-run -a java -cp /tmp/hxclasses com.hexie.stata.CatalogSmoke
+
+      - name: Rebuild shipped JAR
+        run: |
+          rm -f hxworkbench.jar
+          jar cf hxworkbench.jar -C /tmp/hxclasses com/hexie/stata/HxWorkbench.class $(cd /tmp/hxclasses && find com/hexie/stata -name 'HxWorkbench$*.class' -print)
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Verify no orphan chooser host remains
+        run: |
+          ! grep -q 'chooserContent' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'this.chooserResultsHost.removeAll();' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'new LinkedHashSet<>(previewMethodsForCategory(var1))' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'new LinkedHashSet<>(previewCommandsForMethod(var2))' src/main/java/com/hexie/stata/HxWorkbench.java
+
+      - name: Rebuild release bundle
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+
+      - name: Verify release
+        run: |
+          python tools/verify_release.py
+          grep -F 'd Version 1.5.3' hxempirical.pkg
+          grep -F 'public static final String VERSION = "1.5.3";' src/main/java/com/hexie/stata/HxWorkbench.java
+          git diff --check
+
+      - name: Commit clean product changes
+        run: |
+          git config user.name 'xiaowang5105'
+          git config user.email '2692127923@qq.com'
+          git rm -f .github/scripts/apply_v153_catalog_fix.py .github/workflows/apply-v153-catalog-fix.yml
+          git add -A
+          git commit -m 'Fix empty category catalogs [v1.5.3]'
+          git push origin HEAD:jar-binding-v153-20260815
