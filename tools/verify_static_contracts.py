@@ -27,6 +27,7 @@ registry = read("hxregistry.ado")
 readme = read("README.md")
 help_text = read("hxempirical.sthlp")
 install_doc = read("INSTALL.md")
+launcher = read("hxinstall.do")
 pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
 
@@ -81,6 +82,13 @@ if "工作台只检测是否已安装，不再自动安装" not in readme:
     fail("README current external-command policy is not manual-only")
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
+
+# The public launcher must load the downloaded installer core silently.
+# Using `noisily do` echoes the entire ~580-line installer into Results.
+if "capture noisily do" in launcher:
+    fail("public hxinstall.do still echoes the installer core into Results")
+if "capture quietly do" not in launcher:
+    fail("public hxinstall.do does not load the installer core quietly")
 
 # User-ado discovery must not execute one Stata `which` call per scanned file.
 discovery_start = java.find("private List<String> discoverInstalledExternalCommands")
@@ -171,6 +179,6 @@ print(
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
-    "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 "
+    "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
     "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )

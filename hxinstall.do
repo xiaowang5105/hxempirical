@@ -26,7 +26,7 @@ if `core_rc' {
 }
 
 capture program drop hxinstaller
-capture noisily do `"`hxinstaller_bootstrap'"'
+capture quietly do `"`hxinstaller_bootstrap'"'
 local load_rc = _rc
 if `load_rc' {
     display as error "安装器核心加载失败，Stata 返回码 r(`load_rc')。"
