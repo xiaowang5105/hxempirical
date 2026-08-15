@@ -19,6 +19,7 @@ jobs:
 
       - name: Apply product patches
         run: |
+          sed -i 's/marker = "### 1.5.3 目录显示修复\\n"/marker = "### 1.5.4 目录显示修复\\n"/' .github/scripts/apply_v154_spreadsheet_external.py
           python .github/scripts/apply_v154_spreadsheet_external.py
           python .github/scripts/apply_v154_spreadsheet_followup.py
 
