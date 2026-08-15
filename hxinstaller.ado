@@ -91,6 +91,8 @@ if `"`legacy_root'"' != "" {
     if !_rc local legacy_present 1
     capture quietly confirm file `"`legacy_root'hxempirical.pkg"'
     if !_rc local legacy_present 1
+    capture quietly confirm file `"`legacy_root'hxworkbench.jar"'
+    if !_rc local legacy_present 1
 }
 if `"`action'"' == "auto" {
     capture quietly confirm file `"`target'hxempirical.pkg"'
@@ -278,7 +280,7 @@ foreach f of local files {
     capture quietly confirm file `"`target'`f'"'
     if _rc local install_complete 0
 }
-if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' {
+if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' & !`legacy_present' {
     local menu_rc 0
     if `"`target_kind'"' == "PERSONAL" {
         capture noisily hxsetup, persist

@@ -123,6 +123,10 @@ for system_file in (
         fail(f"required system file is not marked with uppercase F: {system_file}")
 if "local personal_h" not in read("hxinstaller.ado") or "local target `\"`personal_h'\"'" not in read("hxinstaller.ado"):
     fail("transactional installer does not target PERSONAL/h")
+if "& !`legacy_present'" not in read("hxinstaller.ado"):
+    fail("same-version fast path can skip legacy PERSONAL-root cleanup")
+if "legacy_root'hxworkbench.jar" not in read("hxinstaller.ado"):
+    fail("legacy JAR shadow is not detected")
 for needle in (
     "legacy_root",
     "旧 PERSONAL 根目录文件仍在遮挡",
