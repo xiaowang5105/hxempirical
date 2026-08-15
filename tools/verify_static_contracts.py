@@ -25,6 +25,7 @@ entry = read("hxempirical.ado")
 dependency = read("hxdependency.ado")
 registry = read("hxregistry.ado")
 readme = read("README.md")
+java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
 core_match = re.search(r'local core\s+"([^"]+)"', entry)
@@ -36,7 +37,7 @@ expected_total = len(core_components) + 2
 if int(total_match.group(1)) != expected_total:
     fail(f"doctor total mismatch: declared={total_match.group(1)} expected={expected_total}")
 
-# oneclick: tuples is a required dependency and must be installed before oneclick.
+# oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
 if not oneclick_packages or oneclick_packages.group(1).split() != ["tuples", "oneclick"]:
     fail("oneclick dependency chain must be exactly: tuples oneclick")
@@ -45,7 +46,7 @@ if "which tuples" not in dependency:
 if "作者扩展；需按作者说明手动安装" not in dependency:
     fail("oneclick_robustness must be identified as a manually installed author extension")
 
-# Documentation must preserve the verified SSC/manual-install source split.
+# Historical source notes remain documented, while current UI policy is manual-only.
 for needle in (
     "`oneclick` 通过 SSC 安装，且依赖 `tuples`",
     "`oneclick_robustness` 按作者扩展处理",
@@ -53,6 +54,25 @@ for needle in (
 ):
     if needle not in readme:
         fail(f"README dependency/source note missing: {needle}")
+
+# UI must never install external commands on behalf of the user.
+if "hxdependency install" in java:
+    fail("Java UI still contains automatic external-command installation")
+if "当前没有安装 oneclick。现在从 SSC 安装吗？" in java:
+    fail("OneClick auto-install prompt still present")
+for needle in (
+    "已安装外部命令",
+    "本页只检测，不负责安装",
+    "工作台不会自动安装第三方命令",
+    "commitSpreadsheetCellEdit",
+    "spreadsheetExpressionForInput",
+):
+    if needle not in java:
+        fail(f"Java manual-install/spreadsheet contract missing: {needle}")
+if "工作台只检测是否已安装，不再自动安装" not in readme:
+    fail("README current external-command policy is not manual-only")
+if "hxempirical 不再自动安装第三方命令" not in entry:
+    fail("public hxempirical install compatibility path must not install packages")
 
 # Parse the registry structure rather than relying on the first foreach in the file.
 stats_cmds = set(local_words(registry, "stats_cmds"))
@@ -88,5 +108,6 @@ print(
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
+    "ui_external_manual_only=1 spreadsheet_editable=1 "
     "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )
