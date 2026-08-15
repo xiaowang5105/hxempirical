@@ -46,6 +46,13 @@ if _rc {
     display as error "HX_INSTALLER_TEST_FAIL missing hxworkbench.jar"
     exit 601
 }
+capture quietly confirm file `"`test_personal'/hxinstaller.ado"'
+if _rc {
+    sysdir set PERSONAL `"`original_personal'"'
+    cd `"`original_pwd'"'
+    display as error "HX_INSTALLER_TEST_FAIL missing hxinstaller.ado"
+    exit 601
+}
 capture quietly confirm file `"`test_profile'"'
 if _rc {
     sysdir set PERSONAL `"`original_personal'"'
@@ -64,7 +71,7 @@ if `doctor_rc' | r(core_healthy) != 1 {
     exit 459
 }
 
-/* Repeating the automatic command must select update behavior and remain safe. */
+/* Repeating the automatic command must take the fast current-version path. */
 capture noisily do `"`installer'"' auto `"`repository'"'
 local update_rc = _rc
 if `update_rc' {
@@ -72,6 +79,19 @@ if `update_rc' {
     cd `"`original_pwd'"'
     display as error "HX_INSTALLER_TEST_FAIL update r(`update_rc')"
     exit `update_rc'
+}
+
+/* The same command repairs an incomplete installation automatically. */
+capture quietly erase `"`test_personal'/hxhistory.ado"'
+capture noisily do `"`installer'"' auto `"`repository'"'
+local repair_rc = _rc
+capture quietly confirm file `"`test_personal'/hxhistory.ado"'
+local repaired_file_rc = _rc
+if `repair_rc' | `repaired_file_rc' {
+    sysdir set PERSONAL `"`original_personal'"'
+    cd `"`original_pwd'"'
+    display as error "HX_INSTALLER_TEST_FAIL automatic repair r(`repair_rc')"
+    exit 601
 }
 
 tempname profile_in
@@ -91,7 +111,7 @@ if `begin_count' != 1 {
 }
 
 /* Uninstall uses the local manifest and removes the managed menu block. */
-capture noisily do `"`installer'"' uninstall
+capture noisily do `"`installer'"' uninstall `"`repository'"'
 local uninstall_rc = _rc
 if `uninstall_rc' {
     sysdir set PERSONAL `"`original_personal'"'
@@ -111,6 +131,13 @@ if !_rc {
     sysdir set PERSONAL `"`original_personal'"'
     cd `"`original_pwd'"'
     display as error "HX_INSTALLER_TEST_FAIL hxworkbench.jar remains"
+    exit 602
+}
+capture quietly confirm file `"`test_personal'/hxinstaller.ado"'
+if !_rc {
+    sysdir set PERSONAL `"`original_personal'"'
+    cd `"`original_pwd'"'
+    display as error "HX_INSTALLER_TEST_FAIL hxinstaller.ado remains"
     exit 602
 }
 
