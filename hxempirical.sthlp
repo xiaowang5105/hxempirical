@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.7  15aug2026}{...}
+{* *! version 1.5.8  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,7 +27,7 @@ currently in Stata memory. Double-clicked cell edits and the fx formula bar exec
 {cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.
 
 {pstd}
-The 1.5.7 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.8 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -58,9 +58,10 @@ official dialog are used when available. Unresolved syntax remains available in
 the advanced-options field.
 
 {pstd}
-External commands are user-managed. The workbench only detects registered third-party commands
-that Stata can currently find and lists them under {bf:外部命令}; it does not automatically install them.
-Install any needed command using its author's instructions, then reopen {bf:外部命令} to detect it.
+External commands are user-managed. {bf:外部命令} scans Stata's user ado directories
+({bf:PLUS}, {bf:PERSONAL}, and {bf:OLDPLACE}), confirms discovered .ado names with {cmd:which}, and lists
+the commands that are actually callable. The workbench does not automatically install them. Install any
+needed command using its author's instructions, then reopen {bf:外部命令} to rescan it.
 
 
 {title:Ordinary linear regression workspace}

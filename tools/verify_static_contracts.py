@@ -62,7 +62,12 @@ if "当前没有安装 oneclick。现在从 SSC 安装吗？" in java:
     fail("OneClick auto-install prompt still present")
 for needle in (
     "已安装外部命令",
-    "本页只检测，不负责安装",
+    "sysdir_plus",
+    "sysdir_personal",
+    "sysdir_oldplace",
+    "Files.walk",
+    "quietly which",
+    "本页只扫描和统计，不负责安装",
     "工作台不会自动安装第三方命令",
     "commitSpreadsheetCellEdit",
     "spreadsheetExpressionForInput",
@@ -108,6 +113,6 @@ print(
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
-    "ui_external_manual_only=1 spreadsheet_editable=1 "
+    "ui_external_manual_only=1 external_user_ado_scan=1 spreadsheet_editable=1 "
     "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )
