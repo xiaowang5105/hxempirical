@@ -10373,19 +10373,24 @@ public final class HxWorkbench {
          return false;
       }
 
-      private JComponent genericStepStripV150() {
+      private JComponent genericStepStripV151(boolean hasMethodSettings) {
          JPanel strip = cardPanel();
          strip.setBackground(SURFACE);
          strip.setBorder(BorderFactory.createCompoundBorder(
             new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
             new EmptyBorder(9, 10, 9, 10)
          ));
-         strip.setLayout(new GridLayout(1, 3, 8, 0));
-         String[][] steps = new String[][]{
-            {"1", "变量与数据", "先完成数据角色与核心变量"},
-            {"2", "模型设定", "再设置模型、固定效应与标准误"},
-            {"3", "检查运行", "最后检查低频设置和真实 Stata 命令"}
-         };
+         String[][] steps = hasMethodSettings
+            ? new String[][]{
+               {"1", "核心设置", "先完成当前任务最关键的变量、文件或表达式"},
+               {"2", "方法与设置", "再设置方法、模型、固定效应或标准误"},
+               {"3", "检查运行", "最后检查低频设置和真实 Stata 命令"}
+            }
+            : new String[][]{
+               {"1", "核心设置", "先完成当前任务最关键的变量、文件或表达式"},
+               {"2", "检查运行", "最后检查低频设置和真实 Stata 命令"}
+            };
+         strip.setLayout(new GridLayout(1, steps.length, 8, 0));
          for (int i = 0; i < steps.length; i++) {
             JPanel p = new JPanel(new BorderLayout(6, 0));
             p.setOpaque(false);
@@ -10486,6 +10491,9 @@ public final class HxWorkbench {
          }
          if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) this.vce.addItem("cluster");
 
+         boolean hasMethodSettings = this.model.getItemCount() > 0
+            || this.flag("has_absorb") || this.flag("has_vce") || this.flag("has_cluster");
+
          this.enableVariableDrop(this.depvar, "因变量");
          this.enableVariableDrop(this.variables, "变量 / 解释变量");
          this.enableVariableDrop(this.panel, "个体 / 面板变量");
@@ -10501,9 +10509,9 @@ public final class HxWorkbench {
          c.weightx = 1.0;
          c.fill = GridBagConstraints.HORIZONTAL;
          c.insets = new Insets(0, 0, 10, 0);
-         this.formPanel.add(this.genericStepStripV150(), c);
+         this.formPanel.add(this.genericStepStripV151(hasMethodSettings), c);
 
-         JPanel coreCard = this.xtregWizardCardV130(1, "变量与数据角色", "先完成本命令最核心的数据角色。右侧变量窗口和数据表表头都可以直接拖入。");
+         JPanel coreCard = this.xtregWizardCardV130(1, "核心设置", "先完成当前任务最关键的变量、文件或表达式；变量可从右侧变量窗口或数据表表头直接拖入。");
          JPanel coreBody = this.genericCardBody();
          boolean hasCore = false;
 
@@ -10537,14 +10545,24 @@ public final class HxWorkbench {
             hasCore = true;
          }
 
-         boolean showPanelStructure = this.flag("needs_panel")
+         boolean showPanelStructure = (this.flag("needs_panel") || isGenericPanelEstimator(this.currentCommand))
             && !Arrays.asList("reghdfe", "ppmlhdfe", "ivreghdfe").contains(this.currentCommand);
          if (showPanelStructure) {
             JPanel panelGrid = new JPanel(new GridLayout(1, 2, 12, 0));
             panelGrid.setOpaque(false);
             panelGrid.add(this.fieldBlock(this.sem("panel_label"), this.panel));
             panelGrid.add(this.fieldBlock(this.sem("time_label"), this.time));
-            this.addGenericBodyField(coreBody, "数据结构", panelGrid);
+            String panelGroupTitle = Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)
+               ? "处理与时间设定" : "数据结构";
+            this.addGenericBodyField(coreBody, panelGroupTitle, panelGrid);
+            if (isGenericPanelEstimator(this.currentCommand)) {
+               JLabel setupHint = new JLabel("运行时会先按这里执行 xtset，再运行当前面板模型；时间变量可按数据结构留空。");
+               setupHint.setForeground(MUTED);
+               setupHint.setFont(setupHint.getFont().deriveFont(9.8F));
+               setupHint.setAlignmentX(0.0F);
+               coreBody.add(setupHint);
+               coreBody.add(Box.createVerticalStrut(4));
+            }
             hasCore = true;
          }
 
@@ -10557,45 +10575,42 @@ public final class HxWorkbench {
          c.gridy++;
          this.formPanel.add(coreCard, c);
 
-         JPanel modelCard = this.xtregWizardCardV130(2, "模型与估计设置", "常用模型设定集中在这里；只显示当前命令实际支持的选项。");
-         JPanel modelBody = this.genericCardBody();
-         boolean hasModel = false;
-
-         if (this.model.getItemCount() > 0) {
-            this.addGenericBodyField(modelBody, this.sem("model_label"), this.model);
-            hasModel = true;
-         }
-         if (this.flag("has_absorb")) {
-            this.addGenericBodyField(modelBody, this.sem("absorb_label"), this.listPane(this.absorb));
-            hasModel = true;
-         }
-         if (this.flag("has_vce")) {
-            this.addGenericBodyField(modelBody, "标准误方式", this.vce);
-            hasModel = true;
-         }
          this.clusterFieldBlock = null;
-         if (this.flag("has_cluster")) {
-            this.clusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
-            this.clusterFieldBlock.setAlignmentX(0.0F);
-            this.clusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.clusterFieldBlock.getPreferredSize().height)));
-            modelBody.add(this.clusterFieldBlock);
-            modelBody.add(Box.createVerticalStrut(10));
-            hasModel = true;
-         }
-         if (!hasModel) {
-            JLabel defaultModelNote = new JLabel("当前命令没有额外模型选项，将直接使用 Stata 默认设定。");
-            defaultModelNote.setForeground(MUTED);
-            modelBody.add(defaultModelNote);
-         }
-         modelCard.add(modelBody, BorderLayout.CENTER);
-         c.gridy++;
-         this.formPanel.add(modelCard, c);
+         if (hasMethodSettings) {
+            JPanel methodCard = this.xtregWizardCardV130(2, "方法与设置", "当前任务支持的方法、模型、固定效应与标准误集中在这里。只显示实际可用的项目。");
+            JPanel methodBody = this.genericCardBody();
 
-         JPanel advancedCard = this.xtregWizardCardV130(3, "检查与更多设置", "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。");
+            if (this.model.getItemCount() > 0) {
+               this.addGenericBodyField(methodBody, this.sem("model_label"), this.model);
+            }
+            if (this.flag("has_absorb")) {
+               this.addGenericBodyField(methodBody, this.sem("absorb_label"), this.listPane(this.absorb));
+            }
+            if (this.flag("has_vce")) {
+               this.addGenericBodyField(methodBody, "标准误方式", this.vce);
+            }
+            if (this.flag("has_cluster")) {
+               this.clusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+               this.clusterFieldBlock.setAlignmentX(0.0F);
+               this.clusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.clusterFieldBlock.getPreferredSize().height)));
+               methodBody.add(this.clusterFieldBlock);
+               methodBody.add(Box.createVerticalStrut(10));
+            }
+            methodCard.add(methodBody, BorderLayout.CENTER);
+            c.gridy++;
+            this.formPanel.add(methodCard, c);
+         }
+
+         int advancedStep = hasMethodSettings ? 3 : 2;
+         boolean advancedExpandedByDefault = Arrays.asList("keep", "drop").contains(this.currentCommand);
+         String advancedSubtitle = advancedExpandedByDefault
+            ? "当前任务的样本条件直接展开；其余低频参数也在这里。运行前可在下方检查真实 Stata 命令。"
+            : "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。";
+         JPanel advancedCard = this.xtregWizardCardV130(advancedStep, "检查与更多设置", advancedSubtitle);
          JPanel advancedBody = this.genericCardBody();
          this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
-         this.advancedContent.setVisible(false);
-         JToggleButton advancedToggle = new JToggleButton("展开更多设置  +");
+         this.advancedContent.setVisible(advancedExpandedByDefault);
+         JToggleButton advancedToggle = new JToggleButton(advancedExpandedByDefault ? "收起更多设置  −" : "展开更多设置  +", advancedExpandedByDefault);
          styleSecondaryButton(advancedToggle);
          advancedToggle.setAlignmentX(0.0F);
          this.advancedContent.setAlignmentX(0.0F);
@@ -12340,7 +12355,7 @@ public final class HxWorkbench {
             "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
             "didregress", "xtdidregress"
          );
-         if (!estimators.contains(this.currentCommand)) {
+         if (!estimators.contains(this.currentCommand) && !isGenericPanelEstimator(this.currentCommand)) {
             return true;
          }
 
