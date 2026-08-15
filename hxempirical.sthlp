@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.1  15aug2026}{...}
+{* *! version 1.5.2  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -16,6 +16,7 @@
 {p 8 16 2}{cmd:hxempirical menu remove}
 {p 8 16 2}{cmd:hxempirical install} {it:command}
 {p 8 16 2}{cmd:hxempirical update}
+{p 8 16 2}{cmd:hxempirical repair}
 {p 8 16 2}{cmd:hxempirical uninstall}
 
 {title:Description}
@@ -27,7 +28,7 @@ currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.5.1 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.2 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.

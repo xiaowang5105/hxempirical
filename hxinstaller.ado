@@ -1,4 +1,4 @@
-*! hxinstaller 1.4.0  15aug2026
+*! hxinstaller 1.5.2  15aug2026
 *! Hidden transactional installer core for hxempirical
 program define hxinstaller
 version 17.0
@@ -31,28 +31,82 @@ if c(stata_version) < 17 {
     exit 9
 }
 
-/* PERSONAL is normally user-writable and is searched before PLUS. */
-local target `"`c(sysdir_personal)'"'
-if `"`target'"' == "" {
-    noisily display as error "Stata 没有返回 PERSONAL ado 目录。请先运行 sysdir 检查安装环境。"
-    exit 603
-}
-capture quietly mkdir `"`target'"'
-local lastchar = substr(`"`target'"', strlen(`"`target'"'), 1)
-if !inlist(`"`lastchar'"', "/", "\") local target `"`target'/"'
+/* Pick a persistent writable ado location. Prefer an existing HX install,
+   then PERSONAL, then PLUS/h. */
+local personal `"`c(sysdir_personal)'"'
+local plus `"`c(sysdir_plus)'"'
+local personal : subinstr local personal "\" "/", all
+local plus : subinstr local plus "\" "/", all
+if `"`personal'"' != "" & substr(`"`personal'"', -1, 1) != "/" local personal `"`personal'/"'
+if `"`plus'"' != "" & substr(`"`plus'"', -1, 1) != "/" local plus `"`plus'/"'
 
-/* Fail early when PERSONAL is not writable. */
-local probe `"`target'__hxempirical_write_test.tmp"'
-tempname probehandle
-capture quietly file open `probehandle' using `"`probe'"', write text replace
-if _rc {
-    noisily display as error "无法写入 Stata PERSONAL 目录：`target'"
-    noisily display as text  "请运行 sysdir 查看目录设置，或联系管理员检查该目录权限。"
+local target ""
+local target_kind ""
+
+/* Reuse an existing managed location only when it lives under PERSONAL/PLUS
+   and remains writable. Ignore source-tree copies found on adopath. */
+capture quietly findfile hxempirical.ado
+if !_rc {
+    local existing `"`r(fn)'"'
+    local existing : subinstr local existing "\" "/", all
+    local slash = strrpos(`"`existing'"', "/")
+    if `slash' > 0 {
+        local existing_dir = substr(`"`existing'"', 1, `slash')
+        local allowed 0
+        if `"`personal'"' != "" & strpos(lower(`"`existing_dir'"'), lower(`"`personal'"')) == 1 local allowed 1
+        if `"`plus'"' != "" & strpos(lower(`"`existing_dir'"'), lower(`"`plus'"')) == 1 local allowed 1
+        if `allowed' {
+            local probe `"`existing_dir'__hxempirical_write_test.tmp"'
+            tempname existing_probe
+            capture quietly file open `existing_probe' using `"`probe'"', write text replace
+            if !_rc {
+                file write `existing_probe' "hxempirical write test" _n
+                file close `existing_probe'
+                capture quietly erase `"`probe'"'
+                local target `"`existing_dir'"'
+                if `"`personal'"' != "" & strpos(lower(`"`target'"'), lower(`"`personal'"')) == 1 local target_kind "PERSONAL"
+                else local target_kind "PLUS"
+            }
+        }
+    }
+}
+
+if `"`target'"' == "" & `"`personal'"' != "" {
+    capture quietly mkdir `"`personal'"'
+    local probe `"`personal'__hxempirical_write_test.tmp"'
+    tempname personal_probe
+    capture quietly file open `personal_probe' using `"`probe'"', write text replace
+    if !_rc {
+        file write `personal_probe' "hxempirical write test" _n
+        file close `personal_probe'
+        capture quietly erase `"`probe'"'
+        local target `"`personal'"'
+        local target_kind "PERSONAL"
+    }
+}
+
+/* All managed files begin with h, so PLUS/h is a persistent standard ado path. */
+if `"`target'"' == "" & `"`plus'"' != "" {
+    capture quietly mkdir `"`plus'"'
+    local plus_h `"`plus'h/"'
+    capture quietly mkdir `"`plus_h'"'
+    local probe `"`plus_h'__hxempirical_write_test.tmp"'
+    tempname plus_probe
+    capture quietly file open `plus_probe' using `"`probe'"', write text replace
+    if !_rc {
+        file write `plus_probe' "hxempirical write test" _n
+        file close `plus_probe'
+        capture quietly erase `"`probe'"'
+        local target `"`plus_h'"'
+        local target_kind "PLUS"
+    }
+}
+
+if `"`target'"' == "" {
+    noisily display as error "hxempirical 找不到可写的持久 ado 目录。"
+    noisily display as text "已尝试 PERSONAL 和 PLUS/h。请运行 sysdir 检查目录权限。"
     exit 603
 }
-file write `probehandle' "hxempirical write test" _n
-file close `probehandle'
-capture quietly erase `"`probe'"'
 
 /* The public one-line command is safe for both a clean installation and an
    existing installation.  An existing local manifest is the strongest signal;
@@ -174,7 +228,7 @@ if `"`action'"' == "uninstall" {
     }
     capture quietly which hxempirical
     local legacy_found = !_rc
-    noisily display as result _newline "hxempirical 的 PERSONAL 安装已卸载。"
+    noisily display as result _newline "hxempirical 的受管安装已卸载（`target_kind'）。"
     if `legacy_found' {
         noisily display as text "检测到 ado-path 中还有旧的 net install 记录。请运行："
         noisily display as result "  ado dir hxempirical"
@@ -220,13 +274,18 @@ foreach f of local files {
     if _rc local install_complete 0
 }
 if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' {
-    capture noisily hxsetup, persist
-    local menu_rc = _rc
+    local menu_rc 0
+    if `"`target_kind'"' == "PERSONAL" {
+        capture noisily hxsetup, persist
+        local menu_rc = _rc
+    }
+    else capture quietly hxmenu
     noisily display as text _newline "当前版本：" as result "`installed_version'"
     noisily display as text "最新版本：" as result "`package_version'"
     noisily display as result "已是最新版本，无需更新。"
     noisily display as text "启动命令：" as result "hxempirical"
-    if `menu_rc' noisily display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"
+    if `"`target_kind'"' == "PLUS" noisily display as text "当前安装位置：PLUS/h（PERSONAL 不可写）。"
+    else if `menu_rc' noisily display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"
     exit 0
 }
 if `"`installed_version'"' == "" {
@@ -280,6 +339,8 @@ if `"`index_source'"' == "" {
 }
 
 local parts ""
+local expected_bundle_bytes ""
+local expected_bundle_sha256 ""
 if !`download_failed' {
     tempname index_handle
     file open `index_handle' using `"`bundle_index'"', read text
@@ -290,6 +351,11 @@ if !`download_failed' {
         if lower(`"`index_tag'"') == "f" {
             gettoken part_name index_unused : index_rest
             if `"`part_name'"' != "" local parts `"`parts' `part_name'"'
+        }
+        else if lower(`"`index_tag'"') == "d" {
+            gettoken index_key index_value : index_rest
+            if lower(`"`index_key'"') == "bytes" local expected_bundle_bytes = trim(`"`index_value'"')
+            if lower(`"`index_key'"') == "sha256" local expected_bundle_sha256 = lower(trim(`"`index_value'"'))
         }
         file read `index_handle' index_line
     }
@@ -355,6 +421,38 @@ if !`download_failed' {
     if `decode_rc' {
         local download_failed 1
         local failure_stage "Base64 解码，r(`decode_rc')"
+    }
+}
+
+if !`download_failed' {
+    tempfile bundle_verify
+    local bundle_zip_java : subinstr local bundle_zip "\" "\\", all
+    local bundle_verify_java : subinstr local bundle_verify "\" "\\", all
+    capture java: java.nio.file.Files.writeString(java.nio.file.Paths.get("`bundle_verify_java'"), java.nio.file.Files.size(java.nio.file.Paths.get("`bundle_zip_java'")) + "\n" + String.format("%064x", new java.math.BigInteger(1, java.security.MessageDigest.getInstance("SHA-256").digest(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("`bundle_zip_java'"))))))
+    if _rc {
+        local download_failed 1
+        local failure_stage "发布包完整性校验"
+    }
+    else {
+        tempname verify_in
+        file open `verify_in' using `"`bundle_verify'"', read text
+        file read `verify_in' actual_bundle_bytes
+        file read `verify_in' actual_bundle_sha256
+        file close `verify_in'
+        local actual_bundle_bytes = trim(`"`actual_bundle_bytes'"')
+        local actual_bundle_sha256 = lower(trim(`"`actual_bundle_sha256'"'))
+        if `"`expected_bundle_bytes'"' == "" | `"`expected_bundle_sha256'"' == "" {
+            local download_failed 1
+            local failure_stage "发布索引缺少 bytes/sha256"
+        }
+        else if `"`actual_bundle_bytes'"' != `"`expected_bundle_bytes'"' {
+            local download_failed 1
+            local failure_stage "发布包大小校验失败"
+        }
+        else if `"`actual_bundle_sha256'"' != `"`expected_bundle_sha256'"' {
+            local download_failed 1
+            local failure_stage "发布包 SHA-256 校验失败"
+        }
     }
 }
 
@@ -483,8 +581,12 @@ capture quietly discard
 
 /* A successful install/update also establishes the single persistent User-menu
    entry.  Package files remain usable if profile persistence is unavailable. */
-capture noisily hxsetup, persist
-local menu_rc = _rc
+local menu_rc 0
+if `"`target_kind'"' == "PERSONAL" {
+    capture noisily hxsetup, persist
+    local menu_rc = _rc
+}
+else capture quietly hxmenu
 
 local verb "安装"
 if `"`action'"' == "update" local verb "更新"
@@ -496,7 +598,11 @@ noisily display as text "清单来源：" as result "`manifest_source'"
 if `fallback_count' > 0 noisily display as text "网络回退：" as result "有 `fallback_count' 个文件改用 GitHub Raw 下载。"
 noisily display as text _newline "验证命令：" as result "which hxempirical"
 noisily display as text "启动命令：" as result "hxempirical"
-if `menu_rc' {
+if `"`target_kind'"' == "PLUS" {
+    noisily display as text "安装目录回退：" as result "PERSONAL 不可写，已安装到 PLUS/h。"
+    noisily display as text "本次会话可直接运行 hxempirical；持久菜单未写入 PERSONAL/profile.do。"
+}
+else if `menu_rc' {
     noisily display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"
 }
 else noisily display as text "顶部入口：" as result "用户(U) > 我的实证工具箱"
