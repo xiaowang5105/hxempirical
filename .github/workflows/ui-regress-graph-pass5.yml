@@ -37,7 +37,6 @@ jobs:
               'buildSpecialGraphMoreSettings',
               'genericStepStripV152(false, coreTitle, "")',
               '趋势图设置尚未完整',
-              '图层表达式为空',
               '--render-regress-command-preview',
               '--render-special-graph-preview',
               '--render-did-trends-graph-preview',
