@@ -21,6 +21,9 @@ jobs:
       - name: Verify managed release
         run: python tools/verify_release.py
 
+      - name: Verify Stata static contracts
+        run: python tools/verify_static_contracts.py
+
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
