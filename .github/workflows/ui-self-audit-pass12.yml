@@ -105,3 +105,6 @@ jobs:
           git add src/main/java/com/hexie/stata/HxWorkbench.java hxregistry.ado hxsemantics.ado
           git commit -m "Fix self-audit panel and version compatibility issues"
           git push origin HEAD:ui-consistency-audit-20260815
+
+      - name: Self-audit marker
+        run: echo "pass12 retry"
