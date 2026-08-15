@@ -74,7 +74,7 @@ helpers = r'''      private JComponent genericStepStripV150() {
       }
 
       private void addGenericBodyField(JPanel body, String label, JComponent component) {
-         JPanel block = this.fieldBlock(label, component);
+         JComponent block = this.fieldBlock(label, component);
          block.setAlignmentX(0.0F);
          block.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, block.getPreferredSize().height)));
          body.add(block);
@@ -156,7 +156,7 @@ new_rebuild = r'''      private void rebuildForm() {
          c.insets = new Insets(0, 0, 10, 0);
          this.formPanel.add(this.genericStepStripV150(), c);
 
-         JPanel coreCard = this.xtregWizardCardV130(1, "变量与数据角色", "先完成本命令最核心的数据角色。右侧变量窗口和数据表表头都可以直接拖入。 ");
+         JPanel coreCard = this.xtregWizardCardV130(1, "变量与数据角色", "先完成本命令最核心的数据角色。右侧变量窗口和数据表表头都可以直接拖入。");
          JPanel coreBody = this.genericCardBody();
          boolean hasCore = false;
 
@@ -210,7 +210,7 @@ new_rebuild = r'''      private void rebuildForm() {
          c.gridy++;
          this.formPanel.add(coreCard, c);
 
-         JPanel modelCard = this.xtregWizardCardV130(2, "模型与估计设置", "常用模型设定集中在这里；只显示当前命令实际支持的选项。 ");
+         JPanel modelCard = this.xtregWizardCardV130(2, "模型与估计设置", "常用模型设定集中在这里；只显示当前命令实际支持的选项。");
          JPanel modelBody = this.genericCardBody();
          boolean hasModel = false;
 
@@ -228,7 +228,7 @@ new_rebuild = r'''      private void rebuildForm() {
          }
          this.clusterFieldBlock = null;
          if (this.flag("has_cluster")) {
-            this.clusterFieldBlock = this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+            this.clusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
             this.clusterFieldBlock.setAlignmentX(0.0F);
             this.clusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.clusterFieldBlock.getPreferredSize().height)));
             modelBody.add(this.clusterFieldBlock);
@@ -244,7 +244,7 @@ new_rebuild = r'''      private void rebuildForm() {
          c.gridy++;
          this.formPanel.add(modelCard, c);
 
-         JPanel advancedCard = this.xtregWizardCardV130(3, "检查与更多设置", "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。 ");
+         JPanel advancedCard = this.xtregWizardCardV130(3, "检查与更多设置", "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。");
          JPanel advancedBody = this.genericCardBody();
          this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
          this.advancedContent.setVisible(false);
@@ -279,7 +279,6 @@ new_rebuild = r'''      private void rebuildForm() {
       }'''
 text = replace_between(text, "      private void rebuildForm() {", "      private void showSpecialPage(String var1) {", new_rebuild)
 
-# Add panel declaration guard to the generic run path, after all existing validation succeeds.
 needle = '''               String var1 = this.previewArea.getText().trim();
                if (var1.isEmpty()) {'''
 replacement = '''               if (!this.ensureGenericPanelDeclarationBeforeRun()) {
@@ -292,7 +291,6 @@ if replacement not in text:
         raise SystemExit("runCurrentCommand insertion point not found")
     text = text.replace(needle, replacement, 1)
 
-# Require a panel id on generic xt estimators before attempting xtset.
 needle2 = '''         if (this.flag("has_depvar") && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择因变量。", "因变量缺失", 1);
             return false;
