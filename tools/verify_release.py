@@ -18,7 +18,7 @@ def read_text(path):
 
 
 pkg = read_text("hxempirical.pkg").splitlines()
-managed = [x.split(None, 1)[1].strip() for x in pkg if x.startswith("f ")]
+managed = [x.split(None, 1)[1].strip() for x in pkg if len(x) > 2 and x[0].lower() == "f" and x[1].isspace()]
 versions = [x.split(None, 2)[2].strip() for x in pkg if x.startswith("d Version ")]
 if len(versions) != 1:
     fail("package version missing/duplicated")

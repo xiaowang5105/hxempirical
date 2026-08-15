@@ -20,7 +20,7 @@ if ($ChunkBytes -lt 4096 -or ($ChunkBytes % 4) -ne 0) {
 $managedFiles = @(
     Get-Content -LiteralPath $manifestPath -Encoding UTF8 |
         ForEach-Object {
-            if ($_ -match '^f\s+(.+?)\s*$') { $Matches[1] }
+            if ($_ -match '^[fF]\s+(.+?)\s*$') { $Matches[1] }
         }
 )
 $bundleFiles = @($managedFiles + 'hxempirical.pkg' + 'hxinstall.do' + 'hxinstall_offline.do' + 'INSTALL.md') |

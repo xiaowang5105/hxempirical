@@ -2,9 +2,16 @@
 
 ## 当前版本与下载
 
-**当前发布版本：1.5.9**<br>
+**当前发布版本：1.5.10**<br>
 **支持：Stata 17 及以上版本**<br>
-**上次修改时间：2026-08-15 20:40（UTC+8）**
+**上次修改时间：2026-08-15 21:10（UTC+8）**
+
+### 1.5.10 安装布局统一
+
+- 修复 `net install` 与旧 `hxinstall.do` 使用不同目录导致的版本遮挡：从本版起，两种安装方式都以 Stata 标准首字母目录 `PERSONAL/h`（不可写时 `PLUS/h`）为正式安装位置。
+- `hxempirical.pkg` 将 `hxworkbench.jar`、经典 `.dlg` 和内置测试 `.dta` 改为大写 `F` 系统安装文件，保证 `net install` 不会把这些必需文件当作普通 ancillary 文件。
+- `hxinstall.do` 会在新目录成功写入后清理 1.5.9 及以前遗留在 `PERSONAL` 根目录的 HX 受管文件，避免旧 `hxempirical.ado` / `hxworkbench.jar` 抢先被 Stata 找到。
+- 发布 CI 同时检查大小写 `f/F` 清单、标准 `h/` 布局和旧根目录迁移守卫。
 
 ### 1.5.9 自查修复：外部命令扫描与文档一致性
 
@@ -65,7 +72,7 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 
 这一条命令同时负责安装、检查更新和修复缺失文件。公开的 `hxinstall.do` 只有一个很短的启动段，复杂安装逻辑在后台 `.ado` 中执行，Results 不再逐行显示几百行安装器核心源码：
 
-- 第一次运行：优先安装到当前用户的 `PERSONAL`；该目录不可写时自动尝试 `PLUS/h`；
+- 第一次运行：优先安装到当前用户的 `PERSONAL/h`；该目录不可写时自动尝试 `PLUS/h`；
 - 已安装且版本相同、文件完整：立即提示“已是最新版本”，不下载完整发布包；
 - 发现新版：备份现有版本后安全更新；
 - 版本相同但文件缺失：自动执行修复安装；
@@ -116,7 +123,7 @@ hxempirical
 
 安装器先完整取得并校验发布包，再统一写入正式目录；任何写入步骤失败都会恢复原有文件。Windows 和 macOS 使用相同的在线入口和离线包。
 
-安装位置优先使用 `PERSONAL`。如果 `PERSONAL` 因权限策略不可写，安装器会自动尝试 Stata 已搜索的 `PLUS/h`；核心安装不再因为 `PERSONAL/profile.do` 权限异常直接失败。回退到 `PLUS/h` 时不会强行改写 `profile.do`，启动工具箱可直接运行 `hxempirical`。
+安装位置统一使用 Stata 标准首字母目录，优先 `PERSONAL/h`。如果 `PERSONAL/h` 因权限策略不可写，安装器会自动尝试 Stata 已搜索的 `PLUS/h`；核心安装不再因为 `PERSONAL/profile.do` 权限异常直接失败。回退到 `PLUS/h` 时不会强行改写 `profile.do`，启动工具箱可直接运行 `hxempirical`。
 
 ### 给朋友安装时只需要这四步
 

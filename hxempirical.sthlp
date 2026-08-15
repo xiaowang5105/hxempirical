@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.9  15aug2026}{...}
+{* *! version 1.5.10  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,7 +27,7 @@ currently in Stata memory. Double-clicked cell edits and the fx formula bar exec
 {cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.
 
 {pstd}
-The 1.5.9 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.10 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -283,4 +283,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.9.
+HX empirical workbench, package version 1.5.10.
