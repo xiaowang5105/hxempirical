@@ -1,0 +1,41 @@
+name: UI residual audit
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+    paths:
+      - '.github/workflows/ui-residual-audit.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-consistency-audit-20260815
+      - name: Find remaining flat page builders
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+          pattern=re.compile(r'\n\s+private\s+(?:static\s+)?(?:void|int|boolean|String|JPanel|JComponent|JScrollPane)\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{')
+          rows=[]
+          for m in pattern.finditer(s):
+              name=m.group(1); start=s.index('{',m.start()); d=0; end=None
+              for i in range(start,len(s)):
+                  if s[i]=='{': d+=1
+                  elif s[i]=='}':
+                      d-=1
+                      if d==0: end=i+1; break
+              if end is None: continue
+              b=s[start:end]
+              pageish=('formPanel.removeAll()' in b or 'formPanel.add(' in b or 'addField(' in b)
+              if not pageish: continue
+              rows.append((name,b.count('addField('),b.count('xtregWizardCardV130('),b.count('StepStrip'),b.count('formPanel.add('),len(b.splitlines())))
+          print('HX_UI_RESIDUAL_BEGIN')
+          for r in rows:
+              flag='FLAT' if r[1]>0 and r[2]==0 and r[3]==0 else 'STRUCTURED'
+              print(f'{flag}|{r[0]}|addField={r[1]}|cards={r[2]}|steps={r[3]}|formAdd={r[4]}|lines={r[5]}')
+          print('HX_UI_RESIDUAL_END')
+          PY
