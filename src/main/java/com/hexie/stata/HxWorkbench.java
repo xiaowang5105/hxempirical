@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.1";
+   public static final String VERSION = "1.5.2";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -5512,15 +5512,7 @@ public final class HxWorkbench {
          styleTextField(this.chooserSearchField);
          this.chooserSearchField.putClientProperty("JTextField.placeholderText", "搜索命令，例如 xtreg、logit、probit");
          this.chooserSearchField.setToolTipText("按命令名、中文说明、适用场景或示例搜索");
-         JButton advanced = this.refButton("高级筛选", false);
-         advanced.addActionListener(e -> {
-            this.chooserFilterMode = "进阶";
-            this.chooserPage = 0;
-            this.refreshChooserFilterStyles();
-            this.renderChooserCatalog();
-         });
          searchRow.add(this.chooserSearchField, BorderLayout.CENTER);
-         searchRow.add(advanced, BorderLayout.EAST);
          toolbar.add(searchRow, BorderLayout.NORTH);
 
          JPanel filterRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 7, 0));
@@ -5882,7 +5874,7 @@ public final class HxWorkbench {
          JScrollPane scroll = new JScrollPane(table);
          scroll.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(228, 234, 243), 6));
          scroll.getViewport().setBackground(SURFACE);
-         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+         scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
          int tableHeight = 31 + commands.size() * 38;
          scroll.setPreferredSize(new Dimension(900, tableHeight));
          section.add(scroll, BorderLayout.CENTER);

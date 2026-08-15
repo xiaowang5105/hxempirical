@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.1  15aug2026}{...}
+{* *! version 1.5.2  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -16,18 +16,19 @@
 {p 8 16 2}{cmd:hxempirical menu remove}
 {p 8 16 2}{cmd:hxempirical install} {it:command}
 {p 8 16 2}{cmd:hxempirical update}
+{p 8 16 2}{cmd:hxempirical repair}
 {p 8 16 2}{cmd:hxempirical uninstall}
 
 {title:Description}
 
 {pstd}
-{cmd:hxempirical} opens one desktop-style workbench with a fixed left sidebar,
+{cmd:hxempirical} opens one desktop-style workbench with a collapsible left sidebar,
 task-oriented pages, live command preview, and a read-only view of the dataset
 currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
 
 {pstd}
-The 1.5.1 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.2 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -41,8 +42,8 @@ are preserved while estimator-specific fields and the real Stata command update.
 
 {pstd}
 When a method still needs a command chooser, the chooser is a compact directory:
-it shows only the command name, Chinese title, one-line purpose, and source tag.
-Detailed examples and limitations are kept in the command page. Breadcrumbs,
+it shows command name, Chinese explanation, suitable scenario, example syntax, and an open action.
+A right-side command overview provides purpose, features, source, and help before entering the command page. Breadcrumbs,
 {bf:上一级}, {bf:首页}, and command help use fixed positions.
 
 {pstd}
