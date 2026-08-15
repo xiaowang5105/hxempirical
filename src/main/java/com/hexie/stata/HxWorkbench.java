@@ -10670,6 +10670,33 @@ public final class HxWorkbench {
       }
 
       private static String genericCoreTitle(String command) {
+         if (Arrays.asList("table", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest").contains(command)) return "检验设定";
+         if (Arrays.asList("iqreg", "bsqreg", "sureg", "mvreg").contains(command)) return "方程与变量";
+         if (Arrays.asList("logistic", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "mlogit", "mprobit", "asclogit", "asmprobit").contains(command)) return "结果与解释变量";
+         if (Arrays.asList("zip", "zinb", "tpoisson", "tnbreg", "fracreg", "betareg", "glm", "heckman", "heckprobit", "heckoprobit", "heckpoisson").contains(command)) return "模型变量";
+         if (Arrays.asList("arima", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram").contains(command)) return "时间序列设定";
+         if (Arrays.asList("var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf").contains(command)) return "系统与时间设定";
+         if (Arrays.asList("spregress", "spivregress", "spxtregress").contains(command)) return "空间模型设定";
+         if (Arrays.asList("xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys").contains(command)) return "变量与面板";
+         if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "层级与变量";
+         if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "生存数据设定";
+         if (Arrays.asList("cc", "cs", "ir").contains(command)) return "效应量设定";
+         if (Arrays.asList("eregress", "eprobit", "eoprobit", "epoisson", "eintreg", "teffects", "etregress", "etpoisson").contains(command)) return "因果模型设定";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt").contains(command)) return "模型结构";
+         if (Arrays.asList("factor", "pca", "canon", "cca", "manova", "discrim", "cluster").contains(command)) return "多元分析设定";
+         if ("svy".equals(command)) return "调查设计与估计";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress").contains(command)) return "高维变量设定";
+         if ("meta".equals(command)) return "Meta 分析设定";
+         if ("mi".equals(command)) return "多重插补任务";
+         if (Arrays.asList("npregress", "lowess", "lpoly").contains(command)) return "非参数设定";
+         if (Arrays.asList("bitesti", "tabi").contains(command)) return "精确检验设定";
+         if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "重复任务设定";
+         if ("power".equals(command)) return "效能与样本量";
+         if (Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph", "bma").contains(command)) return "贝叶斯设定";
+         if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box").contains(command)) return "图形设定";
+         if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(command)) return "诊断图设定";
+         if (Arrays.asList("tsline", "xtline").contains(command)) return "趋势图设定";
+         if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(command)) return "ROC 设定";
          if ("generate".equals(command)) return "生成规则";
          if ("replace".equals(command)) return "修改规则";
          if (Arrays.asList("keep", "drop").contains(command)) return "处理对象";
@@ -10699,6 +10726,15 @@ public final class HxWorkbench {
       }
 
       private static String genericCoreSubtitle(String command) {
+         if (Arrays.asList("table", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest").contains(command)) return "先选择检验对象和分组信息；检验方向、显著性与低频 options 放在最后。";
+         if (Arrays.asList("arima", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram", "var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf").contains(command)) return "先确认时间结构与分析变量；滞后、趋势、识别限制等命令特有参数集中在后续设置。";
+         if (Arrays.asList("xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys").contains(command)) return "先选择结果变量、解释变量和面板结构，再设置当前模型支持的估计选项。";
+         if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "先确定结果变量、解释变量和层级结构；随机效应方程按 Stata 原生语法补充。";
+         if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "先确认生存时间、失败事件和解释变量角色；删失与模型细节在最后核对。";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt").contains(command)) return "先明确模型方程或潜变量结构；复杂路径、类别和分布设定保留 Stata 原生表达。";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress").contains(command)) return "先设置结果变量和候选解释变量，再核对惩罚、选择和推断规则。";
+         if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "先明确要重复执行的统计量或命令，再设置重复次数、随机种子和保存选项。";
+         if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(command)) return "先完成当前图形最关键的变量或结果对象；样本范围和 Stata 图形 options 放在最后。";
          if ("generate".equals(command)) return "填写新变量名和计算公式；需要限定样本时在最后一步补充 if。";
          if ("replace".equals(command)) return "选择已有变量并填写新值或公式；样本条件默认直接展开。";
          if (Arrays.asList("keep", "drop").contains(command)) return "先选择处理变量还是处理样本，再填写对应范围；样本条件默认直接展开。";
