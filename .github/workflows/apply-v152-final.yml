@@ -1,0 +1,150 @@
+name: Apply v1.5.2 hardening final
+
+on:
+  push:
+    branches: [hardening-v152-20260815]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.event.head_commit.message != 'Apply v1.5.2 hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hardening-v152-20260815
+          fetch-depth: 0
+
+      - name: Validate temporary scripts
+        run: python -m py_compile .github/scripts/fix_v152_patch_script.py .github/scripts/apply_v152_hardening.py .github/scripts/post_v152_hardening.py
+
+      - name: Apply audited patch
+        run: |
+          python .github/scripts/fix_v152_patch_script.py
+          python .github/scripts/apply_v152_hardening.py
+          python .github/scripts/post_v152_hardening.py
+
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit {
+            public static int executeCommand(String s, boolean b){return 0;}
+            public static void displayln(String s){}
+            public static void errorln(String s){}
+            public static String stackTraceToString(Throwable t){return t==null?"":t.toString();}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0L;}
+            public static int getVarCount(){return 0;}
+            public static int getVarIndex(String s){return 0;}
+            public static String getVarName(int i){return "";}
+            public static String getVarLabel(int i){return "";}
+            public static String getVarFormat(int i){return "";}
+            public static boolean isVarTypeString(int i){return false;}
+            public static double getNum(int i,long j){return Double.NaN;}
+            public static String getStr(int i,long j){return "";}
+            public static String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame {
+            public static Frame connect(String s){return new Frame();}
+            public static Frame create(String s){return new Frame();}
+            public void drop(){}
+            public long getObsTotal(){return 0L;}
+            public int getVarCount(){return 0;}
+            public int getVarIndex(String s){return 0;}
+            public String getVarName(int i){return "";}
+            public boolean isVarTypeString(int i){return false;}
+            public double getNum(int i,long j){return Double.NaN;}
+            public String getStr(int i,long j){return "";}
+            public String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+
+      - name: Compile Java 11 and rebuild JAR
+        run: |
+          javac --release 11 -Xmaxerrs 200 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+
+      - name: Render representative UI previews
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb >/dev/null
+          render() {
+            mode="$1"; out="$2"
+            set +e
+            timeout 20s xvfb-run -a java -cp /tmp/classes com.hexie.stata.HxWorkbench "$mode" "$out"
+            rc=$?
+            set -e
+            test -s "$out"
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then exit "$rc"; fi
+            echo "HX_UI_RENDER_OK $mode rc=$rc bytes=$(stat -c%s "$out")"
+          }
+          render --render-home-preview /tmp/home.png
+          render --render-method-preview /tmp/method.png
+          render --render-regress-preview /tmp/regress.png
+          python - <<'PY'
+          import struct
+          for p in ['/tmp/home.png','/tmp/method.png','/tmp/regress.png']:
+              with open(p,'rb') as f: header=f.read(24)
+              assert header[:8] == b'\x89PNG\r\n\x1a\n'
+              width,height=struct.unpack('>II',header[16:24])
+              print('HX_UI_SIZE',p,(width,height))
+              assert width >= 1200 and height >= 700
+          PY
+
+      - name: Rebuild release bundle
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+
+      - name: Verify release and source invariants
+        run: |
+          python tools/verify_release.py
+          grep -F 'local target_kind "PLUS"' hxinstaller.ado
+          grep -F 'expected_bundle_sha256' hxinstaller.ado
+          grep -F '发布包 SHA-256 校验失败' hxinstaller.ado
+          grep -F 'tempfile hxinstaller_bootstrap' hxinstall.do
+          grep -F 'public static final String VERSION = "1.5.2";' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F 'JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED' src/main/java/com/hexie/stata/HxWorkbench.java
+          ! grep -F 'JButton advanced = this.refButton("高级筛选"' src/main/java/com/hexie/stata/HxWorkbench.java
+          grep -F '\u624b\u52a8\u540e\u5907' hxempirical.ado
+          test ! -e .github/workflows/ci.yml
+          git diff --check
+
+      - name: Commit audited product changes
+        run: |
+          rm -rf .github/scripts/__pycache__
+          git config user.name 'xiaowang5105'
+          git config user.email '2692127923@qq.com'
+          git add -A
+          git rm -f .github/scripts/apply_v152_hardening.py .github/scripts/fix_v152_patch_script.py .github/scripts/post_v152_hardening.py
+          git reset .github/workflows/apply-v152-final.yml
+          git commit -m 'Apply v1.5.2 hardening'
+          git push origin HEAD:hardening-v152-20260815
