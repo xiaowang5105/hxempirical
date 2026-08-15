@@ -1,4 +1,4 @@
-name: Apply v1.5.2 hardening r6
+name: Apply v1.5.2 hardening r7
 
 on:
   push:
@@ -138,7 +138,7 @@ jobs:
           grep -F 'public static final String VERSION = "1.5.2";' src/main/java/com/hexie/stata/HxWorkbench.java
           grep -F 'JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED' src/main/java/com/hexie/stata/HxWorkbench.java
           ! grep -F 'JButton advanced = this.refButton("高级筛选"' src/main/java/com/hexie/stata/HxWorkbench.java
-          grep -F '经典 .dlg' hxempirical.ado
+          grep -F '\u624b\u52a8\u540e\u5907' hxempirical.ado
           git diff --check
 
       - name: Commit clean audited product tree
