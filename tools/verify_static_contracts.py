@@ -25,6 +25,9 @@ entry = read("hxempirical.ado")
 dependency = read("hxdependency.ado")
 registry = read("hxregistry.ado")
 readme = read("README.md")
+help_text = read("hxempirical.sthlp")
+install_doc = read("INSTALL.md")
+pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
@@ -79,6 +82,35 @@ if "工作台只检测是否已安装，不再自动安装" not in readme:
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 
+# User-ado discovery must not execute one Stata `which` call per scanned file.
+discovery_start = java.find("private List<String> discoverInstalledExternalCommands")
+discovery_end = java.find("return new ArrayList<>(installed);", discovery_start)
+if discovery_start < 0 or discovery_end < 0:
+    fail("external discovery method not found")
+discovery_block = java[discovery_start:discovery_end]
+if discovery_block.count("quietly which") != 1:
+    fail("external discovery must use which only for the curated fast-path, not once per discovered ado file")
+if "for (String command : discovered)" not in discovery_block:
+    fail("external discovery loop missing")
+
+# Current user-facing docs must not advertise the removed auto-install behavior.
+for stale in (
+    "can be installed after user confirmation",
+    "installation is offered only",
+    "hxempirical install reghdfe",
+    "can be installed from SSC on request",
+):
+    if stale in help_text:
+        fail(f"help still advertises removed auto-install behavior: {stale}")
+if "hxempirical 只检测和展示，不负责安装" not in install_doc:
+    fail("INSTALL.md must state that external commands are user-installed")
+version_match = re.search(r"^d Version ([0-9]+\.[0-9]+\.[0-9]+)$", pkg, re.MULTILINE)
+if not version_match:
+    fail("package version not found")
+current_version = version_match.group(1)
+if f"package version {current_version}." not in help_text:
+    fail("help author/footer version is stale")
+
 # Parse the registry structure rather than relying on the first foreach in the file.
 stats_cmds = set(local_words(registry, "stats_cmds"))
 graph_cmds = set(local_words(registry, "graph_cmds"))
@@ -113,6 +145,6 @@ print(
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
-    "ui_external_manual_only=1 external_user_ado_scan=1 spreadsheet_editable=1 "
+    "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 "
     "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )
