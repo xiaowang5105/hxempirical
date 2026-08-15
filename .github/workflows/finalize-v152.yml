@@ -1,0 +1,45 @@
+name: Finalize v1.5.2 hardening
+
+on:
+  push:
+    branches: [hardening-v152-20260815]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.event.head_commit.message != 'Finalize v1.5.2 hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hardening-v152-20260815
+          fetch-depth: 0
+
+      - name: Apply final cleanup
+        run: python .github/scripts/finalize_v152_menu_docs.py
+
+      - name: Rebuild release bundle
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+
+      - name: Verify final release
+        run: |
+          python tools/verify_release.py
+          grep -F 'if `"`target_kind'"' == "PLUS" {' hxinstaller.ado
+          grep -F 'PERSONAL 菜单持久化不可用' hxinstaller.ado
+          grep -F '最终选定的持久 ado 目录' README.md
+          grep -F '当前版本：1.5.2' INSTALL.md
+          grep -F 'collapsible left sidebar' hxempirical.sthlp
+          git diff --check
+
+      - name: Commit audited cleanup
+        run: |
+          git config user.name 'xiaowang5105'
+          git config user.email '2692127923@qq.com'
+          git add -A
+          git rm -f .github/scripts/finalize_v152_menu_docs.py
+          git reset .github/workflows/finalize-v152.yml
+          git commit -m 'Finalize v1.5.2 hardening'
+          git push origin HEAD:hardening-v152-20260815
