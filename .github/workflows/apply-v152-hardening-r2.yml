@@ -1,0 +1,91 @@
+name: Apply v1.5.2 hardening r2
+
+on:
+  push:
+    branches: [hardening-v152-20260815]
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.event.head_commit.message != 'Apply v1.5.2 hardening'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hardening-v152-20260815
+          fetch-depth: 0
+      - name: Apply patch
+        run: python .github/scripts/apply_v152_hardening.py
+      - name: Show SFI method surface
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          s=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text()
+          for cls in ['SFIToolkit','Characteristic','Macro','Missing','Scalar','Data','Frame']:
+              print(cls, sorted(set(re.findall(r'\b'+cls+r'\.([A-Za-z_][A-Za-z0-9_]*)\s*\(',s))))
+          PY
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/classes
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit { public static int stata(String s){return 0;} public static void displayln(String s){} public static void display(String s){} public static void errorln(String s){} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getCharacteristic(String a,String b){return "";} public static void setCharacteristic(String a,String b,String c){} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro { public static String getGlobal(String s){return "";} public static String getLocal(String s){return "";} public static void setGlobal(String a,String b){} public static void setLocal(String a,String b){} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return Double.NaN;} public static void setValue(String s,double v){} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static int getVarIndex(String s){return 0;}
+            public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static boolean isVarTypeString(int i){return false;}
+            public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame { public static int getFrameCount(){return 0;} public static String getFrameName(int i){return "";} }
+          EOF
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/classes /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+      - name: Rebuild JAR
+        run: |
+          jar cf hxworkbench.jar -C /tmp/classes com/hexie/stata
+          test -s hxworkbench.jar
+          javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
+      - name: Rebuild release bundle
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+      - name: Verify release and source invariants
+        run: |
+          python tools/verify_release.py
+          grep -F 'local target_kind "PLUS"' hxinstaller.ado
+          grep -F 'expected_bundle_sha256' hxinstaller.ado
+          grep -F 'tempfile hxinstaller_bootstrap' hxinstall.do
+          grep -F 'public static final String VERSION = "1.5.2";' src/main/java/com/hexie/stata/HxWorkbench.java
+          ! grep -F 'JButton advanced = this.refButton("高级筛选"' src/main/java/com/hexie/stata/HxWorkbench.java
+          git diff --check
+      - name: Commit audited product changes
+        run: |
+          git config user.name 'xiaowang5105'
+          git config user.email '2692127923@qq.com'
+          git add -A
+          git reset .github/scripts/apply_v152_hardening.py .github/workflows/apply-v152-hardening-r2.yml
+          git commit -m 'Apply v1.5.2 hardening'
+          git push origin HEAD:hardening-v152-20260815
