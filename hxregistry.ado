@@ -9,6 +9,9 @@ program define hxregistry, rclass
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
     local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit epoisson eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    if c(stata_version) < 18 {
+        local stats_cmds : subinstr local stats_cmds " bmaregress" "", all
+    }
     /* Legacy/HX shortcuts remain callable through compatibility paths, but old DID helpers are excluded from the public search catalog. */
     local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
     local post_cmds "test lincom predict margins"
@@ -27,6 +30,9 @@ program define hxregistry, rclass
 
     /* Stata 18 Statistics menu order, followed by explicit HX navigation entries for searchable extensions. */
     local stats_methods "汇总，表格和假设检验 线性模型及相关 二元结果 序数结果 分类结果 计数结果 分数结果 广义线性模型 选择模型 时间序列 多元时间序列 空间自回归模型 纵向/面板数据 多层混合效应模型 生存分析 流行病学及相关 内生协变量 样本选择模型 因果推断/处理效应 结构方程模型(SEM) 潜在类别分析(LCA) 有限混合模型(FMM) 项目反应理论(IRT) 多元分析 调查数据分析 Lasso回归 Meta分析 多重插补 非参数分析 精确统计 重抽样 效能，精度和样品含量 贝叶斯分析 贝叶斯模型平均 工具变量与内生性 估计后分析"
+    if c(stata_version) < 18 {
+        local stats_methods : subinstr local stats_methods " 贝叶斯模型平均" "", all
+    }
 
     /* Kept as compatibility aliases for existing HX quick-entry buttons. */
     local reg_methods "线性模型 面板模型 二元结果 计数模型 工具变量 双重差分"
@@ -276,7 +282,10 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "重抽样", "resampling") local view "bootstrap jackknife permute simulate statsby"
     else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") local view "power"
     else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
-    else if inlist(`"`method'"', "贝叶斯模型平均", "bma") local view "bmaregress"
+    else if inlist(`"`method'"', "贝叶斯模型平均", "bma") {
+        if c(stata_version) >= 18 local view "bmaregress"
+        else local view ""
+    }
     else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") local view "ivregress ivreghdfe"
     else if inlist(`"`method'"', "估计后分析", "postestimation") local view "test lincom predict margins"
 

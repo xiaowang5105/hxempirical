@@ -10798,6 +10798,10 @@ public final class HxWorkbench {
          ).contains(command);
       }
 
+      private static boolean isGenericPanelTimeRequired(String command) {
+         return Arrays.asList("xtabond", "xtdpdsys").contains(command);
+      }
+
       private JPanel genericCardBody() {
          JPanel body = new JPanel();
          body.setOpaque(false);
@@ -10820,6 +10824,10 @@ public final class HxWorkbench {
          String timeVar = selected(this.time);
          if (panelVar.isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择个体 / 面板变量。", "面板结构尚未完整", JOptionPane.INFORMATION_MESSAGE);
+            return false;
+         }
+         if (isGenericPanelTimeRequired(this.currentCommand) && timeVar.isBlank()) {
+            JOptionPane.showMessageDialog(this, "当前动态面板模型需要时间变量，用于识别滞后期。请同时选择面板变量和时间变量。", "时间变量尚未选择", JOptionPane.INFORMATION_MESSAGE);
             return false;
          }
          String setup = "xtset " + panelVar + (timeVar.isBlank() ? "" : " " + timeVar);
@@ -10960,7 +10968,10 @@ public final class HxWorkbench {
                ? "处理与时间设定" : "数据结构";
             this.addGenericBodyField(coreBody, panelGroupTitle, panelGrid);
             if (isGenericPanelEstimator(this.currentCommand)) {
-               JLabel setupHint = new JLabel("运行时会先按这里执行 xtset，再运行当前面板模型；时间变量可按数据结构留空。");
+               String setupHintText = isGenericPanelTimeRequired(this.currentCommand)
+                  ? "运行时会先执行 xtset；当前动态面板模型必须同时指定面板变量和时间变量。"
+                  : "运行时会先按这里执行 xtset，再运行当前面板模型；时间变量可按数据结构留空。";
+               JLabel setupHint = new JLabel(setupHintText);
                setupHint.setForeground(MUTED);
                setupHint.setFont(setupHint.getFont().deriveFont(9.8F));
                setupHint.setAlignmentX(0.0F);
@@ -12981,7 +12992,11 @@ public final class HxWorkbench {
          }
 
          if (isGenericPanelEstimator(this.currentCommand) && selected(this.panel).isBlank()) {
-            JOptionPane.showMessageDialog(this, "请选择个体 / 面板变量；时间变量可按数据结构决定是否填写。", "面板结构尚未完整", 1);
+            JOptionPane.showMessageDialog(this, "请选择个体 / 面板变量。", "面板结构尚未完整", 1);
+            return false;
+         }
+         if (isGenericPanelTimeRequired(this.currentCommand) && selected(this.time).isBlank()) {
+            JOptionPane.showMessageDialog(this, "xtabond / xtdpdsys 需要时间变量来构造动态滞后结构。", "时间变量尚未选择", 1);
             return false;
          }
 

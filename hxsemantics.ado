@@ -864,7 +864,7 @@ program define hxsemantics, rclass
         local template "generic"
         local title "bmaregress — 贝叶斯模型平均线性回归"
         local purpose1 "在多个候选线性模型之间进行贝叶斯模型平均，反映模型选择不确定性。"
-        local purpose2 "先选择结果变量和候选预测变量；always/group、模型先验和 g-prior 等设置放在最后核对。"
+        local purpose2 "基础页面用于普通候选预测变量；需要 always/group 等内联变量组时，可直接在下方实时命令中按 Stata 原生语法补充；模型先验和 g-prior 等 options 运行前核对。"
         local has_depvar 1
         local has_varlist 1
         local dep_label "结果变量 Y"
@@ -1197,7 +1197,8 @@ program define hxsemantics, rclass
         local purpose1 "用于面板数据下的计数、受限因变量、GEE、前沿或动态面板模型。"
         local purpose2 "页面会要求面板结构；模型、动态项和估计选项继续按 Stata 当前命令语法确认。"
         local panel_label "个体 / 面板变量"
-        local time_label "时间变量（可按数据结构留空）"
+        if inlist("`cmd'", "xtabond", "xtdpdsys") local time_label "时间变量（动态面板必填）"
+        else local time_label "时间变量（可按数据结构留空）"
     }
     else if strpos(" mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm ", " `cmd' ") {
         local title "`cmd' — 多层混合效应模型"
@@ -1205,9 +1206,11 @@ program define hxsemantics, rclass
         local purpose2 "固定部分与随机部分应按层级结构填写；随机效应方程和协方差结构按 Stata 原生语法核对。"
     }
     else if strpos(" stset sts stcox streg stcrreg ", " `cmd' ") {
-        local title "`cmd' — 生存与事件史分析"
-        local purpose1 "用于声明生存数据、绘制生存函数或估计 Cox、参数生存与竞争风险模型。"
-        local purpose2 "先确认失败事件、分析时间和删失定义；生存数据声明与模型 options 需在运行前核对。"
+        if "`cmd'" != "stcox" {
+            local title "`cmd' — 生存与事件史分析"
+            local purpose1 "用于声明生存数据、绘制生存函数或估计参数生存与竞争风险模型。"
+            local purpose2 "先确认失败事件、分析时间和删失定义；生存数据声明与模型 options 需在运行前核对。"
+        }
     }
     else if strpos(" cc cs ir ", " `cmd' ") {
         local title "`cmd' — 流行病学效应量"
