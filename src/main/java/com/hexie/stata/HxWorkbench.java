@@ -164,7 +164,10 @@ public final class HxWorkbench {
             && !"--render-did-pretrend-preview".equals(var0[0])
             && !"--render-oneclick-preview".equals(var0[0])
             && !"--render-oneclick-results-preview".equals(var0[0])
-            && !"--render-regress-preview".equals(var0[0])) {
+            && !"--render-regress-preview".equals(var0[0])
+            && !"--render-regress-command-preview".equals(var0[0])
+            && !"--render-special-graph-preview".equals(var0[0])
+            && !"--render-did-trends-graph-preview".equals(var0[0])) {
          System.out
             .println(
                "Usage: HxWorkbench --inspect-convert-file input.csv | --render-preview|--render-home-preview|--render-graph-preview|--render-did-preview|--render-oneclick-preview|--render-oneclick-results-preview output.png"
@@ -276,6 +279,18 @@ public final class HxWorkbench {
 
                if (var18) {
                   var19x.openBaselineRegressionWorkspace();
+               }
+
+               if ("--render-regress-command-preview".equals(var0[0])) {
+                  var19x.showRegressPage();
+               }
+
+               if ("--render-special-graph-preview".equals(var0[0])) {
+                  var19x.showSpecialGraphPage("scatter");
+               }
+
+               if ("--render-did-trends-graph-preview".equals(var0[0])) {
+                  var19x.showSpecialGraphPage("did_trends");
                }
 
                var19x.setSize(1672, 901);
@@ -8546,10 +8561,10 @@ public final class HxWorkbench {
          this.previewArea.setEditable(true);
          this.runButton.setText("运行回归");
          this.setWorkspaceBreadcrumb("回归模型  ›  普通线性回归  ›  regress");
-         this.commandTitle.setText("regress - 普通线性回归");
+         this.commandTitle.setText("regress · 普通线性回归");
          this.commandTitle.setToolTipText("Stata 官方普通最小二乘回归");
-         this.exampleLabel.setText("<html><b>最简单：</b> 选择 Y、核心 X 和控制变量；底部会自动生成 regress 命令。</html>");
-         this.insightArea.setText("适合连续因变量的普通最小二乘回归。\n\n先填写最常用的 Y、核心解释变量 X、Controls 和标准误设置。\n\n样本条件、分类变量、交互项、滞后项、权重和其他低频选项统一放在“更多设置”中；底部始终保留真实 Stata 命令。");
+         this.exampleLabel.setText("<html><b>操作顺序：</b> 先选 Y、核心 X 和控制变量，再设置标准误；样本与低频模型项最后处理。</html>");
+         this.insightArea.setText("适合连续因变量的普通最小二乘回归。\n\n页面按论文实证的常用顺序组织：变量设定 → 推断设置 → 样本与更多设置。\n\n底部始终显示真实 regress 命令，运行后进入 Stata History，便于复现。");
          this.syntaxArea.setText("regress depvar indepvars [if] [in] [weight] [, vce(...) beta level(#) noconstant ...]");
          this.refreshRegressVariables(false);
 
@@ -8558,42 +8573,70 @@ public final class HxWorkbench {
          this.vce.addItem("default");
          this.vce.addItem("robust");
          this.vce.addItem("cluster");
-         if (selected(this.vce).isBlank()) {
-            this.vce.setSelectedItem("default");
-         }
+         if (selected(this.vce).isBlank()) this.vce.setSelectedItem("default");
          this.rebuilding = false;
 
-         this.formPanel.removeAll();
-         int row = 0;
-         this.addField(row++, "因变量 Y", this.depvar);
-         this.addField(row++, "核心解释变量 X", this.regressX);
-         this.addField(row++, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
-         this.addField(row++, "标准误", this.vce);
-         this.regressClusterFieldBlock = this.addField(row++, "聚类变量", this.cluster);
+         this.enableVariableDrop(this.depvar, "因变量 Y");
+         this.enableVariableDrop(this.regressX, "核心解释变量 X");
+         this.enableVariableDrop(this.regressControls, "控制变量");
+         this.enableVariableDrop(this.cluster, "聚类变量");
 
+         this.formPanel.removeAll();
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(true, "选择变量", "推断设置"), c);
+
+         JPanel variableCard = this.xtregWizardCardV130(1, "选择变量", "先确定因变量、核心解释变量和控制变量；右侧变量可直接拖入。");
+         JPanel variableBody = this.genericCardBody();
+         JPanel mainVars = new JPanel(new GridLayout(1, 2, 12, 0));
+         mainVars.setOpaque(false);
+         mainVars.add(this.fieldBlock("因变量 Y", this.depvar));
+         mainVars.add(this.fieldBlock("核心解释变量 X", this.regressX));
+         this.addGenericBodyField(variableBody, "核心变量", mainVars);
+         this.addGenericBodyField(variableBody, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+         variableCard.add(variableBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(variableCard, c);
+
+         JPanel inferenceCard = this.xtregWizardCardV130(2, "推断设置", "先选择标准误方式；只有选择 Cluster 时才需要聚类变量。");
+         JPanel inferenceBody = this.genericCardBody();
+         this.addGenericBodyField(inferenceBody, "标准误", this.vce);
+         this.regressClusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+         this.regressClusterFieldBlock.setAlignmentX(0.0F);
+         this.regressClusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.regressClusterFieldBlock.getPreferredSize().height)));
+         inferenceBody.add(this.regressClusterFieldBlock);
+         inferenceBody.add(Box.createVerticalStrut(10));
+         inferenceCard.add(inferenceBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(inferenceCard, c);
+
+         JPanel moreCard = this.xtregWizardCardV130(3, "检查运行与更多设置", "样本条件、分类/交互/滞后项、权重和报告选项集中在这里；默认收起。");
+         JPanel moreBody = this.genericCardBody();
          JPanel moreSettings = this.buildRegressMoreSettings();
-         JToggleButton moreToggle = new JToggleButton("展开更多设置  +");
+         JToggleButton moreToggle = new JToggleButton("展开样本与更多设置  +");
          styleSecondaryButton(moreToggle);
          moreSettings.setVisible(false);
+         moreToggle.setAlignmentX(0.0F);
+         moreSettings.setAlignmentX(0.0F);
          moreToggle.addActionListener(event -> {
             boolean expanded = moreToggle.isSelected();
-            moreToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            moreToggle.setText(expanded ? "收起样本与更多设置  −" : "展开样本与更多设置  +");
             moreSettings.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
+         moreBody.add(moreToggle);
+         moreBody.add(Box.createVerticalStrut(8));
+         moreBody.add(moreSettings);
+         moreCard.add(moreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(moreCard, c);
 
-         JPanel moreBlock = new JPanel();
-         moreBlock.setOpaque(false);
-         moreBlock.setLayout(new BoxLayout(moreBlock, BoxLayout.Y_AXIS));
-         moreToggle.setAlignmentX(0.0F);
-         moreSettings.setAlignmentX(0.0F);
-         moreBlock.add(moreToggle);
-         moreBlock.add(Box.createVerticalStrut(7));
-         moreBlock.add(moreSettings);
-         this.addField(row++, "更多设置", moreBlock);
-
-         GridBagConstraints filler = this.constraints(0, row);
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
          filler.gridwidth = 2;
          filler.weighty = 1.0;
          this.formPanel.add(Box.createVerticalGlue(), filler);
@@ -8602,7 +8645,7 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.updateRegressConditionalFields();
          this.updateRegressPreview();
-         this.statusLabel.setText("普通线性回归：常用参数在前；需要时再展开更多设置。");
+         this.statusLabel.setText("普通线性回归：按变量 → 推断 → 检查运行组织；低频设置默认收起。");
       }
 
       private JPanel buildRegressTermBuilder() {
@@ -9722,71 +9765,129 @@ public final class HxWorkbench {
          this.ifCondition.setText("");
          this.options.setText("");
          this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
-         this.formPanel.removeAll();
-         int var2 = 0;
+
+         String coreTitle;
+         String coreSubtitle;
+         String optionLabel = "其他图形选项";
+         boolean includeIf = !"twoway".equals(var1);
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
-            this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " - 直方图" : " - 核密度图"));
+            this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " · 直方图" : " · 核密度图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y</html>");
-            this.insightArea.setText("主要意图：观察单个数值变量的分布形状、偏态和尾部。\n\n推荐数据：包含连续或有序数值变量的数据。\n\n优点：回归前快速发现长尾、多峰和异常值。\n\n缺点与注意：分箱或带宽会影响视觉结果，图形主要用于描述与诊断。");
+            this.insightArea.setText("主要意图：观察单个数值变量的分布形状、偏态和尾部。\n\n推荐数据：连续或有序数值变量。右侧预览用于快速检查分布，正式图形仍由 Stata 绘制。\n\n分箱或带宽会影响视觉结果，图形主要用于描述与诊断。");
             this.syntaxArea.setText(var1 + " varname [if] [, options]");
-            this.addField(var2++, "要观察的变量", this.depvar);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "分布变量";
+            coreSubtitle = "选择一个要观察的数值变量；样本筛选和图形细节放在下一步。";
          } else if (Arrays.asList("scatter", "lfit").contains(var1)) {
-            this.commandTitle.setText(var1 + ("scatter".equals(var1) ? " - 散点图" : " - 线性拟合图"));
+            this.commandTitle.setText(var1 + ("scatter".equals(var1) ? " · 散点图" : " · 线性拟合图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway " + var1 + " y x</html>");
-            this.insightArea
-               .setText(
-                  "主要意图：观察 Y 与 X 的原始关系"
-                     + ("lfit".equals(var1) ? "和线性拟合方向。" : "、离群点与可能的非线性。")
-                     + "\n\n推荐数据：至少包含两个数值变量。\n\n优点：关系直观，适合核对模型设定。\n\n缺点与注意：图中关系是条件相关，不能自动解释为因果效应。"
-               );
+            this.insightArea.setText("主要意图：观察 Y 与 X 的原始关系" + ("lfit".equals(var1) ? "和线性拟合方向。" : "、离群点与可能的非线性。") + "\n\n至少需要两个数值变量。右侧预览会随 Y/X 选择更新。\n\n图中关系用于探索与诊断，因果解释仍取决于研究设计。");
             this.syntaxArea.setText("twoway " + var1 + " y x [if] [, options]");
-            this.addField(var2++, "纵轴变量 Y", this.depvar);
-            this.addField(var2++, "横轴变量 X（选择一个）", this.listPane(this.variables));
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "坐标变量";
+            coreSubtitle = "先指定纵轴 Y 和唯一的横轴 X；右侧同步显示关系预览。";
          } else if ("graph_box".equals(var1)) {
-            this.commandTitle.setText("graph box - 分布与异常值箱线图");
+            this.commandTitle.setText("graph box · 分布与异常值箱线图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph box y, over(group)</html>");
-            this.insightArea.setText("主要意图：观察变量分布、中位数、四分位距和潜在异常值。\n\n推荐数据：包含数值型结果变量；分组比较时再选择类别变量。\n\n优点：组间分布差异直观。\n\n缺点与注意：箱线图是描述性图形，分组样本过少时不稳定。");
+            this.insightArea.setText("主要意图：观察变量分布、中位数、四分位距和潜在异常值。\n\n结果变量必填，分组变量可选。分组样本过少时箱线图可能不稳定。\n\n右侧先做分布预览，正式箱线图由 Stata Graph 窗口输出。");
             this.syntaxArea.setText("graph box y [, over(group) options]");
-            this.addField(var2++, "要观察的变量", this.depvar);
-            this.addField(var2++, "分组变量（可选）", this.panel);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "分布与分组";
+            coreSubtitle = "选择结果变量；需要组间比较时再选择分组变量。";
          } else if ("did_trends".equals(var1)) {
             this.commandTitle.setText("处理组 / 对照组趋势图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> hxtrendplot y, group(treat) time(year)</html>");
-            this.insightArea
-               .setText("主要意图：比较处理组与对照组在政策前后的平均结果走势。\n\n推荐数据：含结果变量、时间变量和 0/1 处理组变量的面板或重复截面数据。\n\n优点：平行趋势和动态变化一眼可见。\n\n缺点与注意：趋势图用于诊断；正式 DID 仍要明确处理时点、基准期和识别假设。");
+            this.insightArea.setText("主要意图：比较处理组与对照组在政策前后的平均结果走势。\n\n需要结果变量、时间变量和处理组变量。右侧趋势预览用于检查分组和时间方向。\n\n趋势图属于 DID 诊断；正式识别仍需明确处理时点、基准期和识别假设。");
             this.syntaxArea.setText("hxtrendplot y [if], group(treat) time(year) [policy(#) options()]");
-            this.addField(var2++, "结果变量 Y", this.depvar);
-            this.addField(var2++, "处理组变量（建议 0/1）", this.panel);
-            this.addField(var2++, "时间变量", this.time);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "政策时点或其他选项");
+            coreTitle = "趋势变量";
+            coreSubtitle = "一次填好结果 Y、处理组和时间变量；处理组通常使用 0/1 编码。";
+            optionLabel = "政策时点或其他选项";
          } else {
-            this.commandTitle.setText("twoway - 自定义叠加图");
+            this.commandTitle.setText("twoway · 自定义叠加图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway (scatter y x) (lfit y x)</html>");
-            this.insightArea.setText("主要意图：自由组合散点、拟合线、置信区间和其他二维图层。\n\n推荐数据：包含要绘制的数值型横轴和纵轴变量。\n\n优点：表达能力强，适合论文图形。\n\n缺点与注意：图层表达式需要遵循 Stata twoway 语法，可先从示例修改。");
+            this.insightArea.setText("主要意图：自由组合散点、拟合线、置信区间和其他二维图层。\n\n图层主体直接采用 Stata twoway 语法，适合已经明确所需图层的用户。\n\n页面保留真实表达式，便于复制到 do-file 继续精修。");
             this.syntaxArea.setText("twoway (plottype ...) (plottype ...) [, options]");
-            if (this.expression.getText().isBlank()) {
-               this.expression.setText("(scatter y x) (lfit y x)");
-            }
-
-            this.addField(var2++, "图层表达式", this.expression);
-            this.addSpecialGraphAdvancedSettings(var2++, false, "其他图形选项");
+            if (this.expression.getText().isBlank()) this.expression.setText("(scatter y x) (lfit y x)");
+            coreTitle = "图层表达式";
+            coreSubtitle = "填写一个或多个 twoway 图层；可从默认散点 + 拟合线示例直接修改。";
          }
 
-         GridBagConstraints var3 = this.constraints(0, var2);
-         var3.gridwidth = 2;
-         var3.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var3);
+         this.enableVariableDrop(this.depvar, "Y / 分布变量");
+         this.enableVariableDrop(this.variables, "横轴 X");
+         this.enableVariableDrop(this.panel, "分组 / 处理组变量");
+         this.enableVariableDrop(this.time, "时间变量");
+
+         this.formPanel.removeAll();
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(false, coreTitle, ""), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, coreTitle, coreSubtitle);
+         JPanel coreBody = this.genericCardBody();
+         if (Arrays.asList("histogram", "kdensity").contains(var1)) {
+            this.addGenericBodyField(coreBody, "要观察的变量", this.depvar);
+         } else if (Arrays.asList("scatter", "lfit").contains(var1)) {
+            JPanel xy = new JPanel(new GridLayout(1, 2, 12, 0));
+            xy.setOpaque(false);
+            xy.add(this.fieldBlock("纵轴变量 Y", this.depvar));
+            xy.add(this.fieldBlock("横轴变量 X（选择一个）", this.listPane(this.variables)));
+            this.addGenericBodyField(coreBody, "Y / X", xy);
+         } else if ("graph_box".equals(var1)) {
+            JPanel boxVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            boxVars.setOpaque(false);
+            boxVars.add(this.fieldBlock("要观察的变量", this.depvar));
+            boxVars.add(this.fieldBlock("分组变量（可选）", this.panel));
+            this.addGenericBodyField(coreBody, "变量", boxVars);
+         } else if ("did_trends".equals(var1)) {
+            JPanel trendVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            trendVars.setOpaque(false);
+            trendVars.add(this.fieldBlock("结果变量 Y", this.depvar));
+            trendVars.add(this.fieldBlock("处理组变量（建议 0/1）", this.panel));
+            trendVars.add(this.fieldBlock("时间变量", this.time));
+            this.addGenericBodyField(coreBody, "趋势设定", trendVars);
+            JLabel trendHint = new JLabel("处理组与时间变量决定右侧趋势预览的分组与横轴；正式图形由 hxtrendplot 执行。");
+            trendHint.setForeground(MUTED);
+            trendHint.setFont(trendHint.getFont().deriveFont(9.8F));
+            trendHint.setAlignmentX(0.0F);
+            coreBody.add(trendHint);
+         } else {
+            this.addGenericBodyField(coreBody, "图层表达式", this.expression);
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         String checkTitle = includeIf ? "样本与图形设置" : "图形设置与检查";
+         String checkSubtitle = includeIf
+            ? "样本条件和 Stata 原生图形 options 默认收起；底部实时命令用于运行前核对。"
+            : "Stata 原生图形 options 默认收起；底部实时命令用于运行前核对。";
+         JPanel checkCard = this.xtregWizardCardV130(2, checkTitle, checkSubtitle);
+         JPanel checkBody = this.genericCardBody();
+         JPanel graphMore = this.buildSpecialGraphMoreSettings(includeIf, optionLabel);
+         graphMore.setAlignmentX(0.0F);
+         checkBody.add(graphMore);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
          this.updateSpecialGraphPreview();
-         this.statusLabel.setText("图形页面已就绪；右侧“图形预览”会随变量选择更新。");
+         this.statusLabel.setText("图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
       }
 
 
-      private void addSpecialGraphAdvancedSettings(int row, boolean includeIf, String optionLabel) {
+      private JPanel buildSpecialGraphMoreSettings(boolean includeIf, String optionLabel) {
+         JPanel block = new JPanel();
+         block.setOpaque(false);
+         block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
+
          JPanel content = new JPanel();
          content.setOpaque(false);
          content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -9796,24 +9897,26 @@ public final class HxWorkbench {
          }
          content.add(this.labeledInline(optionLabel, this.options));
          content.setVisible(false);
-         JToggleButton toggle = new JToggleButton("展开更多设置  +");
+
+         JToggleButton toggle = new JToggleButton(includeIf ? "展开样本与图形设置  +" : "展开图形设置  +");
          styleSecondaryButton(toggle);
+         toggle.setAlignmentX(0.0F);
+         content.setAlignmentX(0.0F);
          toggle.addActionListener(event -> {
             boolean expanded = toggle.isSelected();
-            toggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            if (includeIf) {
+               toggle.setText(expanded ? "收起样本与图形设置  −" : "展开样本与图形设置  +");
+            } else {
+               toggle.setText(expanded ? "收起图形设置  −" : "展开图形设置  +");
+            }
             content.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
-         JPanel block = new JPanel();
-         block.setOpaque(false);
-         block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
-         toggle.setAlignmentX(0.0F);
-         content.setAlignmentX(0.0F);
          block.add(toggle);
          block.add(Box.createVerticalStrut(7));
          block.add(content);
-         this.addField(row, "更多设置", block);
+         return block;
       }
 
 
