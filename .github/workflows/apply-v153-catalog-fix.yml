@@ -138,8 +138,8 @@ jobs:
 
       - name: Rebuild shipped JAR
         run: |
-          rm -f hxworkbench.jar
-          jar cf hxworkbench.jar -C /tmp/hxclasses com/hexie/stata/HxWorkbench.class $(cd /tmp/hxclasses && find com/hexie/stata -name 'HxWorkbench$*.class' -print)
+          rm -f hxworkbench.jar /tmp/hxclasses/com/hexie/stata/CatalogSmoke.class
+          jar cf hxworkbench.jar -C /tmp/hxclasses com/hexie/stata
           javap -verbose -classpath hxworkbench.jar com.hexie.stata.HxWorkbench | grep 'major version: 55'
 
       - name: Verify no orphan chooser host remains
