@@ -179,5 +179,5 @@ assert '当前动态面板模型必须同时指定面板变量和时间变量' i
 assert 'if c(stata_version) < 18' in registry
 assert 'local view "bmaregress"' in registry
 assert '时间变量（动态面板必填）' in sem
-assert 'if "`cmd'" != "stcox"' in sem
+assert 'local title "stcox — Cox 比例风险模型"' in sem
 print("UI_SELF_AUDIT_PASS12_OK")
