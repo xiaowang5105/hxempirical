@@ -5,6 +5,7 @@ on:
     branches: [ui-consistency-audit-20260815]
     paths:
       - 'tools/ui_baseline_pass6.py'
+      - 'tools/ui_baseline_pass6_fix.py'
       - '.github/workflows/ui-baseline-pass6.yml'
 
 permissions:
@@ -21,7 +22,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Apply baseline page refactor
-        run: python tools/ui_baseline_pass6.py
+        run: |
+          python tools/ui_baseline_pass6.py
+          python tools/ui_baseline_pass6_fix.py
       - name: Validate source assertions
         run: |
           python - <<'PY'
