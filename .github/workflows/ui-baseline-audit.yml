@@ -1,0 +1,42 @@
+name: UI baseline audit
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+    paths:
+      - '.github/workflows/ui-baseline-audit.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-consistency-audit-20260815
+      - name: Inspect baseline page methods
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
+          def body(name):
+              markers=[f'      private void {name}(', f'      private JPanel {name}(', f'      private JComponent {name}(']
+              p=-1
+              for marker in markers:
+                  p=s.find(marker)
+                  if p>=0: break
+              if p<0: raise RuntimeError(name)
+              start=s.index('{',p); depth=0
+              for i in range(start,len(s)):
+                  if s[i]=='{': depth+=1
+                  elif s[i]=='}':
+                      depth-=1
+                      if depth==0: return s[p:i+1]
+              raise RuntimeError(name)
+          for name in ['showBaselineRegressionPage','rebuildBaselineForm','buildBaselineMoreSettings','updateBaselineConditionalFields','updateBaselinePreview']:
+              try:
+                  print('HX_BEGIN',name)
+                  print(body(name))
+                  print('HX_END',name)
+              except Exception as e:
+                  print('HX_MISSING',name,e)
+          PY
