@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.5";
+   public static final String VERSION = "1.5.6";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -3608,27 +3608,27 @@ public final class HxWorkbench {
          this.sidebarButtons.clear();
          JPanel sidebar = new JPanel(new BorderLayout());
          sidebar.setBackground(SURFACE);
-         sidebar.setPreferredSize(new Dimension(210, 0));
+         sidebar.setPreferredSize(new Dimension(176, 0));
          this.sidebarPanel = sidebar;
          sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(226, 232, 240)));
 
          JPanel nav = new JPanel();
          nav.setOpaque(false);
-         nav.setBorder(new EmptyBorder(14, 11, 8, 11));
+         nav.setBorder(new EmptyBorder(12, 10, 8, 10));
          nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-         nav.add(this.sidebarButton("home", "首", "工作台", this::showHomePage));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("data", "数", "数据", () -> this.browseCategoryOverview("data")));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("stats", "统", "统计", () -> this.browseCategoryOverview("stats")));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("graph", "图", "图形", () -> this.browseCategoryOverview("graph")));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("oneclick", "O", "OneClick", () -> this.browseMethodCategory("oneclick")));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("external", "外", "已下载外部命令", this::browseInstalledExternalCommands));
-         nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("settings", "设", "设置", () -> this.openHomeTask("special", "performance")));
+         nav.add(this.sidebarButton("home", "", "工作台", this::showHomePage));
+         nav.add(Box.createVerticalStrut(2));
+         nav.add(this.sidebarButton("data", "", "数据", () -> this.browseCategoryOverview("data")));
+         nav.add(Box.createVerticalStrut(2));
+         nav.add(this.sidebarButton("stats", "", "统计", () -> this.browseCategoryOverview("stats")));
+         nav.add(Box.createVerticalStrut(2));
+         nav.add(this.sidebarButton("graph", "", "图形", () -> this.browseCategoryOverview("graph")));
+         nav.add(Box.createVerticalStrut(2));
+         nav.add(this.sidebarButton("oneclick", "", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         nav.add(Box.createVerticalStrut(8));
+         nav.add(this.sidebarButton("external", "", "外部命令", this::browseInstalledExternalCommands));
+         nav.add(Box.createVerticalStrut(2));
+         nav.add(this.sidebarButton("settings", "", "设置", () -> this.openHomeTask("special", "performance")));
          sidebar.add(nav, BorderLayout.NORTH);
 
          JPanel bottom = new JPanel();
@@ -3678,7 +3678,7 @@ public final class HxWorkbench {
       private void applySidebarCollapsedState() {
          if (this.sidebarPanel == null) return;
          this.sidebarPanel.setVisible(!this.sidebarCollapsed);
-         int width = this.sidebarCollapsed ? 0 : 210;
+         int width = this.sidebarCollapsed ? 0 : 176;
          this.sidebarPanel.setPreferredSize(new Dimension(width, 0));
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
@@ -3688,9 +3688,7 @@ public final class HxWorkbench {
          }
          for (JButton button : this.sidebarButtons.values()) {
             String label = Objects.toString(button.getClientProperty("hx.sidebar.label"), "");
-            String glyph = Objects.toString(button.getClientProperty("hx.sidebar.glyph"), "");
-            String expanded = glyph.isBlank() ? label : glyph + "   " + label;
-            button.setText("<html><b>" + html(expanded) + "</b></html>");
+            button.setText(label);
             button.setHorizontalAlignment(SwingConstants.LEFT);
             button.setBorder(new EmptyBorder(9, 12, 9, 12));
             button.setToolTipText(null);
@@ -3702,13 +3700,15 @@ public final class HxWorkbench {
       }
 
       private JButton sidebarButton(String key, String glyph, String label, Runnable action) {
-         JButton button = new JButton("<html><b>" + html(label) + "</b></html>");
+         JButton button = new JButton(label);
          button.putClientProperty("hx.sidebar.key", key);
          button.putClientProperty("hx.sidebar.label", label);
          button.putClientProperty("hx.sidebar.glyph", glyph);
          button.setHorizontalAlignment(SwingConstants.LEFT);
-         button.setBorder(new EmptyBorder(9, 12, 9, 12));
-         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+         button.setBorder(new EmptyBorder(7, 12, 7, 12));
+         button.setPreferredSize(new Dimension(156, 36));
+         button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+         button.setFont(button.getFont().deriveFont(Font.BOLD, 13.0F));
          button.setAlignmentX(0.0F);
          button.setFocusPainted(false);
          button.setContentAreaFilled(false);
@@ -3723,11 +3723,11 @@ public final class HxWorkbench {
       }
 
       private void applySidebarStyle(JButton button, boolean active) {
-         Color bg = active ? new Color(232, 241, 255) : SURFACE;
-         Color hover = active ? new Color(224, 236, 253) : new Color(247, 249, 252);
-         Color pressed = active ? new Color(213, 229, 251) : new Color(238, 243, 249);
-         Color fg = active ? new Color(20, 96, 214) : new Color(43, 55, 73);
-         button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(bg, hover, pressed, fg, active ? new Color(210, 226, 249) : SURFACE));
+         Color bg = active ? new Color(235, 243, 255) : SURFACE;
+         Color hover = active ? new Color(226, 238, 255) : new Color(247, 249, 252);
+         Color pressed = active ? new Color(216, 232, 253) : new Color(238, 243, 249);
+         Color fg = active ? new Color(18, 91, 196) : new Color(36, 48, 66);
+         button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(bg, hover, pressed, fg, active ? new Color(201, 221, 249) : SURFACE));
       }
 
       private void setSidebarActive(String key) {
