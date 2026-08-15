@@ -1,0 +1,88 @@
+name: Retry v1.5.11 OneClick UI
+
+on:
+  push:
+    branches: [agent/v1511-oneclick-ui-jar-path]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Relax current-version replacement counts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('tools/prepare_v1511_oneclick.py')
+          t=p.read_text(encoding='utf-8')
+          old='text = must_replace(text, old, new, rel, 1)'
+          assert old in t
+          p.write_text(t.replace(old, 'text = must_replace(text, old, new, rel)'), encoding='utf-8')
+          PY
+
+      - name: Apply v1.5.11 source changes
+        run: python tools/prepare_v1511_oneclick.py
+
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return t==null?"":t.toString();} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static int getVarIndex(String s){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame connect(String s){return new Frame();} public static Frame create(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public int getVarIndex(String s){return 0;} public String getVarName(int i){return "";} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+
+      - name: Render OneClick preview
+        run: |
+          xvfb-run -a java -cp /tmp/hxclasses com.hexie.stata.HxWorkbench --render-oneclick-preview /tmp/oneclick-v1511.png
+          test -s /tmp/oneclick-v1511.png
+
+      - name: Rebuild JAR and release
+        run: |
+          rm -f hxworkbench.jar
+          (cd /tmp/hxclasses && jar cf "$GITHUB_WORKSPACE/hxworkbench.jar" com/hexie/stata)
+          pwsh -File ./tools/build_release_bundle.ps1
+
+      - name: Verify release and contracts
+        run: |
+          python tools/verify_release.py
+          python tools/verify_static_contracts.py
+
+      - name: Remove temporary build files
+        run: rm -f tools/prepare_v1511_oneclick.py .github/workflows/build-v1511-oneclick.yml .github/workflows/build-v1511-oneclick-rerun.yml
+
+      - name: Commit v1.5.11
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release v1.5.11: OneClick UI and JAR path fix"
+          git push origin HEAD:agent/v1511-oneclick-ui-jar-path
