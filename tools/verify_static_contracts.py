@@ -111,6 +111,32 @@ current_version = version_match.group(1)
 if f"package version {current_version}." not in help_text:
     fail("help author/footer version is stale")
 
+# net install and the transactional installer must share one standard h/ layout.
+for system_file in (
+    "hxtoolbox_v2.dlg",
+    "hxworkbench.jar",
+    "hx_nlswork.dta",
+    "hx_grunfeld.dta",
+    "hx_union.dta",
+):
+    if f"F {system_file}" not in pkg:
+        fail(f"required system file is not marked with uppercase F: {system_file}")
+if "local personal_h" not in read("hxinstaller.ado") or "local target `\"`personal_h'\"'" not in read("hxinstaller.ado"):
+    fail("transactional installer does not target PERSONAL/h")
+if "& !`legacy_present'" not in read("hxinstaller.ado"):
+    fail("same-version fast path can skip legacy PERSONAL-root cleanup")
+if "legacy_root'hxworkbench.jar" not in read("hxinstaller.ado"):
+    fail("legacy JAR shadow is not detected")
+for needle in (
+    "legacy_root",
+    "旧 PERSONAL 根目录文件仍在遮挡",
+    "Pre-1.5.10 custom installs wrote managed files directly in PERSONAL",
+):
+    if needle not in read("hxinstaller.ado"):
+        fail(f"legacy PERSONAL-root migration guard missing: {needle}")
+if "x[0].lower() == \"f\"" not in read("tools/verify_release.py"):
+    fail("release verifier does not include uppercase F package entries")
+
 # Parse the registry structure rather than relying on the first foreach in the file.
 stats_cmds = set(local_words(registry, "stats_cmds"))
 graph_cmds = set(local_words(registry, "graph_cmds"))

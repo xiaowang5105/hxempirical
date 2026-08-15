@@ -1,4 +1,4 @@
-*! hxinstaller 1.5.9  15aug2026
+*! hxinstaller 1.5.10  15aug2026
 *! Hidden transactional installer core for hxempirical
 program define hxinstaller
 version 17.0
@@ -31,61 +31,35 @@ if c(stata_version) < 17 {
     exit 9
 }
 
-/* Pick a persistent writable ado location. Prefer an existing HX install,
-   then PERSONAL, then PLUS/h. */
+/* Use Stata's standard first-letter system directory for every installer.
+   This matches net install and prevents PERSONAL root files from shadowing PERSONAL/h. */
 local personal `"`c(sysdir_personal)'"'
 local plus `"`c(sysdir_plus)'"'
 local personal : subinstr local personal "\" "/", all
 local plus : subinstr local plus "\" "/", all
 if `"`personal'"' != "" & substr(`"`personal'"', -1, 1) != "/" local personal `"`personal'/"'
 if `"`plus'"' != "" & substr(`"`plus'"', -1, 1) != "/" local plus `"`plus'/"'
+local legacy_root `"`personal'"'
 
 local target ""
 local target_kind ""
 
-/* Reuse an existing managed location only when it lives under PERSONAL/PLUS
-   and remains writable. Ignore source-tree copies found on adopath. */
-capture quietly findfile hxempirical.ado
-if !_rc {
-    local existing `"`r(fn)'"'
-    local existing : subinstr local existing "\" "/", all
-    local slash = strrpos(`"`existing'"', "/")
-    if `slash' > 0 {
-        local existing_dir = substr(`"`existing'"', 1, `slash')
-        local allowed 0
-        if `"`personal'"' != "" & strpos(lower(`"`existing_dir'"'), lower(`"`personal'"')) == 1 local allowed 1
-        if `"`plus'"' != "" & strpos(lower(`"`existing_dir'"'), lower(`"`plus'"')) == 1 local allowed 1
-        if `allowed' {
-            local probe `"`existing_dir'__hxempirical_write_test.tmp"'
-            tempname existing_probe
-            capture quietly file open `existing_probe' using `"`probe'"', write text replace
-            if !_rc {
-                file write `existing_probe' "hxempirical write test" _n
-                file close `existing_probe'
-                capture quietly erase `"`probe'"'
-                local target `"`existing_dir'"'
-                if `"`personal'"' != "" & strpos(lower(`"`target'"'), lower(`"`personal'"')) == 1 local target_kind "PERSONAL"
-                else local target_kind "PLUS"
-            }
-        }
-    }
-}
-
-if `"`target'"' == "" & `"`personal'"' != "" {
+if `"`personal'"' != "" {
     capture quietly mkdir `"`personal'"'
-    local probe `"`personal'__hxempirical_write_test.tmp"'
+    local personal_h `"`personal'h/"'
+    capture quietly mkdir `"`personal_h'"'
+    local probe `"`personal_h'__hxempirical_write_test.tmp"'
     tempname personal_probe
     capture quietly file open `personal_probe' using `"`probe'"', write text replace
     if !_rc {
         file write `personal_probe' "hxempirical write test" _n
         file close `personal_probe'
         capture quietly erase `"`probe'"'
-        local target `"`personal'"'
+        local target `"`personal_h'"'
         local target_kind "PERSONAL"
     }
 }
 
-/* All managed files begin with h, so PLUS/h is a persistent standard ado path. */
 if `"`target'"' == "" & `"`plus'"' != "" {
     capture quietly mkdir `"`plus'"'
     local plus_h `"`plus'h/"'
@@ -111,12 +85,22 @@ if `"`target'"' == "" {
 /* The public one-line command is safe for both a clean installation and an
    existing installation.  An existing local manifest is the strongest signal;
    a leftover entry ado also counts as an update so rollback protection applies. */
+local legacy_present 0
+if `"`legacy_root'"' != "" {
+    capture quietly confirm file `"`legacy_root'hxempirical.ado"'
+    if !_rc local legacy_present 1
+    capture quietly confirm file `"`legacy_root'hxempirical.pkg"'
+    if !_rc local legacy_present 1
+    capture quietly confirm file `"`legacy_root'hxworkbench.jar"'
+    if !_rc local legacy_present 1
+}
 if `"`action'"' == "auto" {
     capture quietly confirm file `"`target'hxempirical.pkg"'
     if !_rc local action "update"
     else {
         capture quietly confirm file `"`target'hxempirical.ado"'
         if !_rc local action "update"
+        else if `legacy_present' local action "update"
         else local action "install"
     }
 }
@@ -129,6 +113,13 @@ if `"`action'"' == "uninstall" {
     if !_rc {
         capture quietly copy `"`target'hxempirical.pkg"' `"`pkg'"', replace
         if !_rc local manifest_source "本地安装清单"
+    }
+    if `"`manifest_source'"' == "" & `"`legacy_root'"' != "" {
+        capture quietly confirm file `"`legacy_root'hxempirical.pkg"'
+        if !_rc {
+            capture quietly copy `"`legacy_root'hxempirical.pkg"' `"`pkg'"', replace
+            if !_rc local manifest_source "旧 PERSONAL 根目录清单"
+        }
     }
 }
 
@@ -215,6 +206,16 @@ if `"`action'"' == "uninstall" {
         }
     }
     capture quietly erase `"`target'hxempirical.pkg"'
+    if `"`legacy_root'"' != "" & lower(`"`legacy_root'"') != lower(`"`target'"') {
+        foreach f of local files {
+            capture quietly erase `"`legacy_root'`f'"'
+            if _rc {
+                capture quietly confirm file `"`legacy_root'`f'"'
+                if !_rc local erase_failed 1
+            }
+        }
+        capture quietly erase `"`legacy_root'hxempirical.pkg"'
+    }
     /* Remove one legacy PLUS registration when it is unambiguous. Older
        machines may contain several registrations; leave those records to
        Stata's package manager and report the exact cleanup command. */
@@ -239,13 +240,19 @@ if `"`action'"' == "uninstall" {
 }
 
 /* Read the previous manifest so obsolete managed files can be removed only
-   after a successful update. */
+   after a successful update. Fall back to the pre-1.5.10 PERSONAL-root layout. */
 local oldfiles ""
 local installed_version ""
+local oldmanifest_path ""
 capture quietly confirm file `"`target'hxempirical.pkg"'
-if !_rc {
+if !_rc local oldmanifest_path `"`target'hxempirical.pkg"'
+if `"`oldmanifest_path'"' == "" & `"`legacy_root'"' != "" {
+    capture quietly confirm file `"`legacy_root'hxempirical.pkg"'
+    if !_rc local oldmanifest_path `"`legacy_root'hxempirical.pkg"'
+}
+if `"`oldmanifest_path'"' != "" {
     tempname oldmanifest
-    capture quietly file open `oldmanifest' using `"`target'hxempirical.pkg"', read text
+    capture quietly file open `oldmanifest' using `"`oldmanifest_path'"', read text
     if !_rc {
         file read `oldmanifest' oldline
         while r(eof) == 0 {
@@ -273,7 +280,7 @@ foreach f of local files {
     capture quietly confirm file `"`target'`f'"'
     if _rc local install_complete 0
 }
-if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' {
+if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' & !`legacy_present' {
     local menu_rc 0
     if `"`target_kind'"' == "PERSONAL" {
         capture noisily hxsetup, persist
@@ -572,6 +579,32 @@ if `install_failed' {
 /* Remove files that belonged to an older release but are absent now. */
 foreach f of local oldfiles {
     if !strpos(`" `files' "', `" `f' "') capture quietly erase `"`target'`f'"'
+}
+
+/* Pre-1.5.10 custom installs wrote managed files directly in PERSONAL.
+   Remove those shadow copies only after the standard h/ installation commits. */
+local legacy_cleanup_failed 0
+if `"`target_kind'"' == "PERSONAL" & `"`legacy_root'"' != "" & lower(`"`legacy_root'"') != lower(`"`target'"') {
+    foreach f of local files {
+        capture quietly erase `"`legacy_root'`f'"'
+        if _rc {
+            capture quietly confirm file `"`legacy_root'`f'"'
+            if !_rc local legacy_cleanup_failed 1
+        }
+    }
+    foreach f of local oldfiles {
+        capture quietly erase `"`legacy_root'`f'"'
+        if _rc {
+            capture quietly confirm file `"`legacy_root'`f'"'
+            if !_rc local legacy_cleanup_failed 1
+        }
+    }
+    capture quietly erase `"`legacy_root'hxempirical.pkg"'
+}
+if `legacy_cleanup_failed' {
+    noisily display as error "新版已写入 PERSONAL/h，但旧 PERSONAL 根目录文件仍在遮挡。"
+    noisily display as text "请关闭所有 Stata 窗口，重新打开后再次运行同一条更新命令完成迁移。"
+    exit 602
 }
 
 capture quietly confirm file `"`target'hxempirical.ado"'
