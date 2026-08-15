@@ -1,0 +1,70 @@
+name: UI registry navigation pass 11
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+    paths:
+      - 'tools/ui_registry_navigation_pass11.py'
+      - '.github/workflows/ui-registry-navigation-pass11.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-consistency-audit-20260815
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply registry navigation correction
+        run: python tools/ui_registry_navigation_pass11.py
+      - name: Audit catalog navigation coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('hxregistry.ado').read_text(encoding='utf-8')
+          def local_list(name):
+              m=re.search(rf'local {re.escape(name)} "([^"]*)"', s)
+              assert m, name
+              return m.group(1).split()
+          data=set(local_list('data_cmds'))
+          stats=set(local_list('stats_cmds'))
+          graphs=set(local_list('graph_cmds'))
+          # Method-to-command mappings in each native menu section.
+          ds=s[s.index('/* Data/HX compatibility paths. */'):s.index('/* Stata Statistics menu. */')]
+          ss=s[s.index('/* Stata Statistics menu. */'):s.index('/* Stata Graphics menu.')]
+          gs=s[s.index('/* Stata Graphics menu.'):s.index('/* Compatibility aliases used by existing quick-entry cards. */')]
+          def views(block):
+              out=set()
+              for m in re.finditer(r'local view "([^"]*)"', block): out.update(m.group(1).split())
+              return out
+          data_missing=sorted(data-views(ds))
+          stats_missing=sorted(stats-views(ss))
+          graph_missing=sorted(graphs-views(gs))
+          assert data_missing in ([], ['hxconvert']) or not data_missing, data_missing
+          assert not stats_missing, f'stats commands unreachable from Statistics methods: {stats_missing}'
+          # Some special graph pages are compatibility/HX entries rather than native menu rows.
+          expected_graph_special={'scatter','lfit','graph_box','marginsplot','coefplot','event_plot'}
+          assert not (set(graph_missing)-expected_graph_special), f'graph commands unreachable: {graph_missing}'
+          assert 'local view "bmaregress"' in ss
+          assert 'local view "bma"' not in ss
+          print('HX_UI_REGISTRY_NAVIGATION_COVERAGE_OK')
+          print('graph special entries:', sorted(set(graph_missing)&expected_graph_special))
+          PY
+      - name: Validate patch formatting
+        run: git diff --check
+      - name: Verify Stata static contracts
+        run: python tools/verify_static_contracts.py
+      - name: Commit product change
+        run: |
+          if git diff --quiet -- hxregistry.ado; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add hxregistry.ado
+          git commit -m 'Fix command catalog navigation coverage'
+          git push origin HEAD:ui-consistency-audit-20260815
