@@ -2,9 +2,16 @@
 
 ## 当前版本与下载
 
-**当前发布版本：1.5.4**<br>
+**当前发布版本：1.5.5**<br>
 **支持：Stata 17 及以上版本**<br>
-**上次修改时间：2026-08-15 17:10（UTC+8）**
+**上次修改时间：2026-08-15 19:21（UTC+8）**
+
+### 1.5.5 OneClick 依赖与发布一致性
+
+- `oneclick` 按真实外部命令使用；hxempirical 从 SSC 安装时先安装其依赖 `tuples`，再安装 `oneclick`，并在安装后再次检查两者是否可用。
+- `oneclick_robustness` 按作者扩展处理；当前 hxempirical 未配置经过验证的 SSC 自动安装源，需要按作者发布说明手动安装，安装后工具箱会自动识别。
+- 旧 HX `did_builder` / `did_trends` 仅保留兼容调用，不再进入公共搜索目录；标准 DID 继续直接使用 Stata 官方 `didregress` / `xtdidregress`。
+- 发布一致性 CI 增加 ZIP 内文件与仓库受管文件的逐字节核对，避免“源码已更新、安装包仍是旧文件”的发布漂移。
 
 ### 1.5.4 数据表运算与外部命令
 
@@ -249,7 +256,9 @@ hxempirical doctor
 hxempirical install reghdfe
 ```
 
-OneClick 专区执行的是作者发布的真实外部命令。候选控制变量仍应依据理论、文献与识别设计确定。
+OneClick 专区执行的是作者发布的真实外部命令。`oneclick` 通过 SSC 安装，且依赖 `tuples`；hxempirical 会按 `tuples → oneclick` 的顺序安装并验证。`oneclick_robustness` 按作者扩展处理，当前未配置经过验证的 SSC 自动安装源，需要按作者发布说明手动安装；安装完成后 hxempirical 会自动识别。
+
+候选控制变量仍应依据理论、文献与识别设计确定。
 
 ## 更新
 
@@ -546,7 +555,17 @@ do "tests/cross_platform_core_smoke.do"
 
 ## 版本记录
 
-### 1.5.4（当前版本）
+### 1.5.5（当前版本）
+
+**发布时间**：2026-08-15 19:21（UTC+8）
+
+**修改内容**：
+
+- 修复 `oneclick` 自动安装遗漏 `tuples` 依赖的问题，并在安装后验证依赖完整性。
+- 明确 `oneclick_robustness` 为需按作者说明手动安装的扩展；旧 HX DID helper 从公共搜索目录移除，官方 DID 保持公开。
+- 强化发布一致性检查：CI 逐字节核对 release ZIP 与仓库受管文件，并重新构建 Java JAR、ZIP、Base64 分段及 SHA-256 索引。
+
+### 1.5.4
 
 **发布时间**：2026-08-15 17:10（UTC+8）
 

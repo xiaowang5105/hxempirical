@@ -1,4 +1,4 @@
-*! hxdependency 0.5.0  14aug2026
+*! hxdependency 0.5.1  15aug2026
 *! Lazy checks and user-approved installation of optional community commands
 program define hxdependency, rclass
     version 17.0
@@ -28,7 +28,7 @@ program define hxdependency, rclass
             else {
                 local missing `"`missing' `cmd'"'
                 local note "进入对应功能时可按提示安装"
-                if `"`cmd'"' == "oneclick_robustness" local note "需按命令作者说明手动安装"
+                if `"`cmd'"' == "oneclick_robustness" local note "作者扩展；需按作者说明手动安装"
                 display as text "[可选扩展：未安装] `cmd' — `note'"
             }
             return scalar `cmd' = `installed'
@@ -55,7 +55,7 @@ program define hxdependency, rclass
 
     if `"`target'"' == "oneclick_robustness" {
         display as error "oneclick_robustness 当前没有在 hxempirical 中配置经过验证的 SSC 自动安装源。"
-        display as text  "请按作者发布说明安装；安装后工具箱会自动识别。"
+        display as text  "该命令按作者扩展处理；请按作者发布说明手动安装，安装后工具箱会自动识别。"
         exit 601
     }
 
@@ -63,6 +63,7 @@ program define hxdependency, rclass
     if `"`target'"' == "reghdfe" local packages "ftools reghdfe"
     if `"`target'"' == "ivreghdfe" local packages "ftools reghdfe ranktest ivreg2 ivreghdfe"
     if `"`target'"' == "ppmlhdfe" local packages "ftools reghdfe ppmlhdfe"
+    if `"`target'"' == "oneclick" local packages "tuples oneclick"
 
     foreach pkg of local packages {
         capture quietly which `pkg'
@@ -84,6 +85,13 @@ program define hxdependency, rclass
     if _rc {
         display as error "安装流程结束，但 Stata 仍未找到 `target'。"
         exit 111
+    }
+    if `"`target'"' == "oneclick" {
+        capture quietly which tuples
+        if _rc {
+            display as error "oneclick 已安装，但其依赖 tuples 仍未被 Stata 找到。"
+            exit 111
+        }
     }
     display as result "`target' 已安装，可以回到工具箱继续使用。"
     return local command "`target'"

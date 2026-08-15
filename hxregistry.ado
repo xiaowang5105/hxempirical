@@ -1,4 +1,4 @@
-*! hxregistry 3.1.2  14aug2026
+*! hxregistry 3.1.3  15aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -9,7 +9,7 @@ program define hxregistry, rclass
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
     local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit epoisson eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bma predict margins"
-    /* Legacy/HX shortcuts remain searchable but are no longer the primary taxonomy. */
+    /* Legacy/HX shortcuts remain callable through compatibility paths, but old DID helpers are excluded from the public search catalog. */
     local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
     local post_cmds "test lincom predict margins"
     local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
@@ -18,7 +18,7 @@ program define hxregistry, rclass
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
 
     local all_cmds ""
-    foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `did_cmds' `oneclick_cmds' {
+    foreach cmd in `data_cmds' `stats_cmds' `graph_cmds' `oneclick_cmds' {
         if !strpos(" `all_cmds' ", " `cmd' ") local all_cmds "`all_cmds' `cmd'"
     }
     local all_cmds = trim(itrim("`all_cmds'"))
