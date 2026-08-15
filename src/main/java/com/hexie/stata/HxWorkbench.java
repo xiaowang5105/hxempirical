@@ -10503,7 +10503,7 @@ public final class HxWorkbench {
          c.insets = new Insets(0, 0, 10, 0);
          this.formPanel.add(this.genericStepStripV150(), c);
 
-         JPanel coreCard = this.xtregWizardCardV130(1, "变量与数据角色", "先完成本命令最核心的数据角色。右侧变量窗口和数据表表头都可以直接拖入。 ");
+         JPanel coreCard = this.xtregWizardCardV130(1, "变量与数据角色", "先完成本命令最核心的数据角色。右侧变量窗口和数据表表头都可以直接拖入。");
          JPanel coreBody = this.genericCardBody();
          boolean hasCore = false;
 
@@ -10557,7 +10557,7 @@ public final class HxWorkbench {
          c.gridy++;
          this.formPanel.add(coreCard, c);
 
-         JPanel modelCard = this.xtregWizardCardV130(2, "模型与估计设置", "常用模型设定集中在这里；只显示当前命令实际支持的选项。 ");
+         JPanel modelCard = this.xtregWizardCardV130(2, "模型与估计设置", "常用模型设定集中在这里；只显示当前命令实际支持的选项。");
          JPanel modelBody = this.genericCardBody();
          boolean hasModel = false;
 
@@ -10591,7 +10591,7 @@ public final class HxWorkbench {
          c.gridy++;
          this.formPanel.add(modelCard, c);
 
-         JPanel advancedCard = this.xtregWizardCardV130(3, "检查与更多设置", "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。 ");
+         JPanel advancedCard = this.xtregWizardCardV130(3, "检查与更多设置", "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。");
          JPanel advancedBody = this.genericCardBody();
          this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
          this.advancedContent.setVisible(false);
