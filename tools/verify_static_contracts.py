@@ -17,6 +17,7 @@ def read(path: str) -> str:
 entry = read("hxempirical.ado")
 dependency = read("hxdependency.ado")
 registry = read("hxregistry.ado")
+readme = read("README.md")
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
 core_match = re.search(r'local core\s+"([^"]+)"', entry)
@@ -37,6 +38,15 @@ if "which tuples" not in dependency:
 if "作者扩展；需按作者说明手动安装" not in dependency:
     fail("oneclick_robustness must be identified as a manually installed author extension")
 
+# Documentation must preserve the verified SSC/manual-install source split.
+for needle in (
+    "`oneclick` 通过 SSC 安装，且依赖 `tuples`",
+    "`oneclick_robustness` 按作者扩展处理",
+    "未配置经过验证的 SSC 自动安装源",
+):
+    if needle not in readme:
+        fail(f"README dependency/source note missing: {needle}")
+
 # Legacy HX DID helpers stay callable for compatibility, but must not be public search entries.
 public_loop = re.search(r"foreach cmd in ([^\n]+) \{", registry)
 if not public_loop:
@@ -52,5 +62,5 @@ print(
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
-    "legacy_did_hidden=1"
+    "legacy_did_hidden=1 docs_source_split=1"
 )
