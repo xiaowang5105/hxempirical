@@ -10871,6 +10871,7 @@ public final class HxWorkbench {
          }
          if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) this.vce.addItem("cluster");
 
+         boolean rawCommandBody = "command_body".equals(this.sem("template"));
          boolean modelIsCore = this.model.getItemCount() > 0 && isCoreModelCommand(this.currentCommand);
          boolean absorbIsCore = this.flag("has_absorb")
             && Arrays.asList("collapse", "didregress", "xtdidregress").contains(this.currentCommand);
@@ -10885,9 +10886,12 @@ public final class HxWorkbench {
          this.enableVariableDrop(this.endog, "内生变量");
          this.enableVariableDrop(this.instruments, "工具变量");
          this.enableVariableDrop(this.cluster, "聚类变量");
+         if (rawCommandBody) this.enableVariableDrop(this.expression, "命令主体");
 
          String coreTitle = genericCoreTitle(this.currentCommand);
-         String coreSubtitle = genericCoreSubtitle(this.currentCommand);
+         String coreSubtitle = rawCommandBody
+            ? "这个命令包含子命令、前缀、冒号或多方程结构。第一步直接填写命令名后面的完整主体；右侧变量可拖到光标位置。"
+            : genericCoreSubtitle(this.currentCommand);
          String methodTitle;
          if (Arrays.asList("ivregress", "ivreghdfe").contains(this.currentCommand)) {
             methodTitle = "估计方法";
@@ -11017,29 +11021,39 @@ public final class HxWorkbench {
 
          int advancedStep = hasMethodSettings ? 3 : 2;
          boolean advancedExpandedByDefault = Arrays.asList("keep", "drop", "replace").contains(this.currentCommand);
-         String advancedSubtitle = advancedExpandedByDefault
-            ? "当前任务的样本条件直接展开；其余低频参数也在这里。运行前可在下方检查真实 Stata 命令。"
-            : "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。";
-         String advancedTitle = (this.flag("has_if") || this.flag("has_in") || this.flag("has_weight"))
-            ? "样本与更多设置" : "检查与更多设置";
+         String advancedSubtitle = rawCommandBody
+            ? "复杂语法已经完整写在第一步；这里仅核对下方实时 Stata 命令，确认子命令、冒号、括号和 options 的位置。"
+            : (advancedExpandedByDefault
+               ? "当前任务的样本条件直接展开；其余低频参数也在这里。运行前可在下方检查真实 Stata 命令。"
+               : "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。");
+         String advancedTitle = rawCommandBody ? "检查运行"
+            : ((this.flag("has_if") || this.flag("has_in") || this.flag("has_weight")) ? "样本与更多设置" : "检查与更多设置");
          JPanel advancedCard = this.xtregWizardCardV130(advancedStep, advancedTitle, advancedSubtitle);
          JPanel advancedBody = this.genericCardBody();
-         this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
-         this.advancedContent.setVisible(advancedExpandedByDefault);
-         JToggleButton advancedToggle = new JToggleButton(advancedExpandedByDefault ? "收起更多设置  −" : "展开更多设置  +", advancedExpandedByDefault);
-         styleSecondaryButton(advancedToggle);
-         advancedToggle.setAlignmentX(0.0F);
-         this.advancedContent.setAlignmentX(0.0F);
-         advancedToggle.addActionListener(event -> {
-            boolean expanded = advancedToggle.isSelected();
-            advancedToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
-            this.advancedContent.setVisible(expanded);
-            this.formPanel.revalidate();
-            this.formPanel.repaint();
-         });
-         advancedBody.add(advancedToggle);
-         advancedBody.add(Box.createVerticalStrut(8));
-         advancedBody.add(this.advancedContent);
+         if (rawCommandBody) {
+            JLabel rawHint = new JLabel("<html>命令主体按原生 Stata 语法直接拼接。运行前请在下方确认完整命令；复杂前缀自身的 options 也应写在第一步主体中。</html>");
+            rawHint.setForeground(MUTED);
+            rawHint.setFont(rawHint.getFont().deriveFont(9.8F));
+            rawHint.setAlignmentX(0.0F);
+            advancedBody.add(rawHint);
+         } else {
+            this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
+            this.advancedContent.setVisible(advancedExpandedByDefault);
+            JToggleButton advancedToggle = new JToggleButton(advancedExpandedByDefault ? "收起更多设置  −" : "展开更多设置  +", advancedExpandedByDefault);
+            styleSecondaryButton(advancedToggle);
+            advancedToggle.setAlignmentX(0.0F);
+            this.advancedContent.setAlignmentX(0.0F);
+            advancedToggle.addActionListener(event -> {
+               boolean expanded = advancedToggle.isSelected();
+               advancedToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+               this.advancedContent.setVisible(expanded);
+               this.formPanel.revalidate();
+               this.formPanel.repaint();
+            });
+            advancedBody.add(advancedToggle);
+            advancedBody.add(Box.createVerticalStrut(8));
+            advancedBody.add(this.advancedContent);
+         }
          advancedCard.add(advancedBody, BorderLayout.CENTER);
          c.gridy++;
          this.formPanel.add(advancedCard, c);
@@ -11053,7 +11067,9 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.rebuilding = false;
          this.updateConditionalFields();
-         this.statusLabel.setText(this.currentCommand + "：核心操作已按任务顺序整理；低频设置集中在最后一步，可从右侧直接拖入变量。");
+         this.statusLabel.setText(rawCommandBody
+            ? this.currentCommand + "：复杂语法使用原生命令主体输入；运行前请核对下方完整 Stata 命令。"
+            : this.currentCommand + "：核心操作已按任务顺序整理；低频设置集中在最后一步，可从右侧直接拖入变量。");
       }
 
       private JComponent specialStepStripV153(String step1, String tip1, String step2, String tip2) {
@@ -14194,6 +14210,44 @@ public final class HxWorkbench {
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(var1), null);
             this.statusLabel.setText("已复制完整 Stata 命令。");
          }
+      }
+
+      private void enableVariableDrop(JTextField target, String role) {
+         target.setToolTipText("可从右侧数据表表头拖入变量：" + role);
+         target.setTransferHandler(new TransferHandler() {
+            @Override
+            public boolean canImport(TransferSupport support) {
+               return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+               if (!this.canImport(support)) return false;
+               try {
+                  String value = ((String)support.getTransferable().getTransferData(DataFlavor.stringFlavor)).trim();
+                  if (value.isBlank()) return false;
+                  String current = target.getText();
+                  int pos = Math.max(0, Math.min(target.getCaretPosition(), current.length()));
+                  String before = current.substring(0, pos);
+                  String after = current.substring(pos);
+                  String insert = value;
+                  if (!before.isEmpty()) {
+                     char prev = before.charAt(before.length() - 1);
+                     if (!Character.isWhitespace(prev) && prev != '(' && prev != ':' && prev != ',') insert = " " + insert;
+                  }
+                  if (!after.isEmpty()) {
+                     char next = after.charAt(0);
+                     if (!Character.isWhitespace(next) && next != ')' && next != ',') insert = insert + " ";
+                  }
+                  target.setText(before + insert + after);
+                  target.setCaretPosition(Math.min((before + insert).length(), target.getText().length()));
+                  target.requestFocusInWindow();
+                  return true;
+               } catch (Exception ex) {
+                  return false;
+               }
+            }
+         });
       }
 
       private void updateConditionalFields() {

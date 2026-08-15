@@ -86,7 +86,11 @@ program define hxpreview, rclass
         local preview `"`preview' = `expression'"'
     }
     if inlist(`"`template'"', "expression_body", "command_body") & `"`expression'"' != "" {
-        local preview `"`preview' `expression'"'
+        local body = trim(`"`expression'"')
+        if `"`template'"' == "command_body" & inlist(substr(`"`body'"', 1, 1), ":", ",") {
+            local preview `"`preview'`body'"'
+        }
+        else local preview `"`preview' `body'"'
     }
     if `"`template'"' == "reshape" & `"`expression'"' != "" {
         local preview `"`preview' `expression'"'
