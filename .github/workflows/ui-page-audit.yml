@@ -13,34 +13,25 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ui-consistency-audit-20260815
-      - name: Inventory page-building methods
+      - name: Inspect remaining legacy page builders
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           s = Path('src/main/java/com/hexie/stata/HxWorkbench.java').read_text(encoding='utf-8')
-          pat = re.compile(r'\n\s+private\s+(?:void|int|JComponent|JPanel)\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{')
-          rows=[]
-          for m in pat.finditer(s):
-              name=m.group(1)
-              if not (name.startswith(('show','open','populate','build','browse'))):
-                  continue
-              start=s.find('{',m.start())
+          def body(name):
+              marker=f'      private void {name}('
+              p=s.index(marker)
+              start=s.index('{',p)
               depth=0
-              end=None
               for i in range(start,len(s)):
                   if s[i]=='{': depth+=1
                   elif s[i]=='}':
                       depth-=1
                       if depth==0:
-                          end=i+1; break
-              if end is None: continue
-              body=s[start:end]
-              if 'formPanel' not in body and 'commandTitle' not in body and 'workspace' not in body.lower():
-                  continue
-              rows.append((name, body.count('addField('), body.count('xtregWizardCardV130('), body.count('StepStrip'), body.count('GridLayout('), len(body.splitlines())))
-          print('HX_UI_PAGE_INVENTORY_BEGIN')
-          for r in rows:
-              print(f'{r[0]}|addField={r[1]}|cards={r[2]}|steps={r[3]}|grids={r[4]}|lines={r[5]}')
-          print('HX_UI_PAGE_INVENTORY_END')
+                          return s[p:i+1]
+              raise RuntimeError(name)
+          for name in ['showRegressPage','showSpecialGraphPage']:
+              print(f'HX_METHOD_BEGIN {name}')
+              print(body(name))
+              print(f'HX_METHOD_END {name}')
           PY
