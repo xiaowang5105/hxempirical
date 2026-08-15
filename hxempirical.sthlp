@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.8  15aug2026}{...}
+{* *! version 1.5.9  15aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,7 +27,7 @@ currently in Stata memory. Double-clicked cell edits and the fx formula bar exec
 {cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.
 
 {pstd}
-The 1.5.8 interface uses a compact desktop-workbench layout: a collapsible left
+The 1.5.9 interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -59,9 +59,10 @@ the advanced-options field.
 
 {pstd}
 External commands are user-managed. {bf:外部命令} scans Stata's user ado directories
-({bf:PLUS}, {bf:PERSONAL}, and {bf:OLDPLACE}), confirms discovered .ado names with {cmd:which}, and lists
-the commands that are actually callable. The workbench does not automatically install them. Install any
-needed command using its author's instructions, then reopen {bf:外部命令} to rescan it.
+({bf:PLUS}, {bf:PERSONAL}, and {bf:OLDPLACE}) for installed .ado programs and lists them directly.
+A small curated set of common external commands is also checked with {cmd:which} so commands installed
+outside those standard user directories can still be recognized. The workbench never installs external
+commands. Install what you need using the command author's instructions, then reopen {bf:外部命令} to rescan.
 
 
 {title:Ordinary linear regression workspace}
@@ -195,21 +196,17 @@ commands are written to Stata History.
 
 {pstd}
 {cmd:reghdfe}, {cmd:winsor2}, {cmd:ivreghdfe}, {cmd:ppmlhdfe},
-{cmd:oneclick}, {cmd:oneclick_robustness}, {cmd:coefplot}, and {cmd:event_plot} are optional.
-The package checks for optional commands only when needed. Commands with a
-verified SSC source (including {cmd:oneclick} and {cmd:event_plot}) can be
-installed after user confirmation. {cmd:oneclick_robustness} is detected when
-present but is not downloaded from an unverified source. Nothing is downloaded
-merely by installing {cmd:hxempirical}.
+{cmd:oneclick}, {cmd:oneclick_robustness}, {cmd:coefplot}, and {cmd:event_plot} are external extensions.
+They are user-managed: hxempirical checks whether they are present but does not install them.
+Install any command you need using its author's instructions, then reopen {bf:外部命令} to rescan.
 
 {pstd}
-Optional commands are not core-health failures. {cmd:hxempirical doctor}
+Missing external commands are not core-health failures. {cmd:hxempirical doctor}
 reports the core workbench separately from these extensions. A command page can
-be inspected without installing its extension; installation is offered only
-when the user attempts to run that command.
+be inspected even when its extension is absent; attempting to run a missing external
+command produces an install-it-yourself notice rather than an automatic installer.
 
 {phang2}{cmd:. hxempirical doctor}
-{phang2}{cmd:. hxempirical install reghdfe}
 
 {title:Compatibility}
 
@@ -274,7 +271,7 @@ external command is run inside a unique temporary working directory, so a user
 file named {cmd:subset.dta} in the active project directory is never renamed,
 erased, or overwritten. The dataset already in Stata memory is not replaced. A selected result row can be sent to
 the corresponding ordinary regression page for review without automatic
-execution. {cmd:oneclick} can be installed from SSC on request.
+execution. If {cmd:oneclick} is absent, install it yourself using the author's published source before returning to the workbench.
 {cmd:oneclick_robustness} is also treated as an external command; hxempirical
 does not invent an unverified download source for it.
 
@@ -286,4 +283,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.2.7.
+HX empirical workbench, package version 1.5.9.

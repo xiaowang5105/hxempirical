@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.8";
+   public static final String VERSION = "1.5.9";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -5738,9 +5738,11 @@ public final class HxWorkbench {
             }
          }
 
+         // A .ado file physically present under a user ado directory is already user-installed.
+         // Do not cross the Java -> Stata bridge once per file; large PLUS trees can contain
+         // hundreds of package helper programs and would otherwise make this navigation feel frozen.
          for (String command : discovered) {
-            if (installed.contains(command)) continue;
-            if (HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0) installed.add(command);
+            if (!installed.contains(command)) installed.add(command);
          }
          return new ArrayList<>(installed);
       }
