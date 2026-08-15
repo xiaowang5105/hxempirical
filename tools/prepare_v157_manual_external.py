@@ -19,6 +19,14 @@ def replace_once(text, old, new, label):
     return text.replace(old, new, 1)
 
 
+def sub_once(text, pattern, replacement, label):
+    rx = re.compile(pattern, re.S)
+    text, count = rx.subn(lambda _: replacement, text, count=1)
+    if count != 1:
+        raise RuntimeError(f"{label}: expected 1 match, found {count}")
+    return text
+
+
 def replace_method(text, signature, replacement):
     start = text.find(signature)
     if start < 0:
@@ -46,10 +54,12 @@ def replace_method(text, signature, replacement):
 java_rel = "src/main/java/com/hexie/stata/HxWorkbench.java"
 java = read(java_rel)
 java = replace_once(java, 'public static final String VERSION = "1.5.6";', 'public static final String VERSION = "1.5.7";', "java version")
-java = replace_once(
+java = sub_once(
     java,
-    'Arrays.asList("reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "oneclick", "oneclick_robustness", "coefplot", "event_plot")',
-    'Arrays.asList("ftools", "reghdfe", "winsor2", "ranktest", "ivreg2", "ivreghdfe", "ppmlhdfe", "tuples", "oneclick", "oneclick_robustness", "coefplot", "event_plot")',
+    r'      private static final List<String> EXTERNAL_COMMAND_CATALOG = Arrays\.asList\(.*?\n      \);',
+    '''      private static final List<String> EXTERNAL_COMMAND_CATALOG = Arrays.asList(
+         "ftools", "reghdfe", "winsor2", "ranktest", "ivreg2", "ivreghdfe", "ppmlhdfe", "tuples", "oneclick", "oneclick_robustness", "coefplot", "event_plot"
+      );''',
     "external command catalog",
 )
 java = replace_once(
@@ -78,26 +88,17 @@ manual_guard = '''      private boolean ensureOptionalDependencyBeforeRun(String
          return false;
       }'''
 java = replace_method(java, "      private boolean ensureOptionalDependencyBeforeRun(String command)", manual_guard)
-
-pattern = re.compile(
-    r'''if \(!var1 && JOptionPane\.showConfirmDialog\(this, "当前没有安装 oneclick。现在从 SSC 安装吗？", "缺少 OneClick", 0\) == 0\) \{\s*'''
-    r'''int var8 = HxWorkbench\.StataBridge\.execute\("hxdependency install oneclick", true\);\s*'''
-    r'''if \(var8 == 0\) \{\s*this\.runOneClick\(\);\s*\}\s*'''
-    r'''\} else \{\s*'''
-    r'''JOptionPane\.showMessageDialog\(this, var2 \+ " 尚未安装。请先安装作者提供的外部命令后再运行。", "缺少外部命令", 1\);\s*'''
-    r'''\}''',
-    re.S,
-)
-replacement = '''JOptionPane.showMessageDialog(
+java = sub_once(
+    java,
+    r'if \(!var1 && JOptionPane\.showConfirmDialog\(this, "当前没有安装 oneclick。现在从 SSC 安装吗？", "缺少 OneClick", 0\) == 0\) \{.*?JOptionPane\.showMessageDialog\(this, var2 \+ " 尚未安装。请先安装作者提供的外部命令后再运行。", "缺少外部命令", 1\);\s*\}',
+    '''JOptionPane.showMessageDialog(
                      this,
                      var2 + " 尚未安装。\\n\\n工作台不会自动安装外部命令。请按作者说明自行安装，安装后到‘外部命令’重新检测再运行。",
                      "缺少外部命令",
                      JOptionPane.INFORMATION_MESSAGE
-                  );'''
-java, n = pattern.subn(replacement, java, count=1)
-if n != 1:
-    raise RuntimeError(f"oneclick manual-install replacement failed: {n}")
-
+                  );''',
+    "oneclick manual install",
+)
 java = java.replace('this.activeCategoryName = "已下载外部命令";', 'this.activeCategoryName = "已安装外部命令";')
 java = java.replace('this.renderCommandChooser("已下载外部命令", "", installed);', 'this.renderCommandChooser("已安装外部命令", "", installed);')
 java = replace_once(
@@ -114,54 +115,45 @@ java = replace_once(
 )
 write(java_rel, java)
 
-# Public Stata entry: keep legacy `install` word understandable, but it no longer installs anything.
+# Public entry: the old install subcommand becomes an explicit manual-install notice.
 ado_rel = "hxempirical.ado"
 ado = read(ado_rel).replace("hxempirical 1.5.6", "hxempirical 1.5.7")
 ado = ado.replace('"1.5.6"', '"1.5.7"')
-install_start = ado.find('    if `"`action\'"\' == "install" {')
-if install_start < 0:
-    raise RuntimeError("hxempirical install block not found")
-next_start = ado.find('    if inlist(`"`action\'"\'', install_start)
-if next_start < 0:
-    raise RuntimeError("hxempirical post-install block not found")
-manual_install_block = '''    if `"`action'"' == "install" {
-        display as error ustrunescape("hxempirical 不再自动安装第三方命令。")
-        display as text  ustrunescape("请按命令作者说明自行安装；安装后打开工作台 > 外部命令查看。")
-        exit 198
-    }
-
-'''
-ado = ado[:install_start] + manual_install_block + ado[next_start:]
+ado = replace_once(
+    ado,
+    "        hxdependency install `rest'\n        exit",
+    "        display as error ustrunescape(\"hxempirical 不再自动安装第三方命令。\")\n        display as text  ustrunescape(\"请按命令作者说明自行安装；安装后打开工作台 > 外部命令查看。\")\n        exit",
+    "public install behavior",
+)
 ado = ado.replace(' | classic | install \\u547d\\u4ee4\\u540d | update', ' | classic | update')
 write(ado_rel, ado)
 
-# Help: document editable data sheet and manual-only external commands.
+# Help: editable data sheet and manual-only external commands.
 help_rel = "hxempirical.sthlp"
 hlp = read(help_rel)
 hlp = hlp.replace("version 1.5.6", "version 1.5.7")
 hlp = hlp.replace("The 1.5.6 interface", "The 1.5.7 interface")
 hlp = hlp.replace('{p 8 16 2}{cmd:hxempirical install} {it:command}\n', '')
-hlp = hlp.replace(
-    'task-oriented pages, live command preview, and a read-only view of the dataset\ncurrently in Stata memory. Commands run in Stata itself. The complete command is\nadded to Stata\'s History window before execution.',
-    'task-oriented pages, live command preview, and an editable spreadsheet-style view of the dataset\ncurrently in Stata memory. Double-clicked cell edits and the fx formula bar execute real Stata\n{cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.',
+hlp = replace_once(
+    hlp,
+    "task-oriented pages, live command preview, and a read-only view of the dataset\ncurrently in Stata memory. Commands run in Stata itself. The complete command is\nadded to Stata's History window before execution.",
+    "task-oriented pages, live command preview, and an editable spreadsheet-style view of the dataset\ncurrently in Stata memory. Double-clicked cell edits and the fx formula bar execute real Stata\n{cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.",
+    "help data description",
 )
-needle = 'Unresolved syntax remains available in\nthe advanced-options field.\n'
-insert = needle + '\n{pstd}\nExternal commands are user-managed. The workbench only detects registered third-party commands\nthat Stata can currently find and lists them under {bf:外部命令}; it does not automatically install them.\nInstall any needed command using its author\'s instructions, then reopen {bf:外部命令} to detect it.\n'
-if needle not in hlp:
-    raise RuntimeError("help insertion point not found")
-hlp = hlp.replace(needle, insert, 1)
+needle = "Unresolved syntax remains available in\nthe advanced-options field.\n"
+insert = needle + "\n{pstd}\nExternal commands are user-managed. The workbench only detects registered third-party commands\nthat Stata can currently find and lists them under {bf:外部命令}; it does not automatically install them.\nInstall any needed command using its author's instructions, then reopen {bf:外部命令} to detect it.\n"
+hlp = replace_once(hlp, needle, insert, "help external policy")
 write(help_rel, hlp)
 
 # Package/install version surfaces.
 for rel in ["hxempirical.pkg", "hxinstall.do", "hxinstaller.ado", "INSTALL.md"]:
-    text = read(rel).replace("1.5.6", "1.5.7")
-    write(rel, text)
+    write(rel, read(rel).replace("1.5.6", "1.5.7"))
 
-# README: current behavior and release note.
+# README current behavior and release note.
 readme_rel = "README.md"
 readme = read(readme_rel)
-readme = readme.replace("**当前发布版本：1.5.6**", "**当前发布版本：1.5.7**", 1)
-readme = readme.replace("**上次修改时间：2026-08-15 19:21（UTC+8）**", "**上次修改时间：2026-08-15 20:22（UTC+8）**", 1)
+readme = replace_once(readme, "**当前发布版本：1.5.6**", "**当前发布版本：1.5.7**", "README version")
+readme = replace_once(readme, "**上次修改时间：2026-08-15 19:21（UTC+8）**", "**上次修改时间：2026-08-15 20:22（UTC+8）**", "README timestamp")
 anchor = "### 1.5.6 左侧导航重构\n"
 section = '''### 1.5.7 数据编辑与外部命令管理
 
@@ -171,12 +163,12 @@ section = '''### 1.5.7 数据编辑与外部命令管理
 - 用户需要什么外部命令，按作者说明自行安装；安装完成后重新进入“外部命令”即可检测和使用。
 
 '''
-if anchor not in readme:
-    raise RuntimeError("README v1.5.6 anchor not found")
-readme = readme.replace(anchor, section + anchor, 1)
-readme = readme.replace(
+readme = replace_once(readme, anchor, section + anchor, "README release anchor")
+readme = replace_once(
+    readme,
     '`reghdfe`、`winsor2`、`oneclick`、`coefplot` 等属于可选扩展。它们未安装时，Stata 官方命令、数据处理和核心工作台仍可使用；进入对应功能并点击运行时，程序再询问是否安装。',
     '`reghdfe`、`winsor2`、`oneclick`、`coefplot` 等属于外部扩展。它们未安装时，Stata 官方命令、数据处理和核心工作台仍可使用；工作台只检测是否已安装，不再自动安装。需要什么命令请按作者说明自行安装，随后在“外部命令”中重新检测。',
+    "README external install policy",
 )
 write(readme_rel, readme)
 
