@@ -22,20 +22,20 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 
 安装器依次执行：
 
-1. 取得短安装核心并检查 Stata 版本和 `PERSONAL` 写权限；
+1. 取得短安装核心，检查 Stata 版本，并选择可写的持久 ado 目录（优先 `PERSONAL`，必要时 `PLUS/h`）；
 2. 读取 `hxempirical.pkg`，比较当前版本与最新版本；
 3. 版本相同且文件完整时直接结束；
 4. 需要安装、更新或修复时才下载 Base64 文本分段；
 5. 使用 Stata 17 自带 Java 还原完整发布包；
 6. 校验清单中的全部文件；
 7. 备份已有版本并统一写入；
-8. 建立唯一的 **用户（User） > 我的实证工具箱** 菜单入口。
+8. 尝试建立唯一的 **用户（User） > 我的实证工具箱** 菜单入口；菜单持久化失败不会撤销已经成功的核心安装。
 
 已经是最新版本时，Results 显示：
 
 ```text
-当前版本：1.5.1
-最新版本：1.5.1
+当前版本：1.5.2
+最新版本：1.5.2
 已是最新版本，无需更新。
 ```
 
@@ -196,7 +196,7 @@ hxempirical doctor
 
 ## macOS 与干净用户目录验证
 
-Windows 和 macOS 使用同一发布包。安装器会创建缺失的 `PERSONAL` 目录并验证写权限；若 `PERSONAL` 不可写，会继续检查 `PLUS/h`。只有两个持久 ado 位置都不可写时才返回 `r(603)`。使用 `PLUS/h` 回退时不会强行写入 `PERSONAL/profile.do`，因此菜单持久化会跳过，但 `hxempirical` 命令本身可正常使用。
+Windows 和 macOS 使用同一发布包。安装器会创建缺失的 `PERSONAL` 目录并验证写权限；若 `PERSONAL` 不可写，会继续检查 `PLUS/h`。只有两个持久 ado 位置都不可写时才返回 `r(603)`。使用 `PLUS/h` 时，安装器会静默尝试菜单持久化；若 `PERSONAL/profile.do` 仍不可写，只跳过持久菜单，不影响 `hxempirical` 命令本身。
 
 维护者从仓库根目录运行：
 

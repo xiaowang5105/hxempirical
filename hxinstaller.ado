@@ -279,12 +279,20 @@ if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' &
         capture noisily hxsetup, persist
         local menu_rc = _rc
     }
-    else capture quietly hxmenu
+    else {
+        capture quietly hxsetup, persist
+        local menu_rc = _rc
+        if `menu_rc' capture quietly hxmenu
+    }
     noisily display as text _newline "当前版本：" as result "`installed_version'"
     noisily display as text "最新版本：" as result "`package_version'"
     noisily display as result "已是最新版本，无需更新。"
     noisily display as text "启动命令：" as result "hxempirical"
-    if `"`target_kind'"' == "PLUS" noisily display as text "当前安装位置：PLUS/h（PERSONAL 不可写）。"
+    if `"`target_kind'"' == "PLUS" {
+        noisily display as text "当前安装位置：" as result "PLUS/h"
+        if `menu_rc' noisily display as text "菜单持久化不可用；重启 Stata 后直接运行：" as result "hxempirical"
+        else noisily display as text "顶部入口：" as result "用户(U) > 我的实证工具箱"
+    }
     else if `menu_rc' noisily display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"
     exit 0
 }
@@ -586,7 +594,11 @@ if `"`target_kind'"' == "PERSONAL" {
     capture noisily hxsetup, persist
     local menu_rc = _rc
 }
-else capture quietly hxmenu
+else {
+    capture quietly hxsetup, persist
+    local menu_rc = _rc
+    if `menu_rc' capture quietly hxmenu
+}
 
 local verb "安装"
 if `"`action'"' == "update" local verb "更新"
@@ -599,8 +611,9 @@ if `fallback_count' > 0 noisily display as text "网络回退：" as result "有
 noisily display as text _newline "验证命令：" as result "which hxempirical"
 noisily display as text "启动命令：" as result "hxempirical"
 if `"`target_kind'"' == "PLUS" {
-    noisily display as text "安装目录回退：" as result "PERSONAL 不可写，已安装到 PLUS/h。"
-    noisily display as text "本次会话可直接运行 hxempirical；持久菜单未写入 PERSONAL/profile.do。"
+    noisily display as text "安装位置：" as result "PLUS/h"
+    if `menu_rc' noisily display as text "PERSONAL 菜单持久化不可用；重启 Stata 后直接运行：" as result "hxempirical"
+    else noisily display as text "顶部入口：" as result "用户(U) > 我的实证工具箱"
 }
 else if `menu_rc' {
     noisily display as text "菜单持久化未完成；可稍后运行：" as result "hxempirical menu persist"

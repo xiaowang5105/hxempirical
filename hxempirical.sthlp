@@ -22,7 +22,7 @@
 {title:Description}
 
 {pstd}
-{cmd:hxempirical} opens one desktop-style workbench with a fixed left sidebar,
+{cmd:hxempirical} opens one desktop-style workbench with a collapsible left sidebar,
 task-oriented pages, live command preview, and a read-only view of the dataset
 currently in Stata memory. Commands run in Stata itself. The complete command is
 added to Stata's History window before execution.
@@ -42,8 +42,8 @@ are preserved while estimator-specific fields and the real Stata command update.
 
 {pstd}
 When a method still needs a command chooser, the chooser is a compact directory:
-it shows only the command name, Chinese title, one-line purpose, and source tag.
-Detailed examples and limitations are kept in the command page. Breadcrumbs,
+it shows command name, Chinese explanation, suitable scenario, example syntax, and an open action.
+A right-side command overview provides purpose, features, source, and help before entering the command page. Breadcrumbs,
 {bf:上一级}, {bf:首页}, and command help use fixed positions.
 
 {pstd}
