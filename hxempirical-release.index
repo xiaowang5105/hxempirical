@@ -1,7 +1,7 @@
 v 1
 d archive hxempirical-release.zip
-d bytes 421859
-d sha256 441801f83019a51a0b3f82d33427cd68eb4febe55588ec588a216473c3ad2c28
+d bytes 422024
+d sha256 5e3d307beb4d52d906c3ebac20f5eb47d143280fdc15f5d321bde2ef190909b2
 d parts 12
 f release/hxempirical-release.b64.001
 f release/hxempirical-release.b64.002
