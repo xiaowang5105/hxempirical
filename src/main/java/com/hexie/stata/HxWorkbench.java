@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.7";
+   public static final String VERSION = "1.5.8";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -2102,6 +2102,22 @@ public final class HxWorkbench {
             return text;
          } catch (Throwable var2) {
             return "";
+         }
+      }
+
+      static String cString(String name) {
+         if (name == null || !name.matches("[A-Za-z_][A-Za-z0-9_]*")) return "";
+         String macroName = "HXEMPIRICAL__CSTRING";
+         try {
+            execute("global " + macroName + " \"\"", false);
+            int rc = execute("global " + macroName + " = c(" + name + ")", false);
+            if (rc != 0) return "";
+            String value = Macro.getGlobal(macroName);
+            return value == null ? "" : value;
+         } catch (Throwable ignored) {
+            return "";
+         } finally {
+            execute("capture macro drop " + macroName, false);
          }
       }
 
@@ -5672,24 +5688,61 @@ public final class HxWorkbench {
          this.activeMethodName = "已安装";
          this.rebuilding = true;
          this.commandModel.clear();
-         ArrayList<String> installed = new ArrayList<>();
-         if (this.previewMode) {
-            installed.addAll(Arrays.asList("reghdfe", "winsor2", "ppmlhdfe", "oneclick", "coefplot"));
-         } else {
-            for (String command : EXTERNAL_COMMAND_CATALOG) {
-               if (HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0) installed.add(command);
-            }
-         }
+         List<String> installed = this.discoverInstalledExternalCommands();
          for (String command : installed) this.commandModel.addElement(command);
          this.rebuilding = false;
          this.renderCommandChooser("已安装外部命令", "", installed);
          this.chooserHint.setText(
             installed.isEmpty()
-               ? "当前没有检测到已安装的登记外部命令。本页只检测，不负责安装；需要什么请自行安装后再次进入本页。"
-               : "已检测到 " + installed.size() + " 个已安装外部命令（登记 " + EXTERNAL_COMMAND_CATALOG.size() + " 个）。本页只检测，不负责安装。"
+               ? "没有检测到用户目录中的外部 ado 命令。本页只扫描和统计，不负责安装；需要什么请自行安装后再刷新。"
+               : "已检测到 " + installed.size() + " 个可用外部命令。扫描 PLUS / PERSONAL / OLDPLACE，并用 which 确认可调用；常用命令会提供增强说明。"
          );
          this.setSidebarActive("external");
-         this.setBusy(false, installed.isEmpty() ? "没有检测到已安装的登记外部命令。" : "外部命令检测完成：" + installed.size() + " 个已安装。");
+         this.setBusy(false, installed.isEmpty() ? "没有检测到可用外部命令。" : "外部命令扫描完成：" + installed.size() + " 个可用。");
+      }
+
+      private List<String> discoverInstalledExternalCommands() {
+         if (this.previewMode) {
+            return new ArrayList<>(Arrays.asList("reghdfe", "winsor2", "ppmlhdfe", "oneclick", "coefplot"));
+         }
+
+         LinkedHashSet<String> installed = new LinkedHashSet<>();
+         for (String command : EXTERNAL_COMMAND_CATALOG) {
+            if (HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0) installed.add(command);
+         }
+
+         LinkedHashSet<Path> roots = new LinkedHashSet<>();
+         for (String cName : Arrays.asList("sysdir_plus", "sysdir_personal", "sysdir_oldplace")) {
+            String raw = HxWorkbench.StataBridge.cString(cName).trim();
+            if (raw.isBlank()) continue;
+            try {
+               Path path = Paths.get(raw).toAbsolutePath().normalize();
+               if (Files.isDirectory(path)) roots.add(path);
+            } catch (Throwable ignored) {
+            }
+         }
+
+         TreeSet<String> discovered = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+         for (Path adoRoot : roots) {
+            try (Stream<Path> stream = Files.walk(adoRoot, 5)) {
+               stream.filter(Files::isRegularFile).forEach(path -> {
+                  String fileName = Objects.toString(path.getFileName(), "");
+                  String lower = fileName.toLowerCase(Locale.ROOT);
+                  if (!lower.endsWith(".ado") || fileName.length() <= 4) return;
+                  String command = fileName.substring(0, fileName.length() - 4);
+                  if (!command.matches("[A-Za-z][A-Za-z0-9_]*")) return;
+                  if (command.toLowerCase(Locale.ROOT).startsWith("hx")) return;
+                  discovered.add(command);
+               });
+            } catch (Throwable ignored) {
+            }
+         }
+
+         for (String command : discovered) {
+            if (installed.contains(command)) continue;
+            if (HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0) installed.add(command);
+         }
+         return new ArrayList<>(installed);
       }
 
       private void browseCommandCategory(String var1, String var2) {
