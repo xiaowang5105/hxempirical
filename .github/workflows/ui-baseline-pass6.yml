@@ -31,7 +31,6 @@ jobs:
             'genericStepStripV152(true, "选择变量", "模型与推断")',
             '模型与推断 · " + estimator',
             '检查运行与更多设置',
-            '切换估计器时不会清空',
             '固定效应 absorb()（可多选）',
             '面板结构沿用当前 Stata xtset',
           ]
