@@ -23,7 +23,16 @@ jobs:
           python-version: '3.12'
 
       - name: Apply UI consistency refactor
-        run: python tools/refactor_ui_consistency.py
+        run: |
+          python tools/refactor_ui_consistency.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('JPanel block = this.fieldBlock(label, component);', 'JComponent block = this.fieldBlock(label, component);')
+          s = s.replace('this.clusterFieldBlock = this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);', 'this.clusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);')
+          p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Validate patch formatting
         run: git diff --check
