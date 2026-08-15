@@ -30,8 +30,9 @@ if int(total_match.group(1)) != expected_total:
     fail(f"doctor total mismatch: declared={total_match.group(1)} expected={expected_total}")
 
 # oneclick: tuples is a required dependency and must be installed before oneclick.
-if 'if `"`target\'"\' == "oneclick" local packages "tuples oneclick"' not in dependency:
-    fail("oneclick dependency chain must include tuples before oneclick")
+oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
+if not oneclick_packages or oneclick_packages.group(1).split() != ["tuples", "oneclick"]:
+    fail("oneclick dependency chain must be exactly: tuples oneclick")
 if "which tuples" not in dependency:
     fail("oneclick installation must verify tuples after installation")
 
