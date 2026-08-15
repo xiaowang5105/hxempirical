@@ -10692,7 +10692,7 @@ public final class HxWorkbench {
          if (Arrays.asList("bitesti", "tabi").contains(command)) return "精确检验设定";
          if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "重复任务设定";
          if ("power".equals(command)) return "效能与样本量";
-         if (Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph", "bma").contains(command)) return "贝叶斯设定";
+         if (Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph", "bmaregress").contains(command)) return "贝叶斯设定";
          if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box").contains(command)) return "图形设定";
          if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(command)) return "诊断图设定";
          if (Arrays.asList("tsline", "xtline").contains(command)) return "趋势图设定";
