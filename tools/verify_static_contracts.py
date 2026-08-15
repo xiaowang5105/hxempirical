@@ -182,3 +182,29 @@ print(
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
     "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )
+
+# v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.
+hxtoolbox_text = (root / "hxtoolbox.ado").read_text(encoding="utf-8")
+adjacent_marker = "Prefer the JAR adjacent to the active hxtoolbox.ado"
+if adjacent_marker not in hxtoolbox_text:
+    fail("hxtoolbox must document/use adjacent JAR preference")
+adjacent_pos = hxtoolbox_text.find("findfile hxtoolbox.ado")
+generic_pos = hxtoolbox_text.find("findfile hxworkbench.jar")
+if adjacent_pos < 0 or generic_pos < 0 or adjacent_pos > generic_pos:
+    fail("hxtoolbox must resolve active ado directory before generic JAR findfile")
+
+# v1.5.11: OneClick should remain task-first and keep raw syntax as secondary guidance.
+java_text = (root / "src/main/java/com/hexie/stata/HxWorkbench.java").read_text(encoding="utf-8")
+for needle in (
+    "OneClick 控制变量筛选",
+    "1　基础变量",
+    "2　控制变量",
+    "3　筛选与估计",
+    "4　确认 Stata 命令",
+    "候选控制变量",
+    "固定控制变量",
+    "外部命令由你自行安装",
+):
+    if needle not in java_text:
+        fail("OneClick task-first UI contract missing: " + needle)
+

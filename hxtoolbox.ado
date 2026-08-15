@@ -1,4 +1,4 @@
-*! hxtoolbox 4.7.0  14aug2026
+*! hxtoolbox 4.7.1  15aug2026
 *! Open the Java single-window workbench; keep the native dialog as fallback.
 program define hxtoolbox
     version 17.0
@@ -23,29 +23,19 @@ program define hxtoolbox
     }
 
     local jarfile ""
-    capture quietly findfile hxworkbench.jar
-    if !_rc local jarfile `"`r(fn)'"'
-    if `"`jarfile'"' == "" {
-        capture quietly findfile hxempirical.ado
-        if !_rc {
-            local entry `"`r(fn)'"'
-            local entry : subinstr local entry "\" "/", all
-            local suffix "h/hxempirical.ado"
-            local root = substr(`"`entry'"', 1, strlen(`"`entry'"') - strlen("`suffix'"))
-            local jarfile `"`root'jar/hxworkbench.jar"'
-            capture confirm file `"`jarfile'"'
-            if _rc local jarfile ""
-        }
+    /* Prefer the JAR adjacent to the active hxtoolbox.ado. This prevents an older
+       hxworkbench.jar elsewhere on adopath from shadowing the current package. */
+    capture quietly findfile hxtoolbox.ado
+    if !_rc {
+        local entry `"`r(fn)'"'
+        local entry : subinstr local entry "\" "/", all
+        local jarfile = substr(`"`entry'"', 1, strlen(`"`entry'"') - strlen("hxtoolbox.ado")) + "hxworkbench.jar"
+        capture confirm file `"`jarfile'"'
+        if _rc local jarfile ""
     }
     if `"`jarfile'"' == "" {
-        capture quietly findfile hxtoolbox.ado
-        if !_rc {
-            local entry `"`r(fn)'"'
-            local entry : subinstr local entry "\" "/", all
-            local jarfile = substr(`"`entry'"', 1, strlen(`"`entry'"') - strlen("hxtoolbox.ado")) + "hxworkbench.jar"
-            capture confirm file `"`jarfile'"'
-            if _rc local jarfile ""
-        }
+        capture quietly findfile hxworkbench.jar
+        if !_rc local jarfile `"`r(fn)'"'
     }
     if `"`jarfile'"' == "" {
         display as error "未找到 Java 工作台组件 hxworkbench.jar，当前安装可能不完整。"
