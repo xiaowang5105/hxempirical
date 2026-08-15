@@ -14,6 +14,13 @@ def read(path: str) -> str:
     return (root / path).read_text(encoding="utf-8")
 
 
+def local_words(source: str, name: str) -> list[str]:
+    match = re.search(rf'^\s*local\s+{re.escape(name)}\s+"([^"]*)"', source, re.MULTILINE)
+    if not match:
+        fail(f"local macro not found: {name}")
+    return match.group(1).split()
+
+
 entry = read("hxempirical.ado")
 dependency = read("hxdependency.ado")
 registry = read("hxregistry.ado")
@@ -47,20 +54,39 @@ for needle in (
     if needle not in readme:
         fail(f"README dependency/source note missing: {needle}")
 
-# Legacy HX DID helpers stay callable for compatibility, but must not be public search entries.
-public_loop = re.search(r"foreach cmd in ([^\n]+) \{", registry)
-if not public_loop:
-    fail("public command catalog loop not found")
-if "did_cmds" in public_loop.group(1):
+# Parse the registry structure rather than relying on the first foreach in the file.
+stats_cmds = set(local_words(registry, "stats_cmds"))
+graph_cmds = set(local_words(registry, "graph_cmds"))
+did_cmds = set(local_words(registry, "did_cmds"))
+
+catalog_loop = re.search(
+    r'local\s+all_cmds\s+""\s*\n\s*foreach\s+cmd\s+in\s+([^\n]+?)\s*\{',
+    registry,
+    re.MULTILINE,
+)
+if not catalog_loop:
+    fail("public all_cmds catalog loop not found")
+catalog_groups = catalog_loop.group(1).split()
+if "`did_cmds'" in catalog_groups or any("did_cmds" in token for token in catalog_groups):
     fail("legacy did_cmds leaked into the public command catalog")
+
+# Compatibility paths remain present, but only event_plot is public through Graph.
+for legacy in ("did_builder", "did_trends", "event_plot"):
+    if legacy not in did_cmds:
+        fail(f"legacy DID compatibility command missing: {legacy}")
+for hidden in ("did_builder", "did_trends"):
+    if hidden in stats_cmds or hidden in graph_cmds:
+        fail(f"legacy DID helper leaked into a public command group: {hidden}")
+if "event_plot" not in graph_cmds:
+    fail("event_plot must remain public through the Graph catalog")
 for official in ("didregress", "xtdidregress"):
-    if official not in registry:
-        fail(f"official DID command missing: {official}")
+    if official not in stats_cmds:
+        fail(f"official DID command missing from Statistics catalog: {official}")
 
 print(
     "HX_STATIC_VERIFY_OK "
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
-    "legacy_did_hidden=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
 )
