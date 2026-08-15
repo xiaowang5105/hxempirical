@@ -3,11 +3,11 @@ from pathlib import Path
 # Make uninstall wording location-neutral now that a managed install can live in PLUS/h.
 p = Path('hxinstaller.ado')
 s = p.read_text(encoding='utf-8')
-s = s.replace('noisily display as result _newline "hxempirical 的 PERSONAL 安装已卸载。"', 'noisily display as result _newline "hxempirical 的受管安装已卸载（`target_kind\'）。"', 1)
+s = s.replace('noisily display as result _newline "hxempirical 的 PERSONAL 安装已卸载。"', "noisily display as result _newline \"hxempirical 的受管安装已卸载（`target_kind'）。\"", 1)
 p.write_text(s, encoding='utf-8')
 
 # Permanent CI compiles the Java source against a small SFI surface stub in addition
-# to checking release/package integrity.  UI rendering stays in the release audit.
+# to checking release/package integrity. UI rendering stays in the release audit.
 Path('.github/workflows/ci.yml').write_text(r'''name: HX release consistency
 
 on:
