@@ -127,7 +127,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.3";
+   public static final String VERSION = "1.5.4";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -612,12 +612,17 @@ public final class HxWorkbench {
       }
    }
 
+   private interface DataCellCommitter {
+      boolean commit(int row, int column, Object value);
+   }
+
    private static final class DataTableModel extends AbstractTableModel {
       private int rows;
       private int cols;
       private List<String> names = Collections.emptyList();
       private Object[][] previewValues;
       private List<Long> visibleObservations;
+      private HxWorkbench.DataCellCommitter cellCommitter;
 
       void reload() {
          this.previewValues = null;
@@ -653,6 +658,22 @@ public final class HxWorkbench {
 
       void clearRowFilter() {
          this.visibleObservations = null;
+      }
+
+      void setCellCommitter(HxWorkbench.DataCellCommitter var1) {
+         this.cellCommitter = var1;
+      }
+
+      long observationAt(int row) {
+         return this.visibleObservations == null ? row + 1L : this.visibleObservations.get(row);
+      }
+
+      void refreshCell(int row, int column) {
+         this.fireTableCellUpdated(row, column);
+      }
+
+      void refreshAll() {
+         this.fireTableDataChanged();
       }
 
       void loadPreview() {
@@ -693,7 +714,14 @@ public final class HxWorkbench {
 
       @Override
       public boolean isCellEditable(int var1, int var2) {
-         return false;
+         return this.previewValues == null && this.cellCommitter != null;
+      }
+
+      @Override
+      public void setValueAt(Object value, int row, int column) {
+         if (this.isCellEditable(row, column) && this.cellCommitter.commit(row, column, value)) {
+            this.fireTableCellUpdated(row, column);
+         }
       }
 
       @Override
@@ -2491,6 +2519,12 @@ public final class HxWorkbench {
       private boolean chooserAtCategoryLevel;
       private final HxWorkbench.DataTableModel dataModel = new HxWorkbench.DataTableModel();
       private final JTable dataTable = new JTable(this.dataModel);
+      private final JLabel dataCellRefLabel = new JLabel("未选择", SwingConstants.CENTER);
+      private final JTextField dataFormulaField = new JTextField();
+      private final JButton dataApplyCellButton = new JButton("写入单元格");
+      private final JButton dataApplyColumnButton = new JButton("整列计算");
+      private final JButton dataCreateColumnButton = new JButton("新建列");
+      private boolean spreadsheetSyncing;
       private final JLabel dataLabel = new JLabel();
       private final JTextArea summaryArea = readonlyArea();
       private final HxWorkbench.HistogramPanel histogram = new HxWorkbench.HistogramPanel();
@@ -2692,6 +2726,9 @@ public final class HxWorkbench {
       private final boolean previewMode;
       private static final Set<String> OPTIONAL_DEPENDENCIES = new HashSet<>(
          Arrays.asList("reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "coefplot", "event_plot")
+      );
+      private static final List<String> EXTERNAL_COMMAND_CATALOG = Arrays.asList(
+         "reghdfe", "winsor2", "ivreghdfe", "ppmlhdfe", "oneclick", "oneclick_robustness", "coefplot", "event_plot"
       );
       private static final Map<String, HxWorkbench.WorkbenchFrame.CommandGuide> COMMAND_GUIDES = buildCommandGuides();
 
@@ -2992,7 +3029,7 @@ public final class HxWorkbench {
          var12.weighty = 1.0;
          this.formPanel.add(Box.createVerticalGlue(), var12);
          this.dataModel.loadPreview();
-         this.dataLabel.setText("74 行 × 12 列 | 表格只读，可横向和纵向滚动");
+         this.dataLabel.setText("74 行 × 12 列 | 双击单元格可编辑；公式栏支持 = 表达式");
          this.configureColumnWidths();
          this.summaryArea.setText("变量：price\n标签：Price\n类型：数值\n\n非缺失：74，缺失：0\n均值：6165.26，标准差：2949.50\n最小值：3291，最大值：15906");
          this.histogram.setValues(Arrays.asList(4099.0, 4749.0, 3799.0, 4816.0, 7827.0, 5788.0, 4453.0, 5189.0), "price");
@@ -3589,7 +3626,7 @@ public final class HxWorkbench {
          nav.add(Box.createVerticalStrut(4));
          nav.add(this.sidebarButton("oneclick", "O", "OneClick", () -> this.browseMethodCategory("oneclick")));
          nav.add(Box.createVerticalStrut(4));
-         nav.add(this.sidebarButton("history", "历", "历史", () -> this.browseCommandCategory("recent", "最近任务")));
+         nav.add(this.sidebarButton("external", "外", "已下载外部命令", this::browseInstalledExternalCommands));
          nav.add(Box.createVerticalStrut(4));
          nav.add(this.sidebarButton("settings", "设", "设置", () -> this.openHomeTask("special", "performance")));
          sidebar.add(nav, BorderLayout.NORTH);
@@ -3706,7 +3743,8 @@ public final class HxWorkbench {
          else if ("stats".equals(this.activeCategoryCode) || "reg".equals(this.activeCategoryCode) || "post".equals(this.activeCategoryCode)) key = "stats";
          else if ("graph".equals(this.activeCategoryCode)) key = "graph";
          else if ("oneclick".equals(this.activeCategoryCode) || "did".equals(this.activeCategoryCode)) key = "oneclick";
-         else if ("recent".equals(this.activeCategoryCode)) key = "history";
+         else if ("external".equals(this.activeCategoryCode)) key = "external";
+         else if ("recent".equals(this.activeCategoryCode)) key = "home";
          else if ("performance".equals(this.activeCategoryCode) || "test".equals(this.activeCategoryCode)) key = "settings";
          this.setSidebarActive(key);
       }
@@ -5628,6 +5666,32 @@ public final class HxWorkbench {
          this.setBusy(false, this.commandModel.isEmpty() ? "该方法暂时没有可用命令。" : "请选择具体命令。");
       }
 
+      private void browseInstalledExternalCommands() {
+         this.activeCategoryCode = "external";
+         this.activeCategoryName = "已下载外部命令";
+         this.activeMethodName = "已安装";
+         this.rebuilding = true;
+         this.commandModel.clear();
+         ArrayList<String> installed = new ArrayList<>();
+         if (this.previewMode) {
+            installed.addAll(Arrays.asList("reghdfe", "winsor2", "ppmlhdfe", "oneclick", "coefplot"));
+         } else {
+            for (String command : EXTERNAL_COMMAND_CATALOG) {
+               if (HxWorkbench.StataBridge.execute("quietly which " + command, false) == 0) installed.add(command);
+            }
+         }
+         for (String command : installed) this.commandModel.addElement(command);
+         this.rebuilding = false;
+         this.renderCommandChooser("已下载外部命令", "", installed);
+         this.chooserHint.setText(
+            installed.isEmpty()
+               ? "当前没有检测到工具箱已登记且 Stata 能找到的外部命令。"
+               : "仅显示工具箱已登记且当前 Stata 能找到的外部命令，共 " + installed.size() + " 个。"
+         );
+         this.setSidebarActive("external");
+         this.setBusy(false, installed.isEmpty() ? "没有检测到已安装的登记外部命令。" : "已读取当前可用的外部命令。");
+      }
+
       private void browseCommandCategory(String var1, String var2) {
          this.activeCategoryCode = var1;
          this.activeCategoryName = var2;
@@ -6106,7 +6170,9 @@ public final class HxWorkbench {
       }
 
       private void handleChooserBack() {
-         if (!this.chooserAtCategoryLevel
+         if ("external".equals(this.activeCategoryCode)) {
+            this.showHomePage();
+         } else if (!this.chooserAtCategoryLevel
             && !this.activeCategoryCode.isBlank()
             && !"search".equals(this.activeCategoryCode)
             && !"favorites".equals(this.activeCategoryCode)
@@ -6194,6 +6260,8 @@ public final class HxWorkbench {
       private void openActiveCategoryFromBreadcrumb() {
          if (this.activeCategoryCode == null || this.activeCategoryCode.isBlank() || "search".equals(this.activeCategoryCode)) {
             this.showHomePage();
+         } else if ("external".equals(this.activeCategoryCode)) {
+            this.browseInstalledExternalCommands();
          } else if ("favorites".equals(this.activeCategoryCode) || "recent".equals(this.activeCategoryCode)) {
             this.browseCommandCategory(this.activeCategoryCode, this.activeCategoryName);
          } else if ("test".equals(this.activeCategoryCode) || "performance".equals(this.activeCategoryCode)) {
@@ -6780,6 +6848,8 @@ public final class HxWorkbench {
       }
 
       private void buildDataPanel() {
+         this.dataModel.setCellCommitter(this.previewMode ? null : this::commitSpreadsheetCellEdit);
+         this.dataTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
          this.dataTable.setAutoResizeMode(0);
          this.dataTable.setRowHeight(26);
          this.dataTable.setCellSelectionEnabled(true);
@@ -6800,6 +6870,10 @@ public final class HxWorkbench {
          JScrollPane var1 = softScroll(this.dataTable);
          var1.getVerticalScrollBar().setUnitIncrement(20);
          var1.setColumnHeaderView(this.dataTable.getTableHeader());
+         JPanel spreadsheet = new JPanel(new BorderLayout(0, 6));
+         spreadsheet.setBackground(SURFACE);
+         spreadsheet.add(this.buildSpreadsheetBar(), BorderLayout.NORTH);
+         spreadsheet.add(var1, BorderLayout.CENTER);
          JPanel var2 = new JPanel(new BorderLayout());
          var2.setBackground(SURFACE);
          this.variableTabs = new JTabbedPane();
@@ -6810,7 +6884,7 @@ public final class HxWorkbench {
          var1.setMinimumSize(new Dimension(0, 0));
          this.currentDataCards.setBackground(SURFACE);
          this.currentDataCards.setMinimumSize(new Dimension(0, 90));
-         this.currentDataCards.add(var1, "table");
+         this.currentDataCards.add(spreadsheet, "table");
          this.currentDataCards.add(this.buildEmptyDataPanel(), "empty");
 
          this.dataSummarySplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, this.currentDataCards, this.variableTabs);
@@ -7104,6 +7178,230 @@ public final class HxWorkbench {
          return var1;
       }
 
+      private JComponent buildSpreadsheetBar() {
+         JPanel root = new JPanel(new BorderLayout(0, 6));
+         root.setBackground(new Color(249, 251, 254));
+         root.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(225, 231, 240)),
+            new EmptyBorder(7, 8, 7, 8)
+         ));
+
+         this.dataCellRefLabel.setForeground(new Color(55, 69, 89));
+         this.dataCellRefLabel.setFont(this.dataCellRefLabel.getFont().deriveFont(Font.BOLD, 10.5F));
+         this.dataCellRefLabel.setPreferredSize(new Dimension(96, 30));
+         this.dataCellRefLabel.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(216, 224, 236), 6));
+         JLabel fx = new JLabel("fx", SwingConstants.CENTER);
+         fx.setForeground(ACCENT);
+         fx.setFont(new Font("Serif", Font.BOLD | Font.ITALIC, 14));
+         fx.setPreferredSize(new Dimension(26, 30));
+         styleTextField(this.dataFormulaField);
+         this.dataFormulaField.putClientProperty("JTextField.placeholderText", "输入值或公式，例如 =price/mpg、=ln(price)");
+         this.dataFormulaField.setToolTipText("不以 = 开头时按普通单元格值处理；以 = 开头时按 Stata 表达式计算");
+         this.dataFormulaField.addActionListener(e -> this.applySpreadsheetToSelectedCell());
+         JPanel formulaRow = new JPanel(new BorderLayout(7, 0));
+         formulaRow.setOpaque(false);
+         formulaRow.add(this.dataCellRefLabel, BorderLayout.WEST);
+         JPanel fxField = new JPanel(new BorderLayout(6, 0));
+         fxField.setOpaque(false);
+         fxField.add(fx, BorderLayout.WEST);
+         fxField.add(this.dataFormulaField, BorderLayout.CENTER);
+         formulaRow.add(fxField, BorderLayout.CENTER);
+         root.add(formulaRow, BorderLayout.NORTH);
+
+         JPanel actions = new JPanel(new BorderLayout(8, 0));
+         actions.setOpaque(false);
+         JLabel hint = new JLabel("双击单元格可直接改值；= 开头按 Stata 表达式计算");
+         hint.setForeground(MUTED);
+         hint.setFont(hint.getFont().deriveFont(9.5F));
+         actions.add(hint, BorderLayout.CENTER);
+         JPanel buttons = new JPanel(new GridLayout(1, 3, 6, 0));
+         buttons.setOpaque(false);
+         for (JButton button : Arrays.asList(this.dataApplyCellButton, this.dataApplyColumnButton, this.dataCreateColumnButton)) {
+            styleSecondaryButton(button);
+            button.setMargin(new Insets(3, 7, 3, 7));
+         }
+         this.dataApplyCellButton.addActionListener(e -> this.applySpreadsheetToSelectedCell());
+         this.dataApplyColumnButton.addActionListener(e -> this.applySpreadsheetToColumn());
+         this.dataCreateColumnButton.addActionListener(e -> this.createSpreadsheetColumn());
+         boolean enabled = !this.previewMode;
+         this.dataApplyCellButton.setEnabled(enabled);
+         this.dataApplyColumnButton.setEnabled(enabled);
+         this.dataCreateColumnButton.setEnabled(enabled);
+         buttons.add(this.dataApplyCellButton);
+         buttons.add(this.dataApplyColumnButton);
+         buttons.add(this.dataCreateColumnButton);
+         buttons.setPreferredSize(new Dimension(280, 30));
+         actions.add(buttons, BorderLayout.EAST);
+         root.add(actions, BorderLayout.SOUTH);
+         return root;
+      }
+
+      private void syncSpreadsheetSelection() {
+         if (this.spreadsheetSyncing) return;
+         int row = this.dataTable.getSelectedRow();
+         int viewColumn = this.dataTable.getSelectedColumn();
+         if (row < 0 || viewColumn < 0 || this.dataModel.getColumnCount() == 0) {
+            this.dataCellRefLabel.setText("未选择");
+            return;
+         }
+         int column = this.dataTable.convertColumnIndexToModel(viewColumn);
+         String variable = this.dataModel.getColumnName(column);
+         long observation = this.dataModel.observationAt(this.dataTable.convertRowIndexToModel(row));
+         this.dataCellRefLabel.setText(variable + "[" + observation + "]");
+         Object value = this.dataModel.getValueAt(this.dataTable.convertRowIndexToModel(row), column);
+         this.spreadsheetSyncing = true;
+         this.dataFormulaField.setText(Objects.toString(value, ""));
+         this.spreadsheetSyncing = false;
+      }
+
+      private String spreadsheetExpressionForInput(String input, int variableIndex) {
+         String text = input == null ? "" : input.trim();
+         if (text.startsWith("=")) {
+            String expression = text.substring(1).trim();
+            if (expression.isBlank()) {
+               JOptionPane.showMessageDialog(this, "= 后面请输入 Stata 表达式，例如 =price/mpg。", "公式为空", JOptionPane.INFORMATION_MESSAGE);
+               return null;
+            }
+            return expression;
+         }
+         if (variableIndex > 0 && Data.isVarTypeString(variableIndex)) return HxWorkbench.StataBridge.quote(text);
+         String numeric = text.replace(",", "");
+         if (numeric.matches("\\.[a-z]?|[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?")) return numeric;
+         JOptionPane.showMessageDialog(
+            this,
+            "数值单元格直接编辑请输入数字；需要计算时以 = 开头，例如 =price/mpg 或 =ln(price)。",
+            "请输入数值或公式",
+            JOptionPane.INFORMATION_MESSAGE
+         );
+         return null;
+      }
+
+      private boolean runSpreadsheetCommand(String command, boolean structureChanged) {
+         if (this.previewMode || command == null || command.isBlank()) return false;
+         HxWorkbench.DatasetSnapshot snapshot = structureChanged ? HxWorkbench.DatasetSnapshot.capture() : null;
+         int rc = HxWorkbench.StataBridge.execute(command, true);
+         if (rc != 0) {
+            JOptionPane.showMessageDialog(this, "Stata 未能完成数据运算，return code = " + rc + "。\n\n" + command, "数据运算失败", JOptionPane.ERROR_MESSAGE);
+            this.statusLabel.setText("数据运算失败 | Return code " + rc);
+            return false;
+         }
+         this.lastExecutedCommand = command;
+         if (structureChanged) {
+            this.beforeSnapshot = snapshot;
+            this.refreshDataset(true);
+         } else {
+            this.dataModel.refreshAll();
+            this.updateSelectedColumnSummary();
+            this.syncSpreadsheetSelection();
+            this.dataTable.repaint();
+            this.refreshHomeContext();
+         }
+         this.statusLabel.setText("数据已更新 | 命令已写入 Stata History：" + shortenCommand(command));
+         return true;
+      }
+
+      private boolean commitSpreadsheetCellEdit(int row, int column, Object value) {
+         if (this.previewMode || row < 0 || column < 0 || column >= this.dataModel.getColumnCount()) return false;
+         String variable = this.dataModel.getColumnName(column);
+         int variableIndex = HxWorkbench.safe(() -> Data.getVarIndex(variable), -1);
+         if (variableIndex <= 0) return false;
+         String expression = this.spreadsheetExpressionForInput(Objects.toString(value, ""), variableIndex);
+         if (expression == null) return false;
+         long observation = this.dataModel.observationAt(row);
+         String command = "replace " + variable + " = " + expression + " in " + observation;
+         int rc = HxWorkbench.StataBridge.execute(command, true);
+         if (rc != 0) {
+            JOptionPane.showMessageDialog(this, "Stata 未能写入该单元格，return code = " + rc + "。\n\n" + command, "单元格写入失败", JOptionPane.ERROR_MESSAGE);
+            this.statusLabel.setText("单元格写入失败 | Return code " + rc);
+            return false;
+         }
+         this.lastExecutedCommand = command;
+         this.changedCells.clear();
+         this.changedCells.add(row + ":" + column);
+         this.dataModel.refreshCell(row, column);
+         this.updateSelectedColumnSummary();
+         this.syncSpreadsheetSelection();
+         this.dataTable.repaint();
+         this.refreshHomeContext();
+         this.statusLabel.setText("单元格已更新 | 命令已写入 Stata History：" + shortenCommand(command));
+         return true;
+      }
+
+      private void applySpreadsheetToSelectedCell() {
+         if (this.previewMode) return;
+         if (this.dataTable.isEditing() && !this.dataTable.getCellEditor().stopCellEditing()) return;
+         int viewRow = this.dataTable.getSelectedRow();
+         int viewColumn = this.dataTable.getSelectedColumn();
+         if (viewRow < 0 || viewColumn < 0) {
+            JOptionPane.showMessageDialog(this, "请先在数据表中选择一个单元格。", "未选择单元格", JOptionPane.INFORMATION_MESSAGE);
+            return;
+         }
+         int row = this.dataTable.convertRowIndexToModel(viewRow);
+         int column = this.dataTable.convertColumnIndexToModel(viewColumn);
+         this.commitSpreadsheetCellEdit(row, column, this.dataFormulaField.getText());
+      }
+
+      private void applySpreadsheetToColumn() {
+         if (this.previewMode) return;
+         int viewColumn = this.dataTable.getSelectedColumn();
+         if (viewColumn < 0) {
+            JOptionPane.showMessageDialog(this, "请先选择要计算的变量列。", "未选择变量列", JOptionPane.INFORMATION_MESSAGE);
+            return;
+         }
+         int column = this.dataTable.convertColumnIndexToModel(viewColumn);
+         String variable = this.dataModel.getColumnName(column);
+         int variableIndex = HxWorkbench.safe(() -> Data.getVarIndex(variable), -1);
+         String expression = this.spreadsheetExpressionForInput(this.dataFormulaField.getText(), variableIndex);
+         if (expression == null) return;
+         String command = "replace " + variable + " = " + expression;
+         int answer = JOptionPane.showConfirmDialog(
+            this,
+            "这会计算整列 “" + variable + "”。\n\n将执行：\n" + command + "\n\n完整命令会写入 Stata History。",
+            "确认整列计算",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.WARNING_MESSAGE
+         );
+         if (answer != JOptionPane.OK_OPTION) return;
+         HxWorkbench.DatasetSnapshot snapshot = HxWorkbench.DatasetSnapshot.capture();
+         if (this.runSpreadsheetCommand(command, false)) {
+            this.beforeSnapshot = snapshot;
+            this.compareSnapshots(snapshot);
+         }
+      }
+
+      private void createSpreadsheetColumn() {
+         if (this.previewMode) return;
+         String name = JOptionPane.showInputDialog(this, "新变量名（Stata 变量名）：", "新建计算列", JOptionPane.PLAIN_MESSAGE);
+         if (name == null) return;
+         name = name.trim();
+         if (!name.matches("[A-Za-z_][A-Za-z0-9_]{0,31}")) {
+            JOptionPane.showMessageDialog(this, "变量名请使用字母/数字/下划线，首字符为字母或下划线，最长 32 个字符。", "变量名无效", JOptionPane.INFORMATION_MESSAGE);
+            return;
+         }
+         final String newName = name;
+         if (HxWorkbench.safe(() -> Data.getVarIndex(newName), -1) > 0) {
+            JOptionPane.showMessageDialog(this, "变量 “" + newName + "” 已存在。请选择该列后使用“整列计算”。", "变量已存在", JOptionPane.INFORMATION_MESSAGE);
+            return;
+         }
+         String text = this.dataFormulaField.getText() == null ? "" : this.dataFormulaField.getText().trim();
+         String expression = text.startsWith("=") ? text.substring(1).trim() : text;
+         if (expression.isBlank()) {
+            String entered = JOptionPane.showInputDialog(this, "输入 Stata 表达式，例如 price/mpg 或 ln(price)：", "新建计算列", JOptionPane.PLAIN_MESSAGE);
+            if (entered == null || entered.trim().isBlank()) return;
+            expression = entered.trim();
+            if (expression.startsWith("=")) expression = expression.substring(1).trim();
+         }
+         String command = "generate " + newName + " = " + expression;
+         int answer = JOptionPane.showConfirmDialog(
+            this,
+            "将新建变量 “" + newName + "”。\n\n将执行：\n" + command,
+            "确认新建计算列",
+            JOptionPane.OK_CANCEL_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+         );
+         if (answer == JOptionPane.OK_OPTION) this.runSpreadsheetCommand(command, true);
+      }
+
       private JComponent buildEmptyDataPanel() {
          JPanel var1 = new JPanel(new GridBagLayout());
          var1.setBackground(SURFACE);
@@ -7114,7 +7412,7 @@ public final class HxWorkbench {
          var3.setForeground(TEXT);
          var3.setFont(var3.getFont().deriveFont(1, 18.0F));
          var3.setAlignmentX(0.5F);
-         JLabel var4 = new JLabel("选择一种方式开始，载入后这里会显示可滚动的只读数据表。");
+         JLabel var4 = new JLabel("选择一种方式开始，载入后这里会显示可滚动、可直接计算的数据表和公式栏。");
          var4.setForeground(MUTED);
          var4.setAlignmentX(0.5F);
          var2.add(var3);
@@ -7475,7 +7773,7 @@ public final class HxWorkbench {
             this.refreshButton.setVisible(true);
             long n = this.previewMode ? this.dataModel.getRowCount() : Data.getObsTotal();
             int k = this.previewMode ? this.dataModel.getColumnCount() : Data.getVarCount();
-            String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+            String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 双击单元格可编辑；公式栏支持 = 表达式";
             this.dataLabel.setText(n != 0L && k != 0 ? n + " 行 × " + k + " 列" + dataHint : "尚未载入数据");
          }
       }
@@ -7536,10 +7834,16 @@ public final class HxWorkbench {
          this.runButton.addActionListener(var1x -> this.runCurrentCommand());
          this.copyCommandButton.addActionListener(var1x -> this.copyCurrentCommand());
          this.dataTable.getSelectionModel().addListSelectionListener(var1x -> {
-            if (!var1x.getValueIsAdjusting()) this.syncVariableWindowFromDataTable();
+            if (!var1x.getValueIsAdjusting()) {
+               this.syncVariableWindowFromDataTable();
+               this.syncSpreadsheetSelection();
+            }
          });
          this.dataTable.getColumnModel().getSelectionModel().addListSelectionListener(var1x -> {
-            if (!var1x.getValueIsAdjusting()) this.syncVariableWindowFromDataTable();
+            if (!var1x.getValueIsAdjusting()) {
+               this.syncVariableWindowFromDataTable();
+               this.syncSpreadsheetSelection();
+            }
          });
          this.dataTable.getTableHeader().addMouseListener(new MouseAdapter() {
             @Override
@@ -12615,7 +12919,7 @@ public final class HxWorkbench {
          this.refreshInspectorVariables();
          long var2 = Data.getObsTotal();
          int var4 = Data.getVarCount();
-         String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 表格只读，可横向和纵向滚动";
+         String dataHint = "xtreg".equals(this.currentCommand) ? " | 可从中间变量窗口或表头拖入左侧变量框" : " | 双击单元格可编辑；公式栏支持 = 表达式";
          this.dataLabel.setText(var2 != 0L && var4 != 0 ? var2 + " 行 × " + var4 + " 列" + dataHint : "尚未载入数据");
          this.currentDataLayout.show(this.currentDataCards, var2 != 0L && var4 != 0 ? "table" : "empty");
          this.configureColumnWidths();
