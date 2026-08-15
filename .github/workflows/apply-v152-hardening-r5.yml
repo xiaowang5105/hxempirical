@@ -1,4 +1,4 @@
-name: Apply v1.5.2 hardening r5
+name: Apply v1.5.2 hardening r6
 
 on:
   push:
@@ -114,9 +114,14 @@ jobs:
           render --render-method-preview /tmp/method.png
           render --render-regress-preview /tmp/regress.png
           python - <<'PY'
-          from PIL import Image
+          import struct
           for p in ['/tmp/home.png','/tmp/method.png','/tmp/regress.png']:
-              im=Image.open(p); print('HX_UI_SIZE',p,im.size); assert im.width >= 1200 and im.height >= 700
+              with open(p,'rb') as f:
+                  header=f.read(24)
+              assert header[:8] == b'\x89PNG\r\n\x1a\n', p
+              width,height=struct.unpack('>II',header[16:24])
+              print('HX_UI_SIZE',p,(width,height))
+              assert width >= 1200 and height >= 700
           PY
 
       - name: Rebuild release bundle
