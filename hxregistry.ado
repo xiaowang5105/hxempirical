@@ -276,7 +276,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "重抽样", "resampling") local view "bootstrap jackknife permute simulate statsby"
     else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") local view "power"
     else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
-    else if inlist(`"`method'"', "贝叶斯模型平均", "bma") local view "bma"
+    else if inlist(`"`method'"', "贝叶斯模型平均", "bma") local view "bmaregress"
     else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") local view "ivregress ivreghdfe"
     else if inlist(`"`method'"', "估计后分析", "postestimation") local view "test lincom predict margins"
 
