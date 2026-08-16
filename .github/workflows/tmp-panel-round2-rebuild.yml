@@ -23,6 +23,8 @@ jobs:
           python-version: '3.12'
       - name: Patch panel round 2 catalog
         run: python tools/tmp_patch_panel_round2.py
+      - name: Refresh legacy panel-time contract
+        run: python tools/tmp_refresh_panel_round2_contract.py
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
