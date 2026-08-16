@@ -6,7 +6,8 @@ start = s.find("test_anchor = '''")
 end = s.find("# Remaining postestimation commands use their native command bodies.", start)
 if start < 0 or end < 0:
     raise SystemExit("postestimation brittle semantic patch section not found")
-replacement = '''test_extra = r'''        else if "`cmd'" == "testparm" {
+
+replacement = """test_extra = '''        else if "`cmd'" == "testparm" {
             local template "expression_body"
             local title "testparm — 联合检验一组模型项"
             local purpose1 "对一组系数、因子变量 levels 或交互项执行联合 Wald 检验。"
@@ -27,12 +28,13 @@ replacement = '''test_extra = r'''        else if "`cmd'" == "testparm" {
             local explain2 "检验两个系数之比是否等于 1。"
         }
 '''
-test_marker = '        else if "`cmd\'" == "lincom" {\\n'
+test_marker = '''        else if "`cmd'" == "lincom" {
+'''
 if s.count(test_marker) != 1:
     raise SystemExit(f"post test insertion marker count={s.count(test_marker)}")
 s = s.replace(test_marker, test_extra + test_marker, 1)
 
-nlcom_block = r'''        else if "`cmd'" == "nlcom" {
+nlcom_block = '''        else if "`cmd'" == "nlcom" {
             local template "expression_body"
             local title "nlcom — 非线性系数组合"
             local purpose1 "计算系数的比率、乘积、转折点等非线性函数，并用 delta method 给出标准误和区间。"
@@ -43,12 +45,13 @@ nlcom_block = r'''        else if "`cmd'" == "nlcom" {
             local explain2 "计算二次项模型的 turning point。"
         }
 '''
-nlcom_marker = '        else if "`cmd\'" == "predict" {\\n'
+nlcom_marker = '''        else if "`cmd'" == "predict" {
+'''
 if s.count(nlcom_marker) != 1:
     raise SystemExit(f"nlcom insertion marker count={s.count(nlcom_marker)}")
 s = s.replace(nlcom_marker, nlcom_block + nlcom_marker, 1)
 
-'''
+"""
 s = s[:start] + replacement + s[end:]
 p.write_text(s, encoding="utf-8", newline="\n")
 print("HX_POSTESTIMATION_PATCH_PREPARE_OK")
