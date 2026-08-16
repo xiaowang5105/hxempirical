@@ -100,6 +100,26 @@ for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_spec
     if f'"{graph_cmd}"' not in special_open:
         fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
 for needle in (
+    'private static boolean isStructuredPrSdTestCommand(String command)',
+    'return Arrays.asList("prtest", "sdtest").contains(command);',
+    'private void rebuildStructuredPrSdTestForm()',
+    'private void updateStructuredPrSdTestPreview()',
+    'prtest · 比例检验',
+    'sdtest · 方差 / 标准差检验',
+    '单样本：变量 == 数值',
+    '两组比较：by() 分组',
+    '双变量：变量1 == 变量2',
+    'opts.add("by(" + second + ")")',
+    'robvar var, by(group)',
+    '单样本 prtest 的假设比例必须是 0 到 1 之间的数值',
+    '单样本 sdtest 的假设标准差必须是正数',
+    '两组模式需要选择 by() 分组变量',
+    '双变量模式需要选择第二个比较变量',
+):
+    if needle not in java:
+        fail(f"structured prtest/sdtest UI contract missing: {needle}")
+
+for needle in (
     'private static boolean isStructuredSummaryTestCommand(String command)',
     '"tabulate", "oneway", "ranksum", "median", "signrank", "signtest"',
     'private void rebuildStructuredSummaryTestForm()',
