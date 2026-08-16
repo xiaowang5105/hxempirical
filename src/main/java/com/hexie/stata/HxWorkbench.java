@@ -2643,6 +2643,8 @@ public final class HxWorkbench {
       private final JTextField specialGraphQcMean = new JTextField();
       private final JTextField specialGraphQcLower = new JTextField();
       private final JTextField specialGraphQcUpper = new JTextField();
+      private final JTextField specialGraphEventStubLag = new JTextField();
+      private final JTextField specialGraphEventStubLead = new JTextField();
       private final JComboBox<String> regressX = variableCombo();
       private final JList<String> regressControls = variableList();
       private final JComboBox<String> regressFactor = variableCombo();
@@ -4956,10 +4958,10 @@ public final class HxWorkbench {
             case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";
             case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";
             case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";
-            case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";
+            case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot · event_plot";
             case "图形组合": return "graph combine";
             case "管理图形": return "graph dir · graph display · graph save · graph export";
-            case "更改方案/大小": return "set scheme";
+            case "更改方案/大小": return "set scheme · 单图 xsize()/ysize()/scale()";
             default: return "查看该分类下的 Stata 图形命令";
          }
       }
@@ -8106,6 +8108,8 @@ public final class HxWorkbench {
             this.specialGraphQcMean,
             this.specialGraphQcLower,
             this.specialGraphQcUpper,
+            this.specialGraphEventStubLag,
+            this.specialGraphEventStubLead,
             this.model,
             this.usingFile,
             this.panel,
@@ -9880,7 +9884,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9923,6 +9927,10 @@ public final class HxWorkbench {
          styleTextField(this.specialGraphQcMean);
          styleTextField(this.specialGraphQcLower);
          styleTextField(this.specialGraphQcUpper);
+         this.specialGraphEventStubLag.setText("");
+         this.specialGraphEventStubLead.setText("");
+         styleTextField(this.specialGraphEventStubLag);
+         styleTextField(this.specialGraphEventStubLead);
          this.configureSpecialGraphModel(var1);
          this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
 
@@ -9930,7 +9938,7 @@ public final class HxWorkbench {
          String coreSubtitle;
          String optionLabel = "其他图形选项";
          boolean includeIf = !"twoway".equals(var1)
-            && !Arrays.asList("screeplot", "scoreplot", "loadingplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "cchart", "pchart", "graph_combine", "graph").contains(var1);
+            && !Arrays.asList("screeplot", "scoreplot", "loadingplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "cchart", "pchart", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph").contains(var1);
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
             this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " · 直方图" : " · 核密度图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y</html>");
@@ -10112,6 +10120,27 @@ public final class HxWorkbench {
             this.syntaxArea.setText("serrbar meanvar sevar xvar [if] [, options]");
             coreTitle = "均值 / 误差 / 横轴";
             coreSubtitle = "分别选择三个角色；工作台会阻止角色重复。";
+         } else if ("marginsplot".equals(var1)) {
+            this.commandTitle.setText("marginsplot · margins 结果图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> marginsplot</html>");
+            this.insightArea.setText("主要意图：把上一条 margins 保存的预测、边际效应或对比结果直接绘图。\n\n横轴、分组和置信区间来自 margins 的结果；本页不重新要求选择原始数据里的 Y / X。\n\nrecast()/recastci()/plotopts()、参考线、标题以及 xsize()/ysize()/scale() 继续使用 Stata 原生图形 options。");
+            this.syntaxArea.setText("marginsplot [, options]");
+            coreTitle = "上一条 margins 结果";
+            coreSubtitle = "直接复用当前 margins 结果；需要改变横轴或情景时，应先重新运行 margins。";
+         } else if ("coefplot".equals(var1)) {
+            this.commandTitle.setText("coefplot · 回归系数与置信区间图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> coefplot m1 m2, drop(_cons) xline(0)</html>");
+            this.insightArea.setText("主要意图：从当前模型、已保存 estimates 或 Stata matrix 中提取系数并比较置信区间。\n\n结果对象可留空表示当前活动模型，也可填写 m1 m2、(m1) (m2) 或 matrix(...) 等作者原生规格；这里不把数据变量误当成系数来源。\n\nkeep()/drop()/rename()/recast()、参考线、标签、分组和尺寸继续使用 coefplot / twoway 原生 options。");
+            this.syntaxArea.setText("coefplot subgraph [ || subgraph ... ] [, globalopts]");
+            coreTitle = "估计结果 / 矩阵对象";
+            coreSubtitle = "留空使用当前活动模型；多个保存模型或矩阵按 coefplot 原生 result specification 填写。";
+         } else if ("event_plot".equals(var1)) {
+            this.commandTitle.setText("event_plot · Event Study 动态系数图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> event_plot, default_look</html>");
+            this.insightArea.setText("主要意图：把已经估计好的事件研究系数和置信区间画成动态效应图。\n\n结果对象可留空使用当前 estimation result，也可填写一个或多个 stored estimates，或 bmat#Vmat 矩阵对；最多组合 8 个结果。\n\ndid_imputation 的 tau#/pre# 命名可自动识别；其他估计器无法自动识别时，显式填写 stub_lag()/stub_lead()。图形样式继续使用作者原生 options。");
+            this.syntaxArea.setText("event_plot [result_spec ...] [, stub_lag(string) stub_lead(string) options]");
+            coreTitle = "事件研究结果对象";
+            coreSubtitle = "先指定结果来源；系数前后期命名无法自动识别时，再填写 lag / lead stub。";
          } else if ("graph_combine".equals(var1)) {
             this.commandTitle.setText("graph combine · 组合已生成图形");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph combine g1 g2, cols(2)</html>");
@@ -10376,6 +10405,31 @@ public final class HxWorkbench {
             seVars.add(this.fieldBlock("标准误 / 标准差", this.panel));
             seVars.add(this.fieldBlock("横轴 / 组序变量", this.time));
             this.addGenericBodyField(coreBody, "三个变量角色", seVars);
+         } else if ("marginsplot".equals(var1)) {
+            JLabel marginsHint = new JLabel("<html>使用最近一次成功的 <b>margins</b> 结果。若需要新的 at()/dydx()/contrast 情景，请先回到 margins 页面重新计算。</html>");
+            marginsHint.setForeground(MUTED);
+            marginsHint.setFont(marginsHint.getFont().deriveFont(10.0F));
+            marginsHint.setAlignmentX(0.0F);
+            coreBody.add(marginsHint);
+         } else if ("coefplot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "模型 / 矩阵规格（可留空）", this.expression);
+            JLabel coefHint = new JLabel("<html>留空 = 当前模型；常见写法：<b>m1 m2</b>。需要分组、多个 subgraph 或 matrix() 时可直接使用 coefplot 作者原生规格。</html>");
+            coefHint.setForeground(MUTED);
+            coefHint.setFont(coefHint.getFont().deriveFont(9.8F));
+            coefHint.setAlignmentX(0.0F);
+            coreBody.add(coefHint);
+         } else if ("event_plot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "结果对象（可留空）", this.expression);
+            JPanel eventStubs = new JPanel(new GridLayout(1, 2, 12, 0));
+            eventStubs.setOpaque(false);
+            eventStubs.add(this.fieldBlock("政策后 stub_lag()（可选）", this.specialGraphEventStubLag));
+            eventStubs.add(this.fieldBlock("政策前 stub_lead()（可选）", this.specialGraphEventStubLead));
+            this.addGenericBodyField(coreBody, "系数命名规则", eventStubs);
+            JLabel eventHint = new JLabel("<html>stub 中用 <b>#</b> 代表相对期数字，例如 tau# / pre#；多个结果可按顺序填写多个 stub。did_imputation 默认通常可留空。</html>");
+            eventHint.setForeground(MUTED);
+            eventHint.setFont(eventHint.getFont().deriveFont(9.8F));
+            eventHint.setAlignmentX(0.0F);
+            coreBody.add(eventHint);
          } else if ("graph_combine".equals(var1)) {
             this.addGenericBodyField(coreBody, "图形名 / .gph 文件（空格分隔）", this.expression);
          } else if ("graph".equals(var1)) {
@@ -10433,7 +10487,8 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.rebuilding = false;
          this.updateSpecialGraphPreview();
-         this.statusLabel.setText("图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
+         this.statusLabel.setText(Arrays.asList("marginsplot", "coefplot", "event_plot").contains(var1) ? "结果图页面按结果对象 → 图形设置组织；不会要求重新选择原始数据变量。" : "图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
+         if (!this.previewMode && Arrays.asList("coefplot", "event_plot").contains(var1)) this.offerOptionalDependency(var1);
       }
 
 
@@ -13055,7 +13110,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -13242,6 +13297,23 @@ public final class HxWorkbench {
             var1 = "serrbar " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time);
             if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
             if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("marginsplot".equals(this.currentCommand)) {
+            var1 = "marginsplot";
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("coefplot".equals(this.currentCommand)) {
+            String resultSpec = this.expression.getText().trim();
+            var1 = "coefplot" + (resultSpec.isBlank() ? "" : " " + resultSpec);
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("event_plot".equals(this.currentCommand)) {
+            String resultSpec = this.expression.getText().trim();
+            ArrayList<String> eventOpts = new ArrayList<>();
+            String stubLag = this.specialGraphEventStubLag.getText().trim();
+            String stubLead = this.specialGraphEventStubLead.getText().trim();
+            if (!stubLag.isBlank()) eventOpts.add("stub_lag(" + stubLag + ")");
+            if (!stubLead.isBlank()) eventOpts.add("stub_lead(" + stubLead + ")");
+            if (!this.options.getText().trim().isBlank()) eventOpts.add(this.options.getText().trim());
+            var1 = "event_plot" + (resultSpec.isBlank() ? "" : " " + resultSpec);
+            if (!eventOpts.isEmpty()) var1 += ", " + String.join(" ", eventOpts);
          } else if ("graph_combine".equals(this.currentCommand)) {
             var1 = "graph combine " + this.expression.getText().trim();
             if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
@@ -13959,6 +14031,18 @@ public final class HxWorkbench {
             }
             if (new LinkedHashSet<>(Arrays.asList(mean, error, axis)).size() < 3) {
                JOptionPane.showMessageDialog(this, "serrbar 的三个变量角色必须使用不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("event_plot".equals(command)) {
+            String lagStub = this.specialGraphEventStubLag.getText().trim();
+            String leadStub = this.specialGraphEventStubLead.getText().trim();
+            if (!lagStub.isBlank() && !lagStub.contains("#")) {
+               JOptionPane.showMessageDialog(this, "event_plot 的 stub_lag() 需要用 # 标记相对期数字，例如 tau#。", "stub_lag() 格式错误", 1);
+               return false;
+            }
+            if (!leadStub.isBlank() && !leadStub.contains("#")) {
+               JOptionPane.showMessageDialog(this, "event_plot 的 stub_lead() 需要用 # 标记相对期数字，例如 pre#。", "stub_lead() 格式错误", 1);
                return false;
             }
          }

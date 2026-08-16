@@ -89,10 +89,10 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
-for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph"):
+for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph"):
     if graph_cmd not in special_open:
         fail(f"structured Graphics route contract missing: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
@@ -168,6 +168,24 @@ for needle in (
 ):
     if needle not in java:
         fail(f"quality-control Graphics page contract missing: {needle}")
+
+for needle in (
+    'marginsplot · margins 结果图',
+    'coefplot · 回归系数与置信区间图',
+    'event_plot · Event Study 动态系数图',
+    'var1 = "marginsplot";',
+    'var1 = "coefplot" + (resultSpec.isBlank() ? "" : " " + resultSpec);',
+    'var1 = "event_plot" + (resultSpec.isBlank() ? "" : " " + resultSpec);',
+    'eventOpts.add("stub_lag(" + stubLag + ")")',
+    'event_plot 的 stub_lag() 需要用 # 标记相对期数字',
+    '结果图页面按结果对象 → 图形设置组织',
+    'set scheme · 单图 xsize()/ysize()/scale()',
+):
+    if needle not in java:
+        fail(f"result-based Graphics page contract missing: {needle}")
+for graph_cmd in ("marginsplot", "coefplot", "event_plot"):
+    if graph_cmd not in roc_route_scope:
+        fail(f"result-based graph must route to graph result view: {graph_cmd}")
 
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
@@ -478,9 +496,9 @@ graph_method_preview_contracts = (
     'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";',
     'case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";',
     'case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";',
-    'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";',
+    'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot · event_plot";',
     'case "管理图形": return "graph dir · graph display · graph save · graph export";',
-    'case "更改方案/大小": return "set scheme";',
+    'case "更改方案/大小": return "set scheme · 单图 xsize()/ysize()/scale()";',
 )
 for preview_contract in graph_method_preview_contracts:
     if preview_contract not in java:
