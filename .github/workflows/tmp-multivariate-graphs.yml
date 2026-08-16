@@ -30,9 +30,13 @@ jobs:
           p = Path('tools/verify_static_contracts.py')
           lines = p.read_text(encoding='utf-8').splitlines()
           out = []
+          inserted_graph_catalog = False
           for line in lines:
               line = line.replace('not in resolver:', 'not in resolve:')
               line = line.replace('not in java_source:', 'not in java:')
+              if line.startswith('multivariate_graph_core =') and not inserted_graph_catalog:
+                  out.append('graph_cmds = set(local_words(registry, "graph_cmds"))')
+                  inserted_graph_catalog = True
               if 'cluster_dendrogram' in line and 'not in resolve:' in line:
                   line = 'if \'cluster_dendrogram" local probe_cmd "cluster"\' not in resolve:'
               out.append(line)
