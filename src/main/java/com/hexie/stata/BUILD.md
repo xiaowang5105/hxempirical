@@ -12,6 +12,8 @@ Compile `HxWorkbench.java` against the real Stata Function Interface archive fro
 
 Do not ship a JAR compiled from the CI-only `com.stata.sfi` stubs. Those stubs exist only to catch Java syntax/type regressions in hosted CI; they do not replace Stata's runtime API.
 
+Because the package supports Stata 17+, the safest release build is against the Stata 17 SFI API when that installation is available, followed by smoke testing on the supported Stata versions. Stata documents its Java API as forward-compatible rather than backward-compatible.
+
 The repository tracks the exact Java source used to build the shipped JAR in:
 
 ```text
@@ -22,7 +24,15 @@ src/main/java/com/hexie/stata/HxWorkbench.jar-source
 
 ## One-command Windows build
 
-From the repository root, with Stata installed in the normal location:
+From the repository root, first try:
+
+```powershell
+pwsh -File tools/build_hxworkbench_jar.ps1
+```
+
+The script searches the normal `Program Files\Stata*` locations for `sfi-api.jar`, infers the Stata installation root, and then looks for `javac` / `jar` on `PATH`, in `JAVA_HOME`, or inside Stata's bundled Java directories.
+
+If automatic discovery does not match the intended Stata installation, specify it explicitly:
 
 ```powershell
 pwsh -File tools/build_hxworkbench_jar.ps1 -StataRoot "C:\Program Files\Stata18"
@@ -34,7 +44,7 @@ You can also pass the SFI archive directly:
 pwsh -File tools/build_hxworkbench_jar.ps1 -SfiJar "C:\Program Files\Stata18\utilities\jar\sfi-api.jar"
 ```
 
-If `javac` / `jar` are not on `PATH`, pass a JDK explicitly:
+If `javac` / `jar` still cannot be found, pass a JDK explicitly:
 
 ```powershell
 pwsh -File tools/build_hxworkbench_jar.ps1 `
