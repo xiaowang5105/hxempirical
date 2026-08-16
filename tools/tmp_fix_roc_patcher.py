@@ -29,9 +29,14 @@ start = s.find(route_start_marker)
 end = s.find("for needle in (", start)
 if start < 0 or end < 0:
     raise SystemExit("ROC broken route-contract block not found")
-route_replacement = '''if '\"rocfit\"' in route_scope or '\"rocreg\"' in route_scope:
+route_replacement = '''roc_route_start = java.find('\"graph_bar\", \"graph_dot\", \"graph_pie\", \"graph_box\", \"twoway_contour\", \"graph_matrix\"')
+roc_route_end = java.find('this.selectResultView(\"graph\", true);', roc_route_start)
+if roc_route_start < 0 or roc_route_end < 0:
+    fail("ROC graph-result route block missing")
+roc_route_scope = java[roc_route_start:roc_route_end]
+if '\"rocfit\"' in roc_route_scope or '\"rocreg\"' in roc_route_scope:
     fail("rocfit/rocreg are still routed as direct graph-producing commands")
-if '\"rocregplot\"' not in route_scope:
+if '\"rocregplot\"' not in roc_route_scope:
     fail("rocregplot must route to the graph result view")
 '''
 s = s[:start] + route_replacement + s[end:]
