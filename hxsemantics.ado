@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.14  16aug2026
+*! hxsemantics 1.4.15  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -943,7 +943,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stintreg stintcox stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtivreg xtpcse xtregar xtrc xtstreg xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stintreg stintcox stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1709,6 +1709,104 @@ program define hxsemantics, rclass
             local example2 "spxtregress y x, re dvarlag(W) errorlag(M)"
             local explain2 "随机效应空间面板模型使用同样的空间权重结构。"
         }
+        else if "`cmd'" == "xteregress" {
+            local expr_label "Y + X + endogenous()/select()/entreat() 扩展随机效应方程"
+            local example1 "xteregress y x1, endogenous(x2 = x3 x4)"
+            local explain1 "在线性随机效应面板结果方程中，把 x2 作为内生协变量并用 x3、x4 建模。"
+            local example2 "help xteregress"
+            local explain2 "还可联合 select() 与 entreat()；复杂多方程结构应直接保留 Stata ERM 原生语法。"
+        }
+        else if "`cmd'" == "xteprobit" {
+            local expr_label "二元 Y + X + endogenous()/select()/entreat() 扩展随机效应 Probit"
+            local example1 "xteprobit y x1, endogenous(x2 = x3 x4)"
+            local explain1 "在随机效应 Probit 面板模型中显式建立 x2 的内生协变量方程。"
+            local example2 "help xteprobit"
+            local explain2 "内生协变量、样本选择和处理分配可在同一 ERM 框架联合建模。"
+        }
+        else if "`cmd'" == "xteoprobit" {
+            local expr_label "有序 Y + X + endogenous()/select()/entreat() 扩展随机效应有序 Probit"
+            local example1 "xteoprobit y x1, endogenous(x2 = x3 x4)"
+            local explain1 "对面板有序结果建立随机效应 ordered-probit 主方程和内生协变量方程。"
+            local example2 "help xteoprobit"
+            local explain2 "结果类别必须有明确顺序；多方程结构继续使用 ERM 原生 options。"
+        }
+        else if "`cmd'" == "xteintreg" {
+            local expr_label "结果下界 + 上界 + X + endogenous()/select()/entreat()"
+            local example1 "xteintreg ylower yupper x1, endogenous(x2 = x3 x4)"
+            local explain1 "区间结果由 ylower/yupper 表达，并在随机效应面板框架中处理 x2 的内生性。"
+            local example2 "help xteintreg"
+            local explain2 "左删失、右删失、精确值与区间值的编码应先核对上下界变量。"
+        }
+        else if "`cmd'" == "xtheckman" {
+            local expr_label "结果方程 + select() 选择方程（随机效应面板 Heckman）"
+            local example1 "xtheckman income c.age##c.age i.training#(c.exp##c.exp), select(working = age exp i.region i.training)"
+            local explain1 "income 只在 working=1 时被观察；select() 显式建模进入结果样本的概率。"
+            local example2 "help xtheckman"
+            local explain2 "模型同时允许个体随机效应与结果/选择过程相关，选择方程属于核心识别结构。"
+        }
+        else if "`cmd'" == "xthtaylor" {
+            local expr_label "Y + X + endog()（与个体效应相关的解释变量）"
+            local example1 "xthtaylor y x1 x2 z1, endog(x2)"
+            local explain1 "Hausman–Taylor 通过模型内部工具变量处理与个体效应相关的 x2，同时保留时间不变变量 z1。"
+            local example2 "help xthtaylor"
+            local explain2 "endog() 指变量与个体效应相关，识别依赖时间变/不变且外生/内生变量的划分。"
+        }
+        else if "`cmd'" == "xtdpd" {
+            local expr_label "动态方程 + div()/dgmmiv()/lgmmiv() 等矩条件与工具变量集合"
+            local example1 "xtdpd L(0/1).y x, div(x) dgmmiv(y)"
+            local explain1 "直接声明动态回归项以及差分方程 GMM 工具变量；比 xtabond/xtdpdsys 提供更灵活的矩条件。"
+            local example2 "help xtdpd"
+            local explain2 "工具变量滞后区间和数量会直接影响识别与有限样本表现，运行前逐项核对。"
+        }
+        else if "`cmd'" == "xtgls" {
+            local expr_label "Y + X + panels() + corr() 等 FGLS 协方差结构"
+            local example1 "xtgls y x1 x2, panels(heteroskedastic) corr(ar1)"
+            local explain1 "允许 panel-level heteroskedasticity，并用共同 AR(1) 描述面板内序列相关。"
+            local example2 "help xtgls"
+            local explain2 "FGLS 对 N/T 与协方差结构假设较敏感，panels() 和 corr() 应由数据结构决定。"
+        }
+        else if "`cmd'" == "xtunitroot" {
+            local expr_label "检验方法 + 变量 + lags()/trend/demean 等单位根设定"
+            local example1 "xtunitroot ips hprice"
+            local explain1 "对 hprice 进行 Im–Pesaran–Shin 面板单位根检验；该命令需要已声明的 panel/time。"
+            local example2 "help xtunitroot"
+            local explain2 "LLC、HT、Breitung、IPS、Fisher、Hadri 等检验的 N/T 渐近条件并不相同。"
+        }
+        else if "`cmd'" == "xtcointtest" {
+            local expr_label "Kao/Pedroni/Westerlund + 协整变量列表"
+            local example1 "xtcointtest kao hprice aprice nprice"
+            local explain1 "在已确认变量存在单位根后，使用 Kao 检验考察 panel 长期协整关系。"
+            local example2 "help xtcointtest"
+            local explain2 "Kao、Pedroni、Westerlund 对协整向量与面板异质性的假设不同，应与研究设定对应。"
+        }
+        else if "`cmd'" == "xtdescribe" {
+            local expr_label "面板结构描述（通常直接运行；可补充 patterns 等 options）"
+            local example1 "xtdescribe"
+            local explain1 "查看 panel 数量、时间跨度、T_i 分布以及平衡/非平衡观测模式。"
+            local example2 "help xtdescribe"
+            local explain2 "适合在正式面板回归前检查面板覆盖、缺口与时间模式。"
+        }
+        else if "`cmd'" == "xtsum" {
+            local expr_label "要汇总的变量列表"
+            local example1 "xtsum hours"
+            local explain1 "同时报告 hours 的 overall、between 和 within 变异，直接对应面板数据的三个层次。"
+            local example2 "help xtsum"
+            local explain2 "within 与 between 的标准差含义不同，不能按普通 summarize 的单一方差解释。"
+        }
+        else if "`cmd'" == "xttab" {
+            local expr_label "一个分类变量"
+            local example1 "xttab msp"
+            local explain1 "把分类变量的总体频率、panel 间出现比例和 panel 内状态变化分开汇总。"
+            local example2 "help xttab"
+            local explain2 "适合检查二元/分类状态在面板内是否具有足够变化。"
+        }
+        else if "`cmd'" == "xtdata" {
+            local expr_label "要转换的变量 + fe/re/be 等变换设定"
+            local example1 "xtdata y x1 x2, fe clear"
+            local explain1 "把当前变量转换为 fixed-effects within 形式；clear 会替换内存数据，运行前必须确认已保存原数据。"
+            local example2 "help xtdata"
+            local explain2 "这是数据变换工具，会影响后续分析数据；用于手工估计前应保留可恢复的原始数据。"
+        }
         else if "`cmd'" == "xtivreg" {
             local expr_label "Y + 外生 X + (内生变量 = 工具变量) + fe/re 等面板 IV 设定"
             local example1 "xtivreg y x1 (x2 = z1 z2), fe"
@@ -2098,12 +2196,20 @@ program define hxsemantics, rclass
         local purpose1 "用于结果变量受到空间相关、空间滞后或空间内生性影响的模型。"
         local purpose2 "运行前应先准备 Stata 空间数据与权重矩阵；空间权重和模型类型按命令语法填写。"
     }
-    else if strpos(" xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtregar xtrc xtstreg xtabond xtdpdsys ", " `cmd' ") {
+    else if strpos(" xtunitroot xtcointtest xtdescribe xtsum xttab xtdata ", " `cmd' ") {
+        local title "`cmd' — 面板数据工具与检验"
+        local purpose1 "用于检查面板结构、分解 within/between 变异、变换 panel 数据，或执行单位根与协整检验。"
+        local purpose2 "页面会先按 panel/time 执行 xtset；数据变换或时间序列检验还需核对命令自身的样本与渐近条件。"
+        local panel_label "个体 / 面板变量"
+        if inlist("`cmd'", "xtunitroot", "xtcointtest") local time_label "时间变量（检验必填）"
+        else local time_label "时间变量（可按数据结构留空）"
+    }
+    else if strpos(" xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtabond xtdpdsys ", " `cmd' ") {
         local title "`cmd' — 面板数据模型"
-        local purpose1 "用于面板数据下的有序/计数结果、IV、PCSE、序列相关、随机系数、生存、GEE、前沿或动态模型。"
+        local purpose1 "用于面板数据下的有序/计数结果、IV、FGLS/PCSE、序列相关、ERM、样本选择、Hausman–Taylor、生存、GEE、前沿或动态模型。"
         local purpose2 "页面会要求面板结构；模型、动态项和估计选项继续按 Stata 当前命令语法确认。"
         local panel_label "个体 / 面板变量"
-        if inlist("`cmd'", "xtabond", "xtdpdsys") local time_label "时间变量（动态面板必填）"
+        if inlist("`cmd'", "xtabond", "xtdpdsys", "xtdpd") local time_label "时间变量（动态面板必填）"
         else local time_label "时间变量（可按数据结构留空）"
     }
     else if strpos(" mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ", " `cmd' ") {

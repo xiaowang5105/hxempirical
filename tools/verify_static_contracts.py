@@ -200,6 +200,32 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+panel_round2_core = {
+    "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor",
+    "xtdpd", "xtgls", "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata",
+}
+missing_panel_round2 = sorted(panel_round2_core - stats_cmds)
+if missing_panel_round2:
+    fail("panel-data round-2 commands missing: " + ", ".join(missing_panel_round2))
+for needle in (
+    'xteregress y x1, endogenous(x2 = x3 x4)',
+    'xteprobit y x1, endogenous(x2 = x3 x4)',
+    'xteoprobit y x1, endogenous(x2 = x3 x4)',
+    'xteintreg ylower yupper x1, endogenous(x2 = x3 x4)',
+    'xtheckman income c.age##c.age i.training#(c.exp##c.exp), select(working = age exp i.region i.training)',
+    'xthtaylor y x1 x2 z1, endog(x2)',
+    'xtdpd L(0/1).y x, div(x) dgmmiv(y)',
+    'xtgls y x1 x2, panels(heteroskedastic) corr(ar1)',
+    'xtunitroot ips hprice',
+    'xtcointtest kao hprice aprice nprice',
+    'xtdescribe',
+    'xtsum hours',
+    'xttab msp',
+    'xtdata y x1 x2, fe clear',
+):
+    if needle not in semantics:
+        fail(f"panel round-2 semantic contract missing: {needle}")
+
 panel_extension_core = {"xtologit", "xtivreg", "xtpcse", "xtregar", "xtrc", "xtstreg"}
 missing_panel_extensions = sorted(panel_extension_core - stats_cmds)
 if missing_panel_extensions:
@@ -232,9 +258,12 @@ panel_method_end = java.find("private static boolean isGenericPanelTimeRequired"
 if panel_method_start < 0 or panel_method_end < 0:
     fail("Java generic panel estimator method missing")
 panel_method_block = java[panel_method_start:panel_method_end]
-for panel_cmd in panel_extension_core:
+for panel_cmd in panel_extension_core | panel_round2_core:
     if f'"{panel_cmd}"' not in panel_method_block:
         fail(f"Java panel auto-xtset routing missing: {panel_cmd}")
+for time_required in ("xtdpd", "xtunitroot", "xtcointtest"):
+    if f'"{time_required}"' not in java[java.find("private static boolean isGenericPanelTimeRequired"):java.find("private JPanel genericCardBody", java.find("private static boolean isGenericPanelTimeRequired"))]:
+        fail(f"Java panel time-required routing missing: {time_required}")
 
 iv_core = {"ivregress", "ivprobit", "ivtobit", "ivpoisson"}
 missing_iv = sorted(iv_core - stats_cmds)
@@ -409,7 +438,7 @@ for needle in (
         fail(f"causal semantic contract missing: {needle}")
 for needle in (
     '"xthdidregress"',
-    'Arrays.asList("xtabond", "xtdpdsys", "xthdidregress")',
+    'Arrays.asList("xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xthdidregress")',
 ):
     if needle not in java:
         fail(f"xthdidregress low-barrier panel contract missing: {needle}")

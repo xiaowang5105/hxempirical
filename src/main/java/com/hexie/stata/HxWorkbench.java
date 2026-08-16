@@ -10794,13 +10794,14 @@ public final class HxWorkbench {
       private static boolean isGenericPanelEstimator(String command) {
          return Arrays.asList(
             "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
-            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtivreg", "xtpcse", "xtregar", "xtrc", "xtstreg",
-            "xtabond", "xtdpdsys", "xthdidregress"
+            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtivreg", "xtpcse", "xtgls", "xtregar", "xtrc", "xtstreg",
+            "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor", "xtabond", "xtdpdsys", "xtdpd",
+            "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata", "xthdidregress"
          ).contains(command);
       }
 
       private static boolean isGenericPanelTimeRequired(String command) {
-         return Arrays.asList("xtabond", "xtdpdsys", "xthdidregress").contains(command);
+         return Arrays.asList("xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xthdidregress").contains(command);
       }
 
       private JPanel genericCardBody() {
@@ -10828,7 +10829,7 @@ public final class HxWorkbench {
             return false;
          }
          if (isGenericPanelTimeRequired(this.currentCommand) && timeVar.isBlank()) {
-            JOptionPane.showMessageDialog(this, "当前动态面板模型需要时间变量，用于识别滞后期。请同时选择面板变量和时间变量。", "时间变量尚未选择", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "当前命令需要时间变量，用于动态滞后或面板时间序列检验。请同时选择面板变量和时间变量。", "时间变量尚未选择", JOptionPane.INFORMATION_MESSAGE);
             return false;
          }
          String setup = "xtset " + panelVar + (timeVar.isBlank() ? "" : " " + timeVar);
@@ -10970,7 +10971,7 @@ public final class HxWorkbench {
             this.addGenericBodyField(coreBody, panelGroupTitle, panelGrid);
             if (isGenericPanelEstimator(this.currentCommand)) {
                String setupHintText = isGenericPanelTimeRequired(this.currentCommand)
-                  ? "运行时会先执行 xtset；当前动态面板模型必须同时指定面板变量和时间变量。"
+                  ? "运行时会先执行 xtset；当前命令必须同时指定面板变量和时间变量。"
                   : "运行时会先按这里执行 xtset，再运行当前面板模型；时间变量可按数据结构留空。";
                JLabel setupHint = new JLabel(setupHintText);
                setupHint.setForeground(MUTED);
@@ -12997,7 +12998,7 @@ public final class HxWorkbench {
             return false;
          }
          if (isGenericPanelTimeRequired(this.currentCommand) && selected(this.time).isBlank()) {
-            JOptionPane.showMessageDialog(this, "当前命令需要时间变量；xtabond / xtdpdsys 用于动态滞后，xthdidregress 用于识别处理 cohort 和时间。", "时间变量尚未选择", 1);
+            JOptionPane.showMessageDialog(this, "当前命令需要时间变量；动态面板、单位根/协整检验或异质 DID 都依赖明确的 panel-time 结构。", "时间变量尚未选择", 1);
             return false;
          }
 
