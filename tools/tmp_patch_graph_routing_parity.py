@@ -102,12 +102,6 @@ v = once(
 )
 v = once(
     v,
-    '    ("graph_bar", "graph bar"), ("graph_dot", "graph dot"), ("graph_pie", "graph pie"),\n',
-    '    ("graph_bar", "graph bar"), ("graph_dot", "graph dot"), ("graph_pie", "graph pie"), ("graph_box", "graph box"),\n',
-    "graph_box Java help alias contract",
-)
-v = once(
-    v,
     '    "graph pie pop, over(region)",\n',
     '    "graph pie pop, over(region)",\n    "graph box y, over(group)",\n',
     "graph_box semantic contract",
@@ -124,6 +118,8 @@ route_scope = java[route_start:route_end]
 for graph_cmd in graph_result_route_required:
     if f'"{graph_cmd}"' not in route_scope:
         fail(f"Graphics command does not route to graph result view: {graph_cmd}")
+if '"graph_box".equals(this.currentCommand) ? "graph box"' not in java:
+    fail("graph_box Java help/native alias mapping missing")
 '''
 v = once(v, route_anchor, route_anchor + route_checks, "graph result route contract anchor")
 vp.write_text(v, encoding="utf-8", newline="\n")
