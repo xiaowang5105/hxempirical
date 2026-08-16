@@ -4948,7 +4948,7 @@ public final class HxWorkbench {
             case "时间序列图": return "tsline";
             case "面板数据折线图": return "xtline";
             case "生存分析图": return "sts graph";
-            case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg";
+            case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";
             case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";
             case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";
             case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";
@@ -6486,7 +6486,7 @@ public final class HxWorkbench {
          }          else if ("生存分析图".equals(var0)) {
             return Collections.singletonList("sts_graph");
          }          else if ("ROC分析".equals(var0)) {
-            return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg");
+            return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot");
          }          else if ("多元分析图".equals(var0)) {
             return Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay");
          }          else if ("质量控制".equals(var0)) {
@@ -7775,6 +7775,11 @@ public final class HxWorkbench {
          if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
             if (variable.equals(selected(this.depvar))) return "真实二元结局";
             if (this.variables.getSelectedValuesList().contains(variable)) return "预测评分 / 分类器";
+         }
+         if ("rocgold".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "真实二元结局";
+            if (variable.equals(selected(this.panel))) return "Gold-standard classifier";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "待比较 classifier";
          }
          if ("did_trends".equals(this.currentCommand)) {
             if (variable.equals(selected(this.depvar))) return "结果变量 Y";
@@ -9837,7 +9842,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9936,6 +9941,13 @@ public final class HxWorkbench {
             this.syntaxArea.setText("sts graph [if] [, by(group) failure|cumhaz|hazard risktable options]");
             coreTitle = "生存曲线设置";
             coreSubtitle = "沿用当前 stset；选择可选分组、曲线类型，并按需显示风险人数表。";
+         } else if ("rocgold".equals(var1)) {
+            this.commandTitle.setText("rocgold · 与 Gold-standard ROC 比较");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> rocgold status goldscore model2 model3, graph</html>");
+            this.insightArea.setText("主要意图：把多个 classifier 的 ROC 面积分别与一个明确的 gold-standard classifier 比较。\n\n真实二元结局、gold standard 和至少一个待比较评分分别选择，避免把 gold 混进普通 classifier 列表。\n\nSidak/Bonferroni 多重比较校正、summary 和图形样式继续放在更多设置中。");
+            this.syntaxArea.setText("rocgold refvar goldclass compareclasses [if] [, sidak graph summary options]");
+            coreTitle = "Gold standard 与待比较评分";
+            coreSubtitle = "先选真实二元结局，再指定唯一 gold-standard classifier，最后选择一个或多个待比较评分。";
          } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
             boolean compareRoc = "roccomp".equals(var1);
             this.commandTitle.setText(compareRoc ? "roccomp · 比较多条 ROC 曲线" : "roctab · 非参数 ROC 曲线");
@@ -10058,6 +10070,18 @@ public final class HxWorkbench {
             survivalHint.setFont(survivalHint.getFont().deriveFont(9.8F));
             survivalHint.setAlignmentX(0.0F);
             coreBody.add(survivalHint);
+         } else if ("rocgold".equals(var1)) {
+            JPanel goldTop = new JPanel(new GridLayout(1, 2, 12, 0));
+            goldTop.setOpaque(false);
+            goldTop.add(this.fieldBlock("真实二元结局", this.depvar));
+            goldTop.add(this.fieldBlock("Gold-standard classifier", this.panel));
+            this.addGenericBodyField(coreBody, "基准角色", goldTop);
+            this.addGenericBodyField(coreBody, "待比较 classifier（至少 1 个，可多选）", this.listPane(this.variables));
+            JLabel goldHint = new JLabel("命令中 gold standard 固定排在第一个 classifier；本页会自动保持这个顺序。");
+            goldHint.setForeground(MUTED);
+            goldHint.setFont(goldHint.getFont().deriveFont(9.8F));
+            goldHint.setAlignmentX(0.0F);
+            coreBody.add(goldHint);
          } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
             JPanel rocVars = new JPanel(new GridLayout(1, 2, 12, 0));
             rocVars.setOpaque(false);
@@ -10892,7 +10916,7 @@ public final class HxWorkbench {
          if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box").contains(command)) return "图形设定";
          if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(command)) return "诊断图设定";
          if (Arrays.asList("tsline", "xtline").contains(command)) return "趋势图设定";
-         if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(command)) return "ROC 设定";
+         if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot").contains(command)) return "ROC 设定";
          if ("generate".equals(command)) return "生成规则";
          if ("replace".equals(command)) return "修改规则";
          if (Arrays.asList("keep", "drop").contains(command)) return "处理对象";
@@ -12725,7 +12749,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -12833,6 +12857,14 @@ public final class HxWorkbench {
             if (this.specialGraphRiskTable.isSelected()) survivalOpts.add("risktable");
             if (!this.options.getText().trim().isBlank()) survivalOpts.add(this.options.getText().trim());
             if (!survivalOpts.isEmpty()) var1 += ", " + String.join(" ", survivalOpts);
+         } else if ("rocgold".equals(this.currentCommand)) {
+            List<String> compareScores = this.variables.getSelectedValuesList();
+            var1 = "rocgold " + selected(this.depvar) + " " + selected(this.panel) + (compareScores.isEmpty() ? "" : " " + String.join(" ", compareScores));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> goldOpts = new ArrayList<>();
+            goldOpts.add("graph");
+            if (!this.options.getText().trim().isBlank()) goldOpts.add(this.options.getText().trim());
+            var1 += ", " + String.join(" ", goldOpts);
          } else if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
             List<String> scores = this.variables.getSelectedValuesList();
             var1 = this.currentCommand + " " + selected(this.depvar) + (scores.isEmpty() ? "" : " " + String.join(" ", scores));
@@ -13414,6 +13446,19 @@ public final class HxWorkbench {
             }
             if (this.variables.getSelectedValuesList().contains(selected(this.depvar))) {
                JOptionPane.showMessageDialog(this, "真实结局不能同时作为待比较的预测评分。", "ROC 变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("rocgold".equals(command)) {
+            String truth = selected(this.depvar);
+            String gold = selected(this.panel);
+            List<String> comparisons = this.variables.getSelectedValuesList();
+            if (truth.isBlank() || gold.isBlank() || comparisons.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "rocgold 需要真实二元结局、1 个 Gold-standard classifier 和至少 1 个待比较 classifier。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (truth.equals(gold) || comparisons.contains(truth) || comparisons.contains(gold)) {
+               JOptionPane.showMessageDialog(this, "真实结局、Gold standard 与待比较 classifier 必须使用不同变量。", "ROC 变量角色重复", 2);
                return false;
             }
          }
@@ -14110,7 +14155,7 @@ public final class HxWorkbench {
                "twoway", "scatter", "line", "connected", "lfit", "qfit", "histogram", "kdensity",
                "graph_bar", "graph_dot", "graph_pie", "graph_box", "twoway_contour", "graph_matrix", "lowess", "lpoly",
                "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "sts_graph",
-               "roctab", "rocfit", "roccomp", "rocgold", "rocreg",
+               "roctab", "roccomp", "rocgold", "rocregplot",
                "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay",
                "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar",
                "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower",
@@ -14746,7 +14791,7 @@ public final class HxWorkbench {
             return "图形|面板数据折线图";
          } else if ("sts_graph".equals(var0)) {
             return "图形|生存分析图";
-         } else if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(var0)) {
+         } else if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot").contains(var0)) {
             return "图形|ROC分析";
          } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(var0)) {
             return "图形|多元分析图";

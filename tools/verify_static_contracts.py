@@ -89,7 +89,7 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
 for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp"):
@@ -101,6 +101,39 @@ if 'var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);' not in java:
     fail("pie special graph preview builder missing")
 if '请选择饼图的分类变量 over()' not in java:
     fail("pie special graph validation missing")
+roc_suite = {"roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot"}
+if not roc_suite.issubset(set(local_words(registry, "graph_cmds"))):
+    fail("Graphics ROC catalog is missing an official ROC-suite command")
+if 'local view "roctab rocfit roccomp rocgold rocreg rocregplot"' not in registry:
+    fail("ROC Graphics method must expose rocregplot")
+for needle in (
+    'rocgold · 与 Gold-standard ROC 比较',
+    'Gold-standard classifier',
+    'var1 = "rocgold "',
+    'goldOpts.add("graph")',
+    'rocgold 需要真实二元结局、1 个 Gold-standard classifier 和至少 1 个待比较 classifier',
+    '"roctab", "roccomp", "rocgold", "rocregplot"',
+    'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";',
+):
+    if needle not in java:
+        fail(f"ROC role/page contract missing: {needle}")
+roc_route_start = java.find('"graph_bar", "graph_dot", "graph_pie", "graph_box", "twoway_contour", "graph_matrix"')
+roc_route_end = java.find('this.selectResultView("graph", true);', roc_route_start)
+if roc_route_start < 0 or roc_route_end < 0:
+    fail("ROC graph-result route block missing")
+roc_route_scope = java[roc_route_start:roc_route_end]
+if '"rocfit"' in roc_route_scope or '"rocreg"' in roc_route_scope:
+    fail("rocfit/rocreg are still routed as direct graph-producing commands")
+if '"rocregplot"' not in roc_route_scope:
+    fail("rocregplot must route to the graph result view")
+for needle in (
+    'rocregplot — 绘制 ROC regression 结果',
+    'rocregplot, at1(currage=40) at2(currage=50)',
+    '拟合单一 classifier 的参数化 binormal ROC 模型',
+    '拟合后的协变量特定 ROC 曲线交给 rocregplot',
+):
+    if needle not in semantics:
+        fail(f"ROC semantic role contract missing: {needle}")
 for needle in (
     'graph matrix · 散点图矩阵',
     'twoway contour · 等高线图',
@@ -425,7 +458,7 @@ if 'return "图形|分布图";' in command_method_scope:
     fail("stale broad distribution commandPath label remains after specific Graphics classification")
 graph_method_preview_contracts = (
     'case "生存分析图": return "sts graph";',
-    'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg";',
+    'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";',
     'case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";',
     'case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";',
     'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";',

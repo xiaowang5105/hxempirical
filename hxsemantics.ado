@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.30  16aug2026
+*! hxsemantics 1.4.31  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -3444,6 +3444,25 @@ program define hxsemantics, rclass
         local explain2 "查看控制限、nograph、generate() 和图形定制等命令特有选项。"
     }
 
+    if "`cmd'" == "rocregplot" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_if 0
+        local has_in 0
+        local has_weight 0
+        local has_using 0
+        local has_newvar 0
+        local has_expression 1
+        local show_advanced 0
+        local title "rocregplot — 绘制 ROC regression 结果"
+        local expr_label "rocregplot 后面的完整主体（可留空，或填写 at1()/at2()/legend() 等）"
+        local example1 "rocregplot"
+        local explain1 "绘制最近一次 rocreg 模型对应的 ROC 曲线。"
+        local example2 "rocregplot, at1(currage=40) at2(currage=50)"
+        local explain2 "在两个协变量取值下比较模型隐含的 ROC 曲线。"
+    }
+
     /* Family-level copy for catalog commands that rely on the generic syntax parser.
        Keep the parsed Stata syntax/flags unchanged; only improve beginner-facing semantics. */
     if strpos(" ivprobit ivtobit ivpoisson ivfprobit ivqregress ", " `cmd' ") {
@@ -3725,10 +3744,24 @@ program define hxsemantics, rclass
         local purpose1 "用于按时间展示单序列或面板变量的变化轨迹。"
         local purpose2 "运行前应正确声明时间或面板结构；分组、叠加和样式 options 放在最后。"
     }
-    else if strpos(" roctab rocfit roccomp rocgold rocreg ", " `cmd' ") {
+    else if strpos(" roctab rocfit roccomp rocgold rocreg rocregplot ", " `cmd' ") {
         local title "`cmd' — ROC 分析"
-        local purpose1 "用于评估、比较或回归建模二元结局预测的 ROC 曲线与区分能力。"
-        local purpose2 "先明确真实二元结局和预测评分/模型；比较、协变量调整和图形设置按命令语法填写。"
+        if "`cmd'" == "rocfit" {
+            local purpose1 "拟合单一 classifier 的参数化 binormal ROC 模型；本命令首先产生估计结果，而不是直接绘图。"
+            local purpose2 "需要拟合后的 ROC 图时使用 rocfit 的后估计绘图工具；不要把 rocfit 本身当成纯绘图命令。"
+        }
+        else if "`cmd'" == "rocreg" {
+            local purpose1 "用协变量调整敏感度/特异度并进行 ROC regression；这是 ROC suite 中更一般的估计模型。"
+            local purpose2 "roccov()/ctrlcov() 等结构属于模型本身；拟合后的协变量特定 ROC 曲线交给 rocregplot。"
+        }
+        else if "`cmd'" == "rocregplot" {
+            local purpose1 "在 rocreg 估计之后绘制模型隐含的 ROC 曲线，可按 classifier 或协变量取值比较。"
+            local purpose2 "这是 rocreg 的后估计绘图命令；先成功运行 rocreg，再设置 at#()、图例、标题和其他 graph options。"
+        }
+        else {
+            local purpose1 "用于非参数 ROC 估计、ROC 面积比较或与 gold-standard ROC 曲线比较。"
+            local purpose2 "先明确真实二元结局和预测评分；比较与图形设置按当前命令语法填写。"
+        }
     }
 
     if `"`models'"' != "" {
