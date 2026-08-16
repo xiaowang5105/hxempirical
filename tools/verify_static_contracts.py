@@ -200,6 +200,27 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+iv_core = {"ivregress", "ivprobit", "ivtobit", "ivpoisson"}
+missing_iv = sorted(iv_core - stats_cmds)
+if missing_iv:
+    fail("instrumental-variable commands missing: " + ", ".join(missing_iv))
+for stata18_iv in ("ivfprobit", "ivqregress"):
+    if stata18_iv not in stats_cmds:
+        fail(f"Stata 18 IV command missing: {stata18_iv}")
+if "ivfprobit ivqregress" not in registry or "gsdesign ivfprobit ivqregress" not in registry:
+    fail("Stata 18 IV version gate or routing missing")
+for needle in (
+    'betareg gini i.rural i.democracy i.colony, nolog',
+    '0<Y<1',
+    'ivprobit y x1 (x2 = z1 z2)',
+    'ivtobit y x1 (x2 = z1 z2), ll(0)',
+    'ivpoisson gmm accidents x1 x2 (horsepower = x3 x4)',
+    'ivfprobit prate c.ltotemp##c.ltotemp i.sole (mrate = c.age##c.age)',
+    'ivqregress iqr assets (i.p401k = i.e401k)',
+):
+    if needle not in semantics:
+        fail(f"IV/fractional semantic contract missing: {needle}")
+
 count_core = {"poisson", "nbreg", "gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"}
 missing_count = sorted(count_core - stats_cmds)
 if missing_count:
@@ -382,7 +403,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 discrete_choice_catalog=1 count_catalog=1 hurdle_model=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 discrete_choice_catalog=1 count_catalog=1 hurdle_model=1 iv_catalog=1 fractional_semantics=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

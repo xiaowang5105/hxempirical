@@ -1,4 +1,4 @@
-*! hxregistry 3.1.13  16aug2026
+*! hxregistry 3.1.14  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,14 +8,14 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso ziologit {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
     if c(stata_version) < 18 {
-        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign {
+        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign ivfprobit ivqregress {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -194,6 +194,11 @@ program define hxregistry, rclass
         local key_churdle "churdle Cragg hurdle double hurdle select limited outcome 障碍模型 两阶段 选择"
         local key_nbreg "nbreg negative binomial 负二项 计数模型"
         local key_ivregress "ivregress iv 2sls gmm liml 工具变量 内生性"
+        local key_ivprobit "ivprobit instrumental variables probit endogenous binary 工具变量 二元 内生 probit"
+        local key_ivtobit "ivtobit instrumental variables tobit censored endogenous 工具变量 tobit 删失 内生"
+        local key_ivpoisson "ivpoisson instrumental variables poisson count endogenous gmm 工具变量 泊松 计数 内生"
+        local key_ivfprobit "ivfprobit fractional probit endogenous covariates 工具变量 分数结果 内生 probit"
+        local key_ivqregress "ivqregress instrumental variables quantile regression IQR smooth 工具变量 分位数 内生"
         local key_didregress "didregress did difference-in-differences ddd 双重差分 重复截面 平行趋势 因果推断 处理效应"
         local key_xtdidregress "xtdidregress did panel longitudinal 双重差分 面板 平行趋势 因果推断 处理效应"
         local key_hdidregress "hdidregress heterogeneous did repeated cross section 异质 双重差分 队列 时间"
@@ -393,7 +398,10 @@ program define hxregistry, rclass
         if c(stata_version) >= 18 local view "bmaregress"
         else local view ""
     }
-    else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") local view "ivregress ivreghdfe"
+    else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") {
+        local view "ivregress ivprobit ivtobit ivpoisson ivreghdfe"
+        if c(stata_version) >= 18 local view "`view' ivfprobit ivqregress"
+    }
     else if inlist(`"`method'"', "估计后分析", "postestimation") local view "test lincom predict margins"
 
     /* Stata Graphics menu. Multiword graph families use the native one-token
