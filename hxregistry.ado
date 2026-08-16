@@ -1,4 +1,4 @@
-*! hxregistry 3.1.10  16aug2026
+*! hxregistry 3.1.11  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,7 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
@@ -143,6 +143,18 @@ program define hxregistry, rclass
         local key_ttest "ttest 均值检验 t检验 假设检验"
         local key_tabulate "tabulate tab 频数 列联表 表格"
         local key_regress "regress ols linear regression 线性回归 最小二乘 基准回归 普通回归 稳健标准误 聚类"
+        local key_hetregress "hetregress heteroskedastic linear regression 异方差 线性回归 方差方程 het"
+        local key_sqreg "sqreg simultaneous quantile regression 同时 分位数回归 多分位"
+        local key_intreg "intreg interval regression 区间回归 左删失 右删失 区间删失"
+        local key_tobit "tobit censored regression 删失回归 左删失 右删失"
+        local key_truncreg "truncreg truncated regression 截断回归 左截断 右截断"
+        local key_boxcox "boxcox Box Cox transformation regression 变换 回归"
+        local key_fp "fp fractional polynomial regression 分数多项式 非线性 函数形式"
+        local key_nl "nl nonlinear least squares 非线性 最小二乘"
+        local key_nlsur "nlsur nonlinear seemingly unrelated regression 非线性 似不相关 方程组"
+        local key_gmm "gmm generalized method of moments 广义矩 估计 方程 工具变量"
+        local key_reg3 "reg3 three stage least squares simultaneous equations 三阶段最小二乘 联立方程"
+        local key_frontier "frontier stochastic frontier production cost efficiency 随机前沿 生产 成本 效率"
         local key_areg "areg absorb fixed effect 吸收固定效应 线性模型"
         local key_qreg "qreg quantile median 分位数回归 中位数"
         local key_rreg "rreg robust regression 稳健回归 异常值 outlier"
@@ -313,7 +325,7 @@ program define hxregistry, rclass
         if c(stata_version) >= 18 local view "`view' dtable"
         local view "`view' ttest prtest sdtest oneway anova ranksum median signrank signtest"
     }
-    else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr"
+    else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr"
     else if inlist(`"`method'"', "二元结果", "binary_outcomes") local view "logit logistic probit hetprobit scobit cloglog"
     else if inlist(`"`method'"', "序数结果", "ordinal_outcomes") local view "ologit oprobit"
     else if inlist(`"`method'"', "分类结果", "categorical_outcomes") local view "mlogit mprobit asclogit asmprobit"

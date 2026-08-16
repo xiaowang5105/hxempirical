@@ -200,6 +200,30 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+linear_related_core = {
+    "regress", "areg", "cnsreg", "rreg", "hetregress", "qreg", "iqreg", "bsqreg", "sqreg",
+    "vwls", "eivreg", "intreg", "tobit", "truncreg", "boxcox", "fp", "nl", "nlsur", "gmm",
+    "sureg", "reg3", "mvreg", "frontier", "correlate", "pwcorr",
+}
+missing_linear = sorted(linear_related_core - stats_cmds)
+if missing_linear:
+    fail("linear-related commands missing: " + ", ".join(missing_linear))
+for needle in (
+    'hetregress y x1 x2, het(z1 z2)',
+    'sqreg y x1 x2, quantile(.25 .5 .75) reps(100)',
+    'intreg ylower yupper x1 x2',
+    'tobit y x1 x2, ll(0)',
+    'truncreg y x1 x2, ll(0)',
+    'fp <age>, scale: regress y x <age>',
+    'nl (y = {b0=1}*(1-exp(-{b1=.1}*x)))',
+    'nlsur (y1 = {a1}*x1 + {a2}*x2) (y2 = {b1}*x1 + {b2}*x2)',
+    'gmm (y - {b0} - {b1}*x), instruments(z x)',
+    'reg3 (y1 x1 x2) (y2 y1 z1), 3sls',
+    'frontier lncost lnout lnp_l lnp_k, cost',
+):
+    if needle not in semantics:
+        fail(f"linear-related semantic contract missing: {needle}")
+
 summary_core = {"summarize", "ameans", "centile", "ci", "mean", "proportion", "ratio", "total", "tabstat", "tabulate", "table", "dtable"}
 missing_summary = sorted(summary_core - stats_cmds)
 if missing_summary:
@@ -313,7 +337,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

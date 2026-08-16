@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.9  16aug2026
+*! hxsemantics 1.4.10  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -928,7 +928,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1217,6 +1217,90 @@ program define hxsemantics, rclass
             local explain1 "按 age_group 对各 state 的率做标准化；实际标准人口来源需结合研究设计核对。"
             local example2 "help dstdize"
             local explain2 "直接/间接标准化、外部标准人口和保存选项请按当前 Stata help 设置。"
+        }
+        else if "`cmd'" == "hetregress" {
+            local expr_label "Y + X + het() 方差方程 + ML/twostep 等估计设定"
+            local example1 "hetregress y x1 x2, het(z1 z2)"
+            local explain1 "均值方程用 x1、x2，het() 中 z1、z2 建模残差方差。"
+            local example2 "help hetregress"
+            local explain2 "方差方程是否合理直接影响效率与推断；可按研究设计选择 ML 或 two-step GLS。"
+        }
+        else if "`cmd'" == "sqreg" {
+            local expr_label "Y + X + quantiles() + reps() 等同时分位数设定"
+            local example1 "sqreg y x1 x2, quantile(.25 .5 .75) reps(100)"
+            local explain1 "同时估计第 25、50、75 百分位，并用 bootstrap 得到跨分位数协方差。"
+            local example2 "help sqreg"
+            local explain2 "适合需要正式比较不同分位点系数的场景。"
+        }
+        else if "`cmd'" == "intreg" {
+            local expr_label "结果下界 + 结果上界 + X"
+            local example1 "intreg ylower yupper x1 x2"
+            local explain1 "ylower、yupper 表示区间结果的下界和上界；相等可表示精确观测，缺失可表示单侧删失。"
+            local example2 "help intreg"
+            local explain2 "区间、左删失、右删失和精确观测可在同一模型中组合。"
+        }
+        else if "`cmd'" == "tobit" {
+            local expr_label "Y + X + ll()/ul() 删失界限"
+            local example1 "tobit y x1 x2, ll(0)"
+            local explain1 "对在 0 处左删失的连续结果估计 Tobit 模型。"
+            local example2 "tobit y x1 x2, ll(0) ul(100)"
+            local explain2 "同时指定左右删失界限。"
+        }
+        else if "`cmd'" == "truncreg" {
+            local expr_label "Y + X + ll()/ul() 截断界限"
+            local example1 "truncreg y x1 x2, ll(0)"
+            local explain1 "样本只观察到 y>0 的个体时，用左截断回归修正抽样机制。"
+            local example2 "help truncreg"
+            local explain2 "截断意味着界限外观测整体未进入样本；界限必须对应真实抽样规则。"
+        }
+        else if "`cmd'" == "boxcox" {
+            local expr_label "Y + X + model()/lrtest 等 Box–Cox 变换设定"
+            local example1 "boxcox y x1 x2, model(lhsonly)"
+            local explain1 "只对因变量侧估计 Box–Cox 变换参数。"
+            local example2 "help boxcox"
+            local explain2 "lhs、rhs 或两侧变换的模型形式不同，运行前明确变量必须为正等数据要求。"
+        }
+        else if "`cmd'" == "fp" {
+            local expr_label "<连续变量> + FP options + 冒号后的估计命令"
+            local example1 "fp <age>, scale: regress y x <age>"
+            local explain1 "让 Stata 在候选 fractional powers 中为 age 选择函数形式，再估计线性回归。"
+            local example2 "help fp"
+            local explain2 "fp 是前缀工作流；尖括号标记参与 fractional-polynomial 搜索的连续变量。"
+        }
+        else if "`cmd'" == "nl" {
+            local expr_label "非线性方程（参数写在 {} 中，可给初值）"
+            local example1 "nl (y = {b0=1}*(1-exp(-{b1=.1}*x)))"
+            local explain1 "直接在方程中定义非线性函数和参数初值，用 nonlinear least squares 估计。"
+            local example2 "help nl"
+            local explain2 "复杂函数也可封装成 function evaluator program。"
+        }
+        else if "`cmd'" == "nlsur" {
+            local expr_label "多个非线性方程（每个方程一组括号，共享参数可复用同名 {}）"
+            local example1 "nlsur (y1 = {a1}*x1 + {a2}*x2) (y2 = {b1}*x1 + {b2}*x2)"
+            local explain1 "联合估计两个非线性方程，并允许方程误差相关。"
+            local example2 "help nlsur"
+            local explain2 "需求系统等复杂模型常需自定义 evaluator；参数约束应显式记录。"
+        }
+        else if "`cmd'" == "gmm" {
+            local expr_label "矩条件 / 残差方程 + instruments() + weight/VCE 设定"
+            local example1 "gmm (y - {b0} - {b1}*x), instruments(z x)"
+            local explain1 "指定一个残差矩条件，并用 z、x 作为工具变量进行 GMM 估计。"
+            local example2 "help gmm"
+            local explain2 "非线性、多方程、动态或面板矩条件应直接保留原生表达式结构。"
+        }
+        else if "`cmd'" == "reg3" {
+            local expr_label "多个线性方程括号 + 2sls/3sls/sure 等系统估计设定"
+            local example1 "reg3 (y1 x1 x2) (y2 y1 z1), 3sls"
+            local explain1 "把两条联立线性方程作为系统，用三阶段最小二乘联合估计。"
+            local example2 "help reg3"
+            local explain2 "内生变量、排除限制和跨方程识别条件应在运行前明确。"
+        }
+        else if "`cmd'" == "frontier" {
+            local expr_label "Y + X + production/cost + distribution()/uhet()/vhet() 等前沿设定"
+            local example1 "frontier y x1 x2"
+            local explain1 "默认拟合生产随机前沿模型。"
+            local example2 "frontier lncost lnout lnp_l lnp_k, cost"
+            local explain2 "加 cost 后拟合成本前沿；效率方向与生产前沿不同。"
         }
         else if strpos(" sureg mvreg canon manova ", " `cmd' ") {
             local expr_label "多方程 / 多变量模型主体（含括号、等号或变量组）"
@@ -1648,7 +1732,12 @@ program define hxsemantics, rclass
 
     /* Family-level copy for catalog commands that rely on the generic syntax parser.
        Keep the parsed Stata syntax/flags unchanged; only improve beginner-facing semantics. */
-    if strpos(" ameans centile ci mean proportion ratio total dtable ", " `cmd' ") {
+    if strpos(" hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm reg3 frontier ", " `cmd' ") {
+        local title "`cmd' — 线性模型及相关"
+        local purpose1 "用于异方差、删失/截断、非线性、方程系统、GMM、函数形式或随机前沿等线性模型扩展。"
+        local purpose2 "这些命令的核心语法差异较大；页面直接保留真正的方程、边界、矩条件或前缀结构。"
+    }
+    else if strpos(" ameans centile ci mean proportion ratio total dtable ", " `cmd' ") {
         local title "`cmd' — 汇总统计与参数估计"
         local purpose1 "用于均值、百分位、置信区间、比例、比率、总量或 Table 1 等基础描述与推断任务。"
         local purpose2 "第一步只保留该命令真正需要的变量/表达式；分组、权重、VCE 和表格选项在运行前核对。"
