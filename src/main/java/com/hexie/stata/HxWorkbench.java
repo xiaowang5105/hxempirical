@@ -4945,7 +4945,7 @@ public final class HxWorkbench {
             case "面板数据折线图": return "xtline";
             case "生存分析图": return "sts graph";
             case "ROC分析": return "roctab · rocfit · roccomp";
-            case "多元分析图": return "pca · factor · cluster";
+            case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · dendrogram";
             case "质量控制": return "质量控制相关图形";
             case "更多统计图形": return "marginsplot · 更多统计图形";
             case "图形组合": return "graph combine";
@@ -6482,7 +6482,7 @@ public final class HxWorkbench {
          }          else if ("ROC分析".equals(var0)) {
             return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg");
          }          else if ("多元分析图".equals(var0)) {
-            return Arrays.asList("pca", "factor", "cluster");
+            return Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay");
          }          else if ("质量控制".equals(var0)) {
             return Collections.singletonList("graph");
          }          else if ("更多统计图形".equals(var0)) {
@@ -14076,6 +14076,7 @@ public final class HxWorkbench {
             else if ("graph_matrix".equals(var1)) var1 = "graph matrix";
             else if ("twoway_contour".equals(var1)) var1 = "twoway contour";
             else if ("graph_combine".equals(var1)) var1 = "graph combine";
+            else if ("cluster_dendrogram".equals(var1)) var1 = "cluster dendrogram";
             int var2 = HxWorkbench.StataBridge.execute("help " + var1, true);
             if (var2 == 0) {
                HxWorkbench.StataBridge.execute("capture window manage forward viewer", false);

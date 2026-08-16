@@ -201,6 +201,23 @@ if missing_data_validation_reorg:
 for data_cmd in sorted(data_validation_reorg):
     if f'local title "{data_cmd} —' not in semantics:
         fail(f"data validation/reorganization semantics missing: {data_cmd}")
+graph_cmds = set(local_words(registry, "graph_cmds"))
+multivariate_graph_core = {"screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay"}
+missing_multivariate_graphs = sorted(multivariate_graph_core - graph_cmds)
+if missing_multivariate_graphs:
+    fail("multivariate graphics commands missing: " + ", ".join(missing_multivariate_graphs))
+if 'local view "screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay"' not in registry:
+    fail("multivariate Graphics navigation must contain true graph commands")
+if 'local view "pca factor cluster"' in registry:
+    fail("multivariate Graphics navigation must not route to estimation commands")
+for graph_cmd in sorted(multivariate_graph_core):
+    native_title = "cluster dendrogram" if graph_cmd == "cluster_dendrogram" else graph_cmd
+    if f'local title "{native_title} —' not in semantics:
+        fail(f"multivariate graphics semantics missing: {graph_cmd}")
+if 'cluster_dendrogram" local probe_cmd "cluster"' not in resolve:
+    fail("cluster dendrogram UI alias must probe the native cluster command")
+if 'else if ("cluster_dendrogram".equals(var1)) var1 = "cluster dendrogram";' not in java:
+    fail("Java command preview must emit native cluster dendrogram syntax")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 

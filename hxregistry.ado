@@ -1,4 +1,4 @@
-*! hxregistry 3.1.31  16aug2026
+*! hxregistry 3.1.32  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -26,7 +26,7 @@ program define hxregistry, rclass
         local reg_cmds : subinstr local reg_cmds " xtdidregress" "", all
     }
     local post_cmds "test testparm testnl lincom nlcom contrast pwcompare predict predictnl margins lrtest hausman suest linktest estimates estat"
-    local graph_cmds "graph set twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
+    local graph_cmds "graph set twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
@@ -406,6 +406,16 @@ program define hxregistry, rclass
         local key_lfit "lfit 线性拟合 拟合线 二维图"
         local key_graph_box "graph box 箱线图 分组分布 异常值"
         local key_twoway "twoway 二维图 叠加图 自定义图形"
+        local key_screeplot "screeplot factor pca eigenvalue scree plot 碎石图 主成分 因子 特征值"
+        local key_scoreplot "scoreplot factor pca scores components 因子 得分图 主成分"
+        local key_loadingplot "loadingplot factor pca loadings 因子 载荷图 主成分"
+        local key_biplot "biplot multivariate rows columns 双标图 多元分析"
+        local key_cluster_dendrogram "cluster dendrogram hierarchical clustering tree 聚类 树状图 层次聚类"
+        local key_cabiplot "cabiplot correspondence analysis biplot 对应分析 双标图"
+        local key_caprojection "caprojection correspondence analysis projection 对应分析 投影图"
+        local key_mdsconfig "mdsconfig multidimensional scaling configuration MDS 多维尺度 配置图"
+        local key_mdsshepard "mdsshepard Shepard multidimensional scaling MDS 多维尺度 Shepard 图"
+        local key_procoverlay "procoverlay procrustes overlay 普鲁克拉斯 叠加图"
         local key_marginsplot "marginsplot 边际效应图 调节效应图"
         local key_coefplot "coefplot 系数图 回归结果图"
         local key_did_trends "did trends 平行趋势 处理组 对照组 趋势图"
@@ -603,7 +613,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "面板数据折线图", "panel_line_graph") local view "xtline"
     else if inlist(`"`method'"', "生存分析图", "survival_graph") local view "sts"
     else if inlist(`"`method'"', "ROC分析", "roc_graph") local view "roctab rocfit roccomp rocgold rocreg"
-    else if inlist(`"`method'"', "多元分析图", "multivariate_graph") local view "pca factor cluster"
+    else if inlist(`"`method'"', "多元分析图", "multivariate_graph") local view "screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay"
     else if inlist(`"`method'"', "质量控制", "quality_graph") local view "cchart pchart rchart xchart shewhart serrbar"
     else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     else if inlist(`"`method'"', "图形组合", "graph_combine") local view "graph_combine"

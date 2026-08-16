@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.27  16aug2026
+*! hxsemantics 1.4.28  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -1473,7 +1473,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict contrast pwcompare predictnl lrtest hausman suest linktest estimates estat power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph set discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict contrast pwcompare predictnl lrtest hausman suest linktest estimates estat power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph set screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -3110,6 +3110,106 @@ program define hxsemantics, rclass
         }
         else if "`cmd'" == "irf" {
             local expr_label "irf 子命令与参数（如 create / graph / table）"
+        }
+        else if "`cmd'" == "screeplot" {
+            local title "screeplot — 碎石图"
+            local purpose1 "在 factor、pca 或兼容多元分析后绘制特征值/惯量随维度变化的 scree plot。"
+            local purpose2 "先完成相应多元模型；本页只设置要展示的维度、置信区间和图形 options。"
+            local expr_label "screeplot 选项（通常可留空直接绘图）"
+            local example1 "screeplot"
+            local explain1 "绘制最近一次 factor/PCA 等结果的碎石图。"
+            local example2 "screeplot, yline(1)"
+            local explain2 "增加 eigenvalue=1 的参考线。"
+        }
+        else if "`cmd'" == "scoreplot" {
+            local title "scoreplot — 因子/主成分得分图"
+            local purpose1 "在 factor 或 pca 后绘制因子/主成分 scores 的二维关系。"
+            local purpose2 "需要先成功估计 factor/factormat 或 pca/pcamat。"
+            local expr_label "维度与图形 options（如 factors(1 2)）"
+            local example1 "scoreplot"
+            local explain1 "绘制默认前两个因子或主成分的 score plot。"
+            local example2 "help scoreplot"
+            local explain2 "维度选择、标签和 marker 选项按当前 Stata Help 设置。"
+        }
+        else if "`cmd'" == "loadingplot" {
+            local title "loadingplot — 因子/主成分载荷图"
+            local purpose1 "在 factor 或 pca 后比较变量在两个因子/主成分上的 loadings。"
+            local purpose2 "变量箭头/点的位置反映载荷结构，解释时结合旋转方式和保留维度。"
+            local expr_label "维度与图形 options（通常可直接运行）"
+            local example1 "loadingplot"
+            local explain1 "绘制最近一次 factor/PCA 的默认 loading plot。"
+            local example2 "help loadingplot"
+            local explain2 "旋转结果、标签和坐标轴选项按当前 Stata Help 设置。"
+        }
+        else if "`cmd'" == "biplot" {
+            local title "biplot — 多元双标图"
+            local purpose1 "同时显示观测在低维空间中的位置与变量方向，用二维图概括多变量结构。"
+            local purpose2 "biplot 可以直接对数据执行双标图分析；dim() 等选项决定显示维度。"
+            local expr_label "变量列表 + dim()/rowlabel()/rowover() 等"
+            local example1 "biplot x1 x2 x3 x4"
+            local explain1 "对四个变量执行 biplot analysis 并绘制二维双标图。"
+            local example2 "help biplot"
+            local explain2 "分组、高亮、维度和坐标生成选项按当前 Stata Help 设置。"
+        }
+        else if "`cmd'" == "cluster_dendrogram" {
+            local title "cluster dendrogram — 层次聚类树状图"
+            local purpose1 "在层次聚类结果后绘制 dendrogram，查看对象如何逐步合并成簇。"
+            local purpose2 "实时命令生成原生 cluster dendrogram；需要先存在兼容的 hierarchical cluster result。"
+            local expr_label "cluster dendrogram 后面的分析名与 options（可留空使用当前聚类结果）"
+            local example1 "cluster dendrogram"
+            local explain1 "为当前层次聚类结果绘制完整树状图。"
+            local example2 "cluster dendrogram, horizontal"
+            local explain2 "改为水平树状图。"
+        }
+        else if "`cmd'" == "cabiplot" {
+            local title "cabiplot — 对应分析双标图"
+            local purpose1 "在 ca/camat 后同时显示行类别和列类别在主维度空间中的位置。"
+            local purpose2 "先完成 correspondence analysis；本页只负责图形维度、标签和 marker options。"
+            local expr_label "cabiplot 选项（如 dimensions()/origin/rowopts()/colopts()）"
+            local example1 "cabiplot"
+            local explain1 "绘制最近一次 correspondence analysis 的默认 biplot。"
+            local example2 "cabiplot, origin"
+            local explain2 "在图中显示原点。"
+        }
+        else if "`cmd'" == "caprojection" {
+            local title "caprojection — 对应分析维度投影图"
+            local purpose1 "在 ca/camat 后显示行、列类别在各 principal dimensions 上的投影顺序。"
+            local purpose2 "适合直接比较类别沿主要对应分析维度的位置。"
+            local expr_label "caprojection 图形 options"
+            local example1 "caprojection"
+            local explain1 "绘制最近一次 correspondence analysis 的维度投影图。"
+            local example2 "help caprojection"
+            local explain2 "维度、行列 marker labels 等设置按当前 Help 调整。"
+        }
+        else if "`cmd'" == "mdsconfig" {
+            local title "mdsconfig — MDS 配置图"
+            local purpose1 "在 mds/mdslong/mdsmat 后绘制低维 Euclidean configuration。"
+            local purpose2 "点之间的图上距离用于近似原始 dissimilarities；应结合 stress 等拟合指标判断。"
+            local expr_label "mdsconfig 维度、标签和 marker options"
+            local example1 "mdsconfig"
+            local explain1 "绘制最近一次 MDS 的前两个维度配置图。"
+            local example2 "help mdsconfig"
+            local explain2 "对象标签和维度选择按当前 Stata Help 设置。"
+        }
+        else if "`cmd'" == "mdsshepard" {
+            local title "mdsshepard — MDS Shepard 图"
+            local purpose1 "在 MDS 后比较原始 dissimilarities 与低维配置中的 fitted distances。"
+            local purpose2 "点越接近拟合关系，低维表示越能保持原始距离结构；同时结合 stress 评价。"
+            local expr_label "mdsshepard 图形 options"
+            local example1 "mdsshepard"
+            local explain1 "绘制最近一次 MDS 的 Shepard diagram。"
+            local example2 "help mdsshepard"
+            local explain2 "标记、拟合线和图形选项按当前 Help 设置。"
+        }
+        else if "`cmd'" == "procoverlay" {
+            local title "procoverlay — Procrustes 叠加图"
+            local purpose1 "在 procrustes 后把 target configuration 与由 source 拟合得到的位置叠加比较。"
+            local purpose2 "用于直观看两个配置经过 Procrustean transformation 后的贴合程度。"
+            local expr_label "procoverlay 图形 options"
+            local example1 "procoverlay"
+            local explain1 "绘制最近一次 Procrustes analysis 的 overlay plot。"
+            local example2 "help procoverlay"
+            local explain2 "标签、连接线和图形样式按当前 Help 调整。"
         }
         else if "`cmd'" == "graph" {
             local title "graph — 管理、保存与输出图形"

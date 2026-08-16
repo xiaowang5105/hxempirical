@@ -1,4 +1,4 @@
-*! hxresolve 3.1.4  16aug2026
+*! hxresolve 3.1.5  16aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -17,6 +17,7 @@ program define hxresolve, rclass
     local probe_cmd "`cmd'"
     if strpos(" graph_bar graph_dot graph_pie graph_matrix graph_combine ", " `cmd' ") local probe_cmd "graph"
     else if "`cmd'" == "twoway_contour" local probe_cmd "twoway"
+    else if "`cmd'" == "cluster_dendrogram" local probe_cmd "cluster"
 
     capture quietly which `probe_cmd'
     local installed = cond(_rc, 0, 1)
