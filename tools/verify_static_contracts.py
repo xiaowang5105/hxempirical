@@ -89,16 +89,36 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-for graph_cmd in ("graph_bar", "graph_dot", "graph_pie"):
-    special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(var1)'
-    if special_open not in java:
-        fail("common graph commands are not routed to the special graph page")
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)'
+if special_open not in java:
+    fail("structured Graphics commands are not routed to the special graph page")
+for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp"):
+    if graph_cmd not in special_open:
+        fail(f"structured Graphics route contract missing: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
     fail("bar/dot special graph preview builder missing")
 if 'var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);' not in java:
     fail("pie special graph preview builder missing")
 if '请选择饼图的分类变量 over()' not in java:
     fail("pie special graph validation missing")
+for needle in (
+    'graph matrix · 散点图矩阵',
+    'twoway contour · 等高线图',
+    'xtline · 面板数据折线图',
+    'sts graph · Kaplan–Meier 与生存函数图',
+    'roctab · 非参数 ROC 曲线',
+    'roccomp · 比较多条 ROC 曲线',
+    '显示风险人数表 risktable',
+    'var1 = "graph matrix"',
+    'var1 = "twoway contour "',
+    'survivalOpts.add("risktable")',
+    'rocOpts.add("graph")',
+    'graph matrix 至少选择 2 个变量',
+    '等高线图需要分别选择 Z、Y、X 三个变量',
+    'roccomp 需要 1 个真实二元结局和至少 2 个预测评分',
+):
+    if needle not in java:
+        fail(f"structured Graphics page contract missing: {needle}")
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 

@@ -2637,6 +2637,7 @@ public final class HxWorkbench {
       private final JTextField options = new JTextField();
       private final JComboBox<String> genericWeightType = new JComboBox<>(new String[]{"无", "fweight", "aweight", "pweight", "iweight"});
       private final JComboBox<String> genericWeightVar = variableCombo();
+      private final JCheckBox specialGraphRiskTable = new JCheckBox("显示风险人数表 risktable", false);
       private final JComboBox<String> regressX = variableCombo();
       private final JList<String> regressControls = variableList();
       private final JComboBox<String> regressFactor = variableCombo();
@@ -7744,6 +7745,42 @@ public final class HxWorkbench {
             if (this.xtregDepVar != null && variable.equals(Objects.toString(this.xtregDepVar.getSelectedItem(), ""))) return "因变量 Y";
             if (this.xtregIndepList != null && this.xtregIndepList.getSelectedValuesList().contains(variable)) return "解释变量 X";
          }
+         if (Arrays.asList("histogram", "kdensity").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "分布变量";
+         }
+         if (Arrays.asList("scatter", "lfit").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "纵轴 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "横轴 X";
+         }
+         if (Arrays.asList("graph_bar", "graph_dot").contains(this.currentCommand)) {
+            if (this.variables.getSelectedValuesList().contains(variable)) return "数值变量";
+            if (variable.equals(selected(this.panel))) return "分组 over()";
+         }
+         if ("graph_pie".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "扇区数值";
+            if (variable.equals(selected(this.panel))) return "分类 over()";
+         }
+         if ("graph_box".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "箱线变量";
+            if (variable.equals(selected(this.panel))) return "分组变量";
+         }
+         if ("graph_matrix".equals(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "矩阵变量";
+         if ("twoway_contour".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "Z 值";
+            if (variable.equals(selected(this.panel))) return "Y 坐标";
+            if (variable.equals(selected(this.time))) return "X 坐标";
+         }
+         if (Arrays.asList("tsline", "xtline").contains(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "绘图序列";
+         if ("sts_graph".equals(this.currentCommand) && variable.equals(selected(this.panel))) return "生存曲线分组";
+         if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "真实二元结局";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "预测评分 / 分类器";
+         }
+         if ("did_trends".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "结果变量 Y";
+            if (variable.equals(selected(this.panel))) return "处理组";
+            if (variable.equals(selected(this.time))) return "时间变量";
+         }
          if (variable.equals(selected(this.depvar))) return "因变量 Y";
          if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
          if (this.absorb.getSelectedValuesList().contains(variable)) return "固定效应 FE";
@@ -7945,6 +7982,7 @@ public final class HxWorkbench {
             }
          });
          this.missingChartType.addActionListener(var1x -> this.missingChart.setChartType(selected(this.missingChartType)));
+         this.specialGraphRiskTable.addActionListener(var1x -> this.schedulePreview());
          ActionListener var1 = var1x -> {
             this.missingVariables.setEnabled(this.missingChooseVariables.isSelected());
             boolean var2x = this.missingMode.getSelectedIndex() > 0;
@@ -9799,7 +9837,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9814,6 +9852,7 @@ public final class HxWorkbench {
          this.showWorkspacePage();
          this.selectResultView("graph", true);
          this.currentCommand = var1;
+         this.rebuilding = true;
          this.commandDock.setVisible(true);
          this.commandTabs.setVisible(true);
          this.commandTabs.setSelectedIndex(0);
@@ -9827,6 +9866,10 @@ public final class HxWorkbench {
          this.variables.clearSelection();
          this.ifCondition.setText("");
          this.options.setText("");
+         this.specialGraphRiskTable.setSelected(false);
+         this.specialGraphRiskTable.setOpaque(false);
+         this.specialGraphRiskTable.setForeground(TEXT);
+         this.configureSpecialGraphModel(var1);
          this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
 
          String coreTitle;
@@ -9862,6 +9905,47 @@ public final class HxWorkbench {
             this.syntaxArea.setText("graph pie [varname] [if], over(category) [options]");
             coreTitle = "分类与扇区大小";
             coreSubtitle = "先选分类变量；只有需要用数值决定扇区大小时才选择数值变量。";
+         } else if ("graph_matrix".equals(var1)) {
+            this.commandTitle.setText("graph matrix · 散点图矩阵");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph matrix mpg weight length</html>");
+            this.insightArea.setText("主要意图：一次查看多个连续变量的两两关系、离群点和相关形态。\n\n至少选择 2 个变量；变量过多会让矩阵迅速变密，建议先放核心连续变量。\n\nhalf、diagonal()、marker 与标题等继续放在更多图形设置中。");
+            this.syntaxArea.setText("graph matrix varlist [if] [, options]");
+            coreTitle = "矩阵变量";
+            coreSubtitle = "选择至少两个要两两比较的数值变量；先保留核心变量，避免矩阵过密。";
+         } else if ("twoway_contour".equals(var1)) {
+            this.commandTitle.setText("twoway contour · 等高线图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> twoway contour depth northing easting</html>");
+            this.insightArea.setText("主要意图：用颜色或等高线展示 Z 随 Y、X 两个坐标共同变化的表面。\n\nStata 原生顺序固定为 Z → Y → X；三个角色必须使用不同变量。\n\n插值方法、ccuts()/levels()、颜色和标题等继续放在更多图形设置中。");
+            this.syntaxArea.setText("twoway contour zvar yvar xvar [if] [, options]");
+            coreTitle = "Z / Y / X 坐标";
+            coreSubtitle = "按 Stata 原生顺序分别选择 Z 值、纵向坐标 Y 和横向坐标 X。";
+         } else if (Arrays.asList("tsline", "xtline").contains(var1)) {
+            boolean panelLine = "xtline".equals(var1);
+            this.commandTitle.setText(panelLine ? "xtline · 面板数据折线图" : "tsline · 时间序列折线图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (panelLine ? "xtline y, overlay" : "tsline y") + "</html>");
+            this.insightArea.setText(panelLine
+               ? "主要意图：按当前 xtset 的面板与时间结构绘制一个或多个变量的面板轨迹。\n\n本页不伪造额外时间参数；panel/time 结构沿用当前 Stata xtset。可选择默认分面显示或 overlay 叠加所有面板。\n\n正式绘图前如果尚未 xtset，请先到数据结构页面完成声明。"
+               : "主要意图：按当前 tsset 的时间结构绘制一个或多个变量的时间路径。\n\n时间轴沿用当前 Stata tsset，本页只选择真正要画的序列。\n\n正式绘图前如果尚未 tsset，请先到数据结构页面完成声明。");
+            this.syntaxArea.setText(panelLine ? "xtline varlist [if] [, overlay options]" : "tsline varlist [if] [, options]");
+            coreTitle = panelLine ? "面板序列" : "时间序列";
+            coreSubtitle = panelLine ? "选择至少一个变量；显示方式可在分面与 overlay 之间切换。" : "选择至少一个要沿当前时间轴绘制的变量。";
+         } else if ("sts_graph".equals(var1)) {
+            this.commandTitle.setText("sts graph · Kaplan–Meier 与生存函数图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> sts graph, by(group) risktable</html>");
+            this.insightArea.setText("主要意图：在已经 stset 的数据上绘制 Kaplan–Meier 生存曲线、失败函数、累计风险或平滑风险函数。\n\n分析时间与失败事件沿用当前 stset；这里只选择可选分组、曲线类型和是否显示风险人数表。\n\n调整协变量、置信区间、tmin()/tmax() 和图形样式继续放在更多图形设置中。");
+            this.syntaxArea.setText("sts graph [if] [, by(group) failure|cumhaz|hazard risktable options]");
+            coreTitle = "生存曲线设置";
+            coreSubtitle = "沿用当前 stset；选择可选分组、曲线类型，并按需显示风险人数表。";
+         } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
+            boolean compareRoc = "roccomp".equals(var1);
+            this.commandTitle.setText(compareRoc ? "roccomp · 比较多条 ROC 曲线" : "roctab · 非参数 ROC 曲线");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (compareRoc ? "roccomp status mod1 mod2, graph" : "roctab disease rating, graph") + "</html>");
+            this.insightArea.setText(compareRoc
+               ? "主要意图：在同一真实二元结局下比较两个或多个预测评分/分类器的 ROC 面积，并直接绘图。\n\n真实结局必填且应为二元变量；预测评分至少选择 2 个。独立样本 by()、summary 和图形样式继续放在更多设置中。"
+               : "主要意图：用真实二元结局和一个连续/有序预测评分估计非参数 ROC 曲线与 AUC。\n\n真实结局必填，预测评分只选 1 个；本图形入口默认加入 graph。detail、binomial、Lorenz 和图形样式继续放在更多设置中。");
+            this.syntaxArea.setText(compareRoc ? "roccomp refvar classvars [if] [, graph options]" : "roctab refvar classvar [if] [, graph options]");
+            coreTitle = "真实结局与预测评分";
+            coreSubtitle = compareRoc ? "选择一个真实二元结局，再选择至少两个要比较的评分。" : "选择一个真实二元结局和且仅一个预测评分。";
          } else if ("graph_box".equals(var1)) {
             this.commandTitle.setText("graph box · 分布与异常值箱线图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph box y, over(group)</html>");
@@ -9933,6 +10017,58 @@ public final class HxWorkbench {
             pieHint.setFont(pieHint.getFont().deriveFont(9.8F));
             pieHint.setAlignmentX(0.0F);
             coreBody.add(pieHint);
+         } else if ("graph_matrix".equals(var1)) {
+            this.addGenericBodyField(coreBody, "矩阵变量（至少 2 个，可多选）", this.listPane(this.variables));
+            JLabel matrixHint = new JLabel("建议先选 2–6 个核心连续变量；变量太多时单元格会变小，解释也会变困难。");
+            matrixHint.setForeground(MUTED);
+            matrixHint.setFont(matrixHint.getFont().deriveFont(9.8F));
+            matrixHint.setAlignmentX(0.0F);
+            coreBody.add(matrixHint);
+         } else if ("twoway_contour".equals(var1)) {
+            JPanel contourVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            contourVars.setOpaque(false);
+            contourVars.add(this.fieldBlock("Z 值 / 等高线变量", this.depvar));
+            contourVars.add(this.fieldBlock("Y 坐标", this.panel));
+            contourVars.add(this.fieldBlock("X 坐标", this.time));
+            this.addGenericBodyField(coreBody, "三个变量角色", contourVars);
+            JLabel contourHint = new JLabel("Stata 顺序是 contour z y x；这里分别固定三个角色，避免把 Y/X 顺序写反。");
+            contourHint.setForeground(MUTED);
+            contourHint.setFont(contourHint.getFont().deriveFont(9.8F));
+            contourHint.setAlignmentX(0.0F);
+            coreBody.add(contourHint);
+         } else if (Arrays.asList("tsline", "xtline").contains(var1)) {
+            this.addGenericBodyField(coreBody, "要绘制的变量（可多选）", this.listPane(this.variables));
+            if ("xtline".equals(var1)) {
+               this.addGenericBodyField(coreBody, "面板显示方式", this.model);
+            }
+            JLabel lineHint = new JLabel("<html>时间/面板结构沿用当前 <b>" + ("xtline".equals(var1) ? "xtset" : "tsset") + "</b>；本页不会偷偷改写数据声明。</html>");
+            lineHint.setForeground(MUTED);
+            lineHint.setFont(lineHint.getFont().deriveFont(9.8F));
+            lineHint.setAlignmentX(0.0F);
+            coreBody.add(lineHint);
+         } else if ("sts_graph".equals(var1)) {
+            JPanel survivalVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            survivalVars.setOpaque(false);
+            survivalVars.add(this.fieldBlock("分组变量 by()（可选）", this.panel));
+            survivalVars.add(this.fieldBlock("曲线类型", this.model));
+            this.addGenericBodyField(coreBody, "曲线与分组", survivalVars);
+            this.addGenericBodyField(coreBody, "常用显示", this.specialGraphRiskTable);
+            JLabel survivalHint = new JLabel("当前分析时间和失败事件来自 stset；如果尚未 stset，请先完成生存数据声明。");
+            survivalHint.setForeground(MUTED);
+            survivalHint.setFont(survivalHint.getFont().deriveFont(9.8F));
+            survivalHint.setAlignmentX(0.0F);
+            coreBody.add(survivalHint);
+         } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
+            JPanel rocVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            rocVars.setOpaque(false);
+            rocVars.add(this.fieldBlock("真实二元结局", this.depvar));
+            rocVars.add(this.fieldBlock("预测评分 / 分类器", this.listPane(this.variables)));
+            this.addGenericBodyField(coreBody, "ROC 变量", rocVars);
+            JLabel rocHint = new JLabel("本图形入口会自动加入 graph；复杂 by()、summary、detail、权重或样式可在最终命令中继续补充。");
+            rocHint.setForeground(MUTED);
+            rocHint.setFont(rocHint.getFont().deriveFont(9.8F));
+            rocHint.setAlignmentX(0.0F);
+            coreBody.add(rocHint);
          } else if ("graph_box".equals(var1)) {
             JPanel boxVars = new JPanel(new GridLayout(1, 2, 12, 0));
             boxVars.setOpaque(false);
@@ -9978,10 +10114,28 @@ public final class HxWorkbench {
          this.formPanel.revalidate();
          this.formPanel.repaint();
          this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
          this.updateSpecialGraphPreview();
          this.statusLabel.setText("图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
       }
 
+
+      private void configureSpecialGraphModel(String command) {
+         this.model.removeAllItems();
+         if ("xtline".equals(command)) {
+            this.model.addItem("按面板分图（默认）");
+            this.model.addItem("叠加所有面板（overlay）");
+            this.model.setSelectedIndex(0);
+         } else if ("sts_graph".equals(command)) {
+            this.model.addItem("生存函数（默认）");
+            this.model.addItem("失败函数（failure）");
+            this.model.addItem("累计风险（cumhaz）");
+            this.model.addItem("风险函数（hazard）");
+            this.model.setSelectedIndex(0);
+         } else {
+            this.model.addItem("");
+         }
+      }
 
       private JPanel buildSpecialGraphMoreSettings(boolean includeIf, String optionLabel) {
          JPanel block = new JPanel();
@@ -12571,7 +12725,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -12650,6 +12804,43 @@ public final class HxWorkbench {
             if (!selected(this.panel).isBlank()) pieOpts.add("over(" + selected(this.panel) + ")");
             if (!this.options.getText().trim().isBlank()) pieOpts.add(this.options.getText().trim());
             if (!pieOpts.isEmpty()) var1 = var1 + ", " + String.join(" ", pieOpts);
+         } else if ("graph_matrix".equals(this.currentCommand)) {
+            List<String> matrixVars = this.variables.getSelectedValuesList();
+            var1 = "graph matrix" + (matrixVars.isEmpty() ? "" : " " + String.join(" ", matrixVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("twoway_contour".equals(this.currentCommand)) {
+            var1 = "twoway contour " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("tsline", "xtline").contains(this.currentCommand)) {
+            List<String> lineVars = this.variables.getSelectedValuesList();
+            var1 = this.currentCommand + (lineVars.isEmpty() ? "" : " " + String.join(" ", lineVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> lineOpts = new ArrayList<>();
+            if ("xtline".equals(this.currentCommand) && selected(this.model).startsWith("叠加")) lineOpts.add("overlay");
+            if (!this.options.getText().trim().isBlank()) lineOpts.add(this.options.getText().trim());
+            if (!lineOpts.isEmpty()) var1 += ", " + String.join(" ", lineOpts);
+         } else if ("sts_graph".equals(this.currentCommand)) {
+            var1 = "sts graph";
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> survivalOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) survivalOpts.add("by(" + selected(this.panel) + ")");
+            String curve = selected(this.model);
+            if (curve.startsWith("失败")) survivalOpts.add("failure");
+            else if (curve.startsWith("累计风险")) survivalOpts.add("cumhaz");
+            else if (curve.startsWith("风险函数")) survivalOpts.add("hazard");
+            if (this.specialGraphRiskTable.isSelected()) survivalOpts.add("risktable");
+            if (!this.options.getText().trim().isBlank()) survivalOpts.add(this.options.getText().trim());
+            if (!survivalOpts.isEmpty()) var1 += ", " + String.join(" ", survivalOpts);
+         } else if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
+            List<String> scores = this.variables.getSelectedValuesList();
+            var1 = this.currentCommand + " " + selected(this.depvar) + (scores.isEmpty() ? "" : " " + String.join(" ", scores));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> rocOpts = new ArrayList<>();
+            rocOpts.add("graph");
+            if (!this.options.getText().trim().isBlank()) rocOpts.add(this.options.getText().trim());
+            var1 += ", " + String.join(" ", rocOpts);
          } else if ("graph_box".equals(this.currentCommand)) {
             String var6 = selected(this.depvar);
             var1 = var6.isBlank() ? "graph box" : "graph box " + var6;
@@ -13186,6 +13377,45 @@ public final class HxWorkbench {
          if ("graph_pie".equals(command) && selected(this.panel).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择饼图的分类变量 over()。", "图形设置尚未完整", 1);
             return false;
+         }
+         if ("graph_matrix".equals(command) && this.variables.getSelectedValuesList().size() < 2) {
+            JOptionPane.showMessageDialog(this, "graph matrix 至少选择 2 个变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("twoway_contour".equals(command)) {
+            String z = selected(this.depvar), y = selected(this.panel), x = selected(this.time);
+            if (z.isBlank() || y.isBlank() || x.isBlank()) {
+               JOptionPane.showMessageDialog(this, "等高线图需要分别选择 Z、Y、X 三个变量。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (new LinkedHashSet<>(Arrays.asList(z, y, x)).size() < 3) {
+               JOptionPane.showMessageDialog(this, "Z、Y、X 必须使用三个不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("tsline", "xtline").contains(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请选择至少 1 个要绘制的序列变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("roctab".equals(command)) {
+            if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() != 1) {
+               JOptionPane.showMessageDialog(this, "roctab 需要 1 个真实二元结局和且仅 1 个预测评分。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (this.variables.getSelectedValuesList().contains(selected(this.depvar))) {
+               JOptionPane.showMessageDialog(this, "真实结局和预测评分不能是同一个变量。", "ROC 变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("roccomp".equals(command)) {
+            if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() < 2) {
+               JOptionPane.showMessageDialog(this, "roccomp 需要 1 个真实二元结局和至少 2 个预测评分。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (this.variables.getSelectedValuesList().contains(selected(this.depvar))) {
+               JOptionPane.showMessageDialog(this, "真实结局不能同时作为待比较的预测评分。", "ROC 变量角色重复", 2);
+               return false;
+            }
          }
          if (Arrays.asList("scatter", "lfit").contains(command)) {
             if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() != 1) {
