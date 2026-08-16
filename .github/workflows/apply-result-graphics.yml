@@ -18,7 +18,24 @@ jobs:
           python-version: '3.12'
 
       - name: Apply result Graphics source patch
-        run: python tools/prepare_result_graphics.py
+        run: |
+          python tools/prepare_result_graphics.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          s = p.read_text(encoding='utf-8')
+          replacements = {
+              'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";':
+              'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot · event_plot";',
+              'case "更改方案/大小": return "set scheme";':
+              'case "更改方案/大小": return "set scheme · 单图 xsize()/ysize()/scale()";',
+          }
+          for old, new in replacements.items():
+              if s.count(old) != 1:
+                  raise SystemExit(f'static parity anchor count for {old!r}: {s.count(old)}')
+              s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Create Stata SFI compile stubs
         run: |
