@@ -10794,12 +10794,12 @@ public final class HxWorkbench {
       private static boolean isGenericPanelEstimator(String command) {
          return Arrays.asList(
             "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
-            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys"
+            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys", "xthdidregress"
          ).contains(command);
       }
 
       private static boolean isGenericPanelTimeRequired(String command) {
-         return Arrays.asList("xtabond", "xtdpdsys").contains(command);
+         return Arrays.asList("xtabond", "xtdpdsys", "xthdidregress").contains(command);
       }
 
       private JPanel genericCardBody() {
@@ -12996,7 +12996,7 @@ public final class HxWorkbench {
             return false;
          }
          if (isGenericPanelTimeRequired(this.currentCommand) && selected(this.time).isBlank()) {
-            JOptionPane.showMessageDialog(this, "xtabond / xtdpdsys 需要时间变量来构造动态滞后结构。", "时间变量尚未选择", 1);
+            JOptionPane.showMessageDialog(this, "当前命令需要时间变量；xtabond / xtdpdsys 用于动态滞后，xthdidregress 用于识别处理 cohort 和时间。", "时间变量尚未选择", 1);
             return false;
          }
 

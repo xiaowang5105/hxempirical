@@ -197,6 +197,28 @@ if missing_lasso:
     fail("official Lasso commands missing from Statistics catalog: " + ", ".join(missing_lasso))
 if "telasso" not in stats_cmds:
     fail("official telasso treatment-effects command missing from Statistics catalog")
+causal_core = {"teffects", "eteffects", "etregress", "etpoisson", "stteffects"}
+missing_causal = sorted(causal_core - stats_cmds)
+if missing_causal:
+    fail("official treatment-effects commands missing: " + ", ".join(missing_causal))
+for stata18_cmd in ("mediate", "hdidregress", "xthdidregress"):
+    if stata18_cmd not in stats_cmds:
+        fail(f"Stata 18 causal command missing: {stata18_cmd}")
+for needle in (
+    'eteffects (wage tenure c.age##c.age) (college c.age##c.age i.pcollege)',
+    'stteffects ra (age exercise diet education) (smoke)',
+    'mediate (wellbeing, logit) (bonotonin, logit) (exercise)',
+    'hdidregress aipw (bmi medu i.girl i.sports) (hhabit parksd), group(schools) time(year)',
+    'xthdidregress ra (registered best) (movie), group(breed)',
+):
+    if needle not in semantics:
+        fail(f"causal semantic contract missing: {needle}")
+for needle in (
+    '"xthdidregress"',
+    'Arrays.asList("xtabond", "xtdpdsys", "xthdidregress")',
+):
+    if needle not in java:
+        fail(f"xthdidregress low-barrier panel contract missing: {needle}")
 for needle in (
     'sqrtlasso y x1-x1000',
     "Partialing-out Lasso",
@@ -223,7 +245,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

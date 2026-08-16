@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.4  16aug2026
+*! hxsemantics 1.4.5  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -997,6 +997,41 @@ program define hxsemantics, rclass
             local explain1 "使用倾向得分匹配估计处理效应。"
             local example2 "teffects ipwra (y x1 x3) (treat x1 x2)"
             local explain2 "使用双重稳健 IPWRA。"
+        }
+        else if "`cmd'" == "eteffects" {
+            local expr_label "(结果方程) + (内生处理方程)"
+            local example1 "eteffects (wage tenure c.age##c.age) (college c.age##c.age i.pcollege)"
+            local explain1 "用控制函数处理 college 的内生处理分配，并直接报告潜在结果框架下的处理效应。"
+            local example2 "help eteffects"
+            local explain2 "结果分布、处理模型和 ATE/ATET 目标按研究设计继续核对。"
+        }
+        else if "`cmd'" == "stteffects" {
+            local expr_label "估计器 + 生存结果方程 / 处理方程 / 删失方程（按估计器填写）"
+            local example1 "stteffects ra (age exercise diet education) (smoke)"
+            local explain1 "在已经 stset 的数据上，用生存回归调整估计 smoke 对生存时间的处理效应。"
+            local example2 "stteffects ipwra (age exercise diet education) (smoke age exercise education) (age exercise diet education)"
+            local explain2 "IPWRA 同时建模生存结果、处理分配和删失机制。"
+        }
+        else if "`cmd'" == "mediate" {
+            local expr_label "(结果模型) + (中介模型) + (处理变量[, 协变量])"
+            local example1 "mediate (wellbeing, logit) (bonotonin, logit) (exercise)"
+            local explain1 "把 exercise 的总效应分解为经 bonotonin 的间接效应和直接效应。"
+            local example2 "help mediate"
+            local explain2 "结果、中介和处理变量类型决定可用的模型组合。"
+        }
+        else if "`cmd'" == "hdidregress" {
+            local expr_label "估计器 + (结果方程) + (处理方程) + group() + time()"
+            local example1 "hdidregress aipw (bmi medu i.girl i.sports) (hhabit parksd), group(schools) time(year)"
+            local explain1 "重复截面异质 DID：AIPW 允许 ATET 随处理 cohort 和时间变化。"
+            local example2 "help hdidregress"
+            local explain2 "可在 RA、IPW、AIPW、TWFE 中选择；group() 和 time() 属于核心识别结构。"
+        }
+        else if "`cmd'" == "xthdidregress" {
+            local expr_label "估计器 + (结果方程) + (处理方程) + group()；面板与时间由上方 xtset 设定"
+            local example1 "xthdidregress ra (registered best) (movie), group(breed)"
+            local explain1 "面板异质 DID：页面运行前先按所选 panel/time 执行 xtset，再估计 cohort×time ATET。"
+            local example2 "help xthdidregress"
+            local explain2 "时间变量必须能够识别处理 cohort；估计器和协变量结构按研究设计核对。"
         }
         else if strpos(" table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi ", " `cmd' ") {
             local expr_label "检验 / 表格主体（变量、分组、比较值或计数参数）"
@@ -1465,7 +1500,7 @@ program define hxsemantics, rclass
         local purpose1 "用于结果方程中存在内生解释变量时的扩展回归模型。"
         local purpose2 "需要明确主结果方程与内生变量方程；复杂联立结构按 Stata 原生语法填写。"
     }
-    else if strpos(" teffects etregress etpoisson telasso ", " `cmd' ") {
+    else if strpos(" teffects eteffects etregress etpoisson stteffects telasso mediate hdidregress xthdidregress ", " `cmd' ") {
         local title "`cmd' — 处理效应与因果推断"
         local purpose1 "用于潜在结果框架下的处理效应估计或内生处理模型。"
         local purpose2 "先明确结果变量、处理变量和协变量；处理模型、倾向得分或结果模型选项在最后核对。"

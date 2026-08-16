@@ -1,4 +1,4 @@
-*! hxregistry 3.1.5  16aug2026
+*! hxregistry 3.1.6  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,15 +8,23 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
-        local stats_cmds : subinstr local stats_cmds " telasso" "", all
+        foreach cmd in didregress xtdidregress telasso {
+            local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
+        }
     }
     if c(stata_version) < 18 {
-        local stats_cmds : subinstr local stats_cmds " bmaregress" "", all
+        foreach cmd in mediate hdidregress xthdidregress bmaregress {
+            local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
+        }
     }
     /* Legacy/HX shortcuts remain callable through compatibility paths, but old DID helpers are excluded from the public search catalog. */
     local reg_cmds "regress areg reghdfe rreg cnsreg vwls eivreg qreg newey prais xtreg xtlogit xtprobit logit probit poisson nbreg ppmlhdfe ivregress ivreghdfe didregress xtdidregress"
+    if c(stata_version) < 17 {
+        local reg_cmds : subinstr local reg_cmds " didregress" "", all
+        local reg_cmds : subinstr local reg_cmds " xtdidregress" "", all
+    }
     local post_cmds "test lincom predict margins"
     local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
@@ -146,6 +154,11 @@ program define hxregistry, rclass
         local key_ivregress "ivregress iv 2sls gmm liml 工具变量 内生性"
         local key_didregress "didregress did difference-in-differences ddd 双重差分 重复截面 平行趋势 因果推断 处理效应"
         local key_xtdidregress "xtdidregress did panel longitudinal 双重差分 面板 平行趋势 因果推断 处理效应"
+        local key_hdidregress "hdidregress heterogeneous did repeated cross section 异质 双重差分 队列 时间"
+        local key_xthdidregress "xthdidregress heterogeneous did panel 异质 双重差分 面板 队列 时间"
+        local key_eteffects "eteffects endogenous treatment effects 内生处理 处理效应 因果推断"
+        local key_stteffects "stteffects survival treatment effects 生存 处理效应 因果推断"
+        local key_mediate "mediate causal mediation 中介效应 直接效应 间接效应 因果中介"
         local key_ivreghdfe "ivreghdfe high dimensional fixed effects instrument 高维固定效应 工具变量 内生性"
         local key_did_builder "did difference in differences event study treat post event_time 平行趋势 事件研究 双重差分 政策冲击 动态效应"
         local key_ppmlhdfe "ppmlhdfe poisson pseudo maximum likelihood fixed effects 泊松 伪极大似然 高维固定效应"
@@ -280,8 +293,9 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
     else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") {
-        local view "teffects etregress etpoisson didregress xtdidregress"
-        if c(stata_version) >= 17 local view "`view' telasso"
+        local view "teffects eteffects etregress etpoisson stteffects"
+        if c(stata_version) >= 17 local view "`view' didregress xtdidregress telasso"
+        if c(stata_version) >= 18 local view "`view' mediate hdidregress xthdidregress"
     }
     else if inlist(`"`method'"', "结构方程模型(SEM)", "sem") local view "sem gsem"
     else if inlist(`"`method'"', "潜在类别分析(LCA)", "lca") local view "gsem"
@@ -342,7 +356,10 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "面板模型", "panel") local view "xtreg xtlogit xtprobit"
     else if inlist(`"`method'"', "计数模型", "count") local view "poisson nbreg ppmlhdfe"
     else if inlist(`"`method'"', "工具变量", "iv") local view "ivregress ivreghdfe"
-    else if inlist(`"`method'"', "双重差分", "did") local view "didregress xtdidregress"
+    else if inlist(`"`method'"', "双重差分", "did") {
+        if c(stata_version) >= 17 local view "didregress xtdidregress"
+        else local view ""
+    }
     else if inlist(`"`method'"', "DID分步构建", "did_build", "DID模型构建", "did_model") local view "did_builder"
     else if inlist(`"`method'"', "系数检验", "coefficient") local view "test lincom"
     else if inlist(`"`method'"', "预测边际", "prediction") local view "predict margins"
