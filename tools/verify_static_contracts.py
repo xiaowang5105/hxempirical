@@ -200,6 +200,37 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+binary_core = {"logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog"}
+missing_binary = sorted(binary_core - stats_cmds)
+if missing_binary:
+    fail("binary outcome commands missing: " + ", ".join(missing_binary))
+ordinal_core = {"ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit"}
+missing_ordinal = sorted(ordinal_core - stats_cmds)
+if missing_ordinal:
+    fail("ordinal outcome commands missing: " + ", ".join(missing_ordinal))
+choice_core = {
+    "mlogit", "mprobit", "clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample",
+    "cmclogit", "cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit",
+}
+missing_choice = sorted(choice_core - stats_cmds)
+if missing_choice:
+    fail("categorical/choice commands missing: " + ", ".join(missing_choice))
+if 'foreach cmd in didregress xtdidregress telasso ziologit' not in registry:
+    fail("Stata 17 ziologit version gate missing")
+for needle in (
+    'biprobit (private years) (vote logptax loginc)',
+    'hetoprobit health age bmi i.exercise, het(age)',
+    'ziologit tobacco education income i.female, inflate(income education i.parent)',
+    'zioprobit tobacco income i.female age, inflate(income i.female age i.parent i.religion)',
+    'cmset id travelmode',
+    'cmclogit chosen time, casevars(income partysize)',
+    'cmmixlogit choice mfee, random(price) casevars(traffic)',
+    'cmxtmixlogit choice trcost, random(trtime) casevars(age income)',
+    'nlogit chosen cost distance rating || type: income kids',
+):
+    if needle not in semantics:
+        fail(f"binary/ordinal/choice semantic contract missing: {needle}")
+
 linear_related_core = {
     "regress", "areg", "cnsreg", "rreg", "hetregress", "qreg", "iqreg", "bsqreg", "sqreg",
     "vwls", "eivreg", "intreg", "tobit", "truncreg", "boxcox", "fp", "nl", "nlsur", "gmm",
@@ -337,7 +368,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 discrete_choice_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

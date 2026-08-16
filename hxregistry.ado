@@ -1,4 +1,4 @@
-*! hxregistry 3.1.11  16aug2026
+*! hxregistry 3.1.12  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,9 +8,9 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
-        foreach cmd in didregress xtdidregress telasso {
+        foreach cmd in didregress xtdidregress telasso ziologit {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -168,6 +168,25 @@ program define hxregistry, rclass
         local key_xtprobit "xtprobit panel binary 面板 二元 概率回归"
         local key_reghdfe "reghdfe high dimensional fixed effects absorb 高维固定效应 吸收 固定效应 企业固定效应 年份固定效应"
         local key_logit "logit 二元 逻辑回归"
+        local key_binreg "binreg binomial glm risk ratio risk difference odds ratio 二项 风险比 风险差"
+        local key_biprobit "biprobit bivariate probit two binary equations 二元 双变量 probit 联立 方程"
+        local key_hetoprobit "hetoprobit heteroskedastic ordered probit 序数 异方差 有序 probit"
+        local key_ziologit "ziologit zero inflated ordered logit 零膨胀 序数 有序 logit inflate"
+        local key_zioprobit "zioprobit zero inflated ordered probit 零膨胀 序数 有序 probit inflate"
+        local key_clogit "clogit conditional logistic matched case control fixed effects 条件 logistic 配对 病例对照"
+        local key_slogit "slogit stereotype logistic categorical ordinal stereotype 分类 立体型 logit"
+        local key_cmset "cmset choice model data declare case alternative panel choice 选择模型 数据声明 备选项"
+        local key_cmsummarize "cmsummarize choice data summarize 选择模型 描述 备选项"
+        local key_cmchoiceset "cmchoiceset choice sets tabulate diagnose 选择集 检查"
+        local key_cmtab "cmtab chosen alternatives tabulate 选择模型 选择结果 频数"
+        local key_cmsample "cmsample choice sample exclusion 选择模型 样本 排除 诊断"
+        local key_cmclogit "cmclogit conditional logit McFadden choice 选择模型 条件 logit 备选项"
+        local key_cmmixlogit "cmmixlogit mixed logit random coefficients choice 混合 logit 随机系数 选择"
+        local key_cmxtmixlogit "cmxtmixlogit panel mixed logit repeated choice 面板 混合 logit 重复选择"
+        local key_cmmprobit "cmmprobit multinomial probit choice 多项 probit 选择模型"
+        local key_cmroprobit "cmroprobit rank ordered probit choice 排序 probit 选择模型"
+        local key_cmrologit "cmrologit rank ordered logit choice 排序 logit 选择模型"
+        local key_nlogit "nlogit nested logit choice tree 巢式 logit 选择模型 树"
         local key_probit "probit 二元 概率回归"
         local key_poisson "poisson count 泊松 计数模型"
         local key_nbreg "nbreg negative binomial 负二项 计数模型"
@@ -326,9 +345,12 @@ program define hxregistry, rclass
         local view "`view' ttest prtest sdtest oneway anova ranksum median signrank signtest"
     }
     else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr"
-    else if inlist(`"`method'"', "二元结果", "binary_outcomes") local view "logit logistic probit hetprobit scobit cloglog"
-    else if inlist(`"`method'"', "序数结果", "ordinal_outcomes") local view "ologit oprobit"
-    else if inlist(`"`method'"', "分类结果", "categorical_outcomes") local view "mlogit mprobit asclogit asmprobit"
+    else if inlist(`"`method'"', "二元结果", "binary_outcomes") local view "logit logistic binreg probit biprobit hetprobit scobit cloglog"
+    else if inlist(`"`method'"', "序数结果", "ordinal_outcomes") {
+        local view "ologit oprobit hetoprobit zioprobit"
+        if c(stata_version) >= 17 local view "`view' ziologit"
+    }
+    else if inlist(`"`method'"', "分类结果", "categorical_outcomes") local view "mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit"
     else if inlist(`"`method'"', "计数结果", "count_outcomes") local view "poisson nbreg ppmlhdfe zip zinb tpoisson tnbreg"
     else if inlist(`"`method'"', "分数结果", "fractional_outcomes") local view "fracreg betareg"
     else if inlist(`"`method'"', "广义线性模型", "glm_models") local view "glm"
