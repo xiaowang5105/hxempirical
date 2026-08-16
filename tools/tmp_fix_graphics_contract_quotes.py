@@ -2,7 +2,8 @@ from pathlib import Path
 import json
 
 p = Path("tools/verify_static_contracts.py")
-lines = p.read_text(encoding="utf-8").splitlines()
+text = p.read_text(encoding="utf-8")
+lines = text.splitlines()
 out = []
 changed = 0
 for line in lines:
@@ -15,5 +16,15 @@ for line in lines:
     out.append(line)
 if changed != 8:
     raise SystemExit(f"expected 8 Graphics quote repairs, got {changed}")
-p.write_text("\n".join(out) + "\n", encoding="utf-8")
-print("HX_GRAPHICS_CONTRACT_QUOTES_OK")
+text = "\n".join(out) + "\n"
+load_anchor = 'semantics = read("hxsemantics.ado")\n'
+if load_anchor not in text:
+    raise SystemExit("static verifier semantics load anchor missing")
+if 'preview = read("hxpreview.ado")' not in text:
+    text = text.replace(
+        load_anchor,
+        load_anchor + 'preview = read("hxpreview.ado")\nresolve = read("hxresolve.ado")\n',
+        1,
+    )
+p.write_text(text, encoding="utf-8", newline="\n")
+print("HX_GRAPHICS_CONTRACT_QUOTES_AND_INPUTS_OK")
