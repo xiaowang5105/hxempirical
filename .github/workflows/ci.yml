@@ -40,9 +40,6 @@ jobs:
           }
           Write-Host 'HX_JAR_BUILD_SCRIPT_PARSE_OK'
 
-      - name: Verify shipped JAR matches Java source
-        run: python tools/verify_hxworkbench_jar_sync.py
-
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
@@ -121,3 +118,6 @@ jobs:
               assert max(majors) <= 55, f'Java class level too new: {sorted(majors)}'
               print('HX_JAR_LEVEL_OK', sorted(majors))
           PY
+
+      - name: Verify shipped JAR matches Java source
+        run: python tools/verify_hxworkbench_jar_sync.py
