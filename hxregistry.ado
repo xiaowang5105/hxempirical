@@ -1,4 +1,4 @@
-*! hxregistry 3.1.9  16aug2026
+*! hxregistry 3.1.10  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,14 +8,14 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
     if c(stata_version) < 18 {
-        foreach cmd in mediate hdidregress xthdidregress bmaregress {
+        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -129,6 +129,14 @@ program define hxregistry, rclass
         local key_duplicates "duplicates 重复值 重复记录"
         local key_misstable "misstable 缺失值"
         local key_summarize "summarize sum 描述统计 汇总 均值 标准差"
+        local key_ameans "ameans arithmetic geometric harmonic means 算术 几何 调和 平均数 描述统计"
+        local key_centile "centile percentile quantile 百分位 分位数 置信区间"
+        local key_ci "ci confidence interval means proportions variances 置信区间 均值 比例 方差"
+        local key_mean "mean estimate means 均值 置信区间 分组"
+        local key_proportion "proportion proportions 比例 构成比 置信区间"
+        local key_ratio "ratio estimate ratios 比率 比值 分子 分母 置信区间"
+        local key_total "total estimate totals 总量 总计 置信区间"
+        local key_dtable "dtable table 1 descriptive statistics 描述统计 表1 分组检验"
         local key_tabstat "tabstat 分组统计 描述统计 汇总"
         local key_pwcorr "pwcorr 相关系数 显著性"
         local key_correlate "correlate corr 相关系数"
@@ -195,6 +203,10 @@ program define hxregistry, rclass
         local key_telasso "telasso treatment effects lasso 处理效应 高维 因果推断"
         local key_test "test 系数检验 联合检验 假设检验"
         local key_lincom "lincom 线性组合 系数"
+        local key_power "power sample size effect size statistical power 样本量 效能 效应量"
+        local key_ciwidth "ciwidth confidence interval width precision sample size 精度 置信区间宽度 样本量"
+        local key_gsbounds "gsbounds group sequential stopping boundaries efficacy futility 序贯 停止界值 疗效 无效"
+        local key_gsdesign "gsdesign group sequential sample size interim analysis 序贯设计 样本量 中期分析"
         local key_bmaregress "bmaregress bma bayesian model averaging 贝叶斯模型平均 模型不确定性 变量选择"
         local key_predict "predict 预测值 残差"
         local key_margins "margins 边际效应 调节效应"
@@ -296,7 +308,11 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "数据结构", "data_structure") local view "reshape collapse xtset tsset"
 
     /* Stata Statistics menu. */
-    else if inlist(`"`method'"', "汇总，表格和假设检验", "summary_tests") local view "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest"
+    else if inlist(`"`method'"', "汇总，表格和假设检验", "summary_tests") {
+        local view "summarize ameans centile ci mean proportion ratio total tabstat tabulate table"
+        if c(stata_version) >= 18 local view "`view' dtable"
+        local view "`view' ttest prtest sdtest oneway anova ranksum median signrank signtest"
+    }
     else if inlist(`"`method'"', "线性模型及相关", "linear_related") local view "regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr"
     else if inlist(`"`method'"', "二元结果", "binary_outcomes") local view "logit logistic probit hetprobit scobit cloglog"
     else if inlist(`"`method'"', "序数结果", "ordinal_outcomes") local view "ologit oprobit"
@@ -331,7 +347,10 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "非参数分析", "nonparametric") local view "ranksum median signrank signtest npregress kdensity lowess lpoly"
     else if inlist(`"`method'"', "精确统计", "exact_stats") local view "exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi"
     else if inlist(`"`method'"', "重抽样", "resampling") local view "bootstrap jackknife permute simulate statsby"
-    else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") local view "power"
+    else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") {
+        local view "power ciwidth"
+        if c(stata_version) >= 18 local view "`view' gsbounds gsdesign"
+    }
     else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
     else if inlist(`"`method'"', "贝叶斯模型平均", "bma") {
         if c(stata_version) >= 18 local view "bmaregress"

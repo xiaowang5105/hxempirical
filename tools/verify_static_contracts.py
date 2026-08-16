@@ -200,6 +200,32 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+summary_core = {"summarize", "ameans", "centile", "ci", "mean", "proportion", "ratio", "total", "tabstat", "tabulate", "table", "dtable"}
+missing_summary = sorted(summary_core - stats_cmds)
+if missing_summary:
+    fail("summary/table commands missing: " + ", ".join(missing_summary))
+power_core = {"power", "ciwidth", "gsbounds", "gsdesign"}
+missing_power = sorted(power_core - stats_cmds)
+if missing_power:
+    fail("power/precision commands missing: " + ", ".join(missing_power))
+for gated in ("dtable", "gsbounds", "gsdesign"):
+    if f'foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign' not in registry:
+        fail("Stata 18 summary/power version gate missing")
+for needle in (
+    'centile y, centile(25 50 75)',
+    'ci means y',
+    'ratio sales/cost',
+    'dtable price weight mpg i.rep78',
+    'ciwidth twomeans, width(6) sd(5) probwidth(.96)',
+    'gsbounds, efficacy(obfleming) futility(obfleming) nlooks(5) power(.9) alpha(.05)',
+    'gsdesign twomeans 5.5 6.5',
+    'meta set es se',
+    'permute treatment _b[treatment], reps(500): regress y treatment x1 x2',
+    'statsby mean=r(mean) sd=r(sd), by(group): summarize y',
+):
+    if needle not in semantics:
+        fail(f"summary/power/resampling semantic contract missing: {needle}")
+
 exact_core = {"exlogistic", "expoisson", "bitest", "bitesti", "ksmirnov", "symmetry", "tetrachoric", "tabi"}
 missing_exact = sorted(exact_core - stats_cmds)
 if missing_exact:
@@ -287,7 +313,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

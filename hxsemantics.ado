@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.8  16aug2026
+*! hxsemantics 1.4.9  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -338,6 +338,57 @@ program define hxsemantics, rclass
             local explain1 "汇总 y、x、c1 的缺失情况。"
             local example2 "misstable summarize"
             local explain2 "按 Stata 默认范围汇总缺失情况。"
+        }
+    }
+    else if inlist("`cmd'", "ameans", "centile", "mean", "proportion", "total") {
+        local has_depvar 0
+        local has_varlist 1
+        local vars_label "要汇总 / 估计的变量"
+        local show_advanced 1
+        if "`cmd'" == "ameans" {
+            local title "ameans — 算术、几何和调和平均数"
+            local purpose1 "同时报告变量的算术平均数、几何平均数和调和平均数及其区间估计。"
+            local purpose2 "适合正值变量；几何/调和平均数对零值和负值有定义限制。"
+            local example1 "ameans y"
+            local explain1 "报告 y 的三类平均数。"
+            local example2 "ameans y x"
+            local explain2 "一次汇总多个正值变量。"
+        }
+        else if "`cmd'" == "centile" {
+            local title "centile — 百分位数及置信区间"
+            local purpose1 "估计中位数或指定百分位点，并报告相应置信区间。"
+            local purpose2 "常用 centile() 指定 25、50、75 等百分位。"
+            local example1 "centile y, centile(25 50 75)"
+            local explain1 "报告 y 的第 25、50、75 百分位。"
+            local example2 "centile y"
+            local explain2 "按 Stata 默认百分位设定估计 y。"
+        }
+        else if "`cmd'" == "mean" {
+            local title "mean — 均值及设计型标准误"
+            local purpose1 "估计一个或多个变量的总体均值、标准误和置信区间。"
+            local purpose2 "可配合 over()、权重、稳健或聚类 VCE；调查设计数据可使用 svy: mean。"
+            local example1 "mean y x"
+            local explain1 "估计 y、x 的均值及置信区间。"
+            local example2 "mean y, over(group)"
+            local explain2 "按 group 分组估计 y 的均值。"
+        }
+        else if "`cmd'" == "proportion" {
+            local title "proportion — 类别比例及置信区间"
+            local purpose1 "估计类别变量各水平的总体比例并报告标准误和置信区间。"
+            local purpose2 "与 tabulate 的频数展示不同，本页面向比例参数估计和推断。"
+            local example1 "proportion group"
+            local explain1 "估计 group 各类别的总体比例。"
+            local example2 "proportion group, over(region)"
+            local explain2 "按 region 分层报告 group 的比例。"
+        }
+        else {
+            local title "total — 总量估计"
+            local purpose1 "估计一个或多个变量的总体总量，并报告标准误和置信区间。"
+            local purpose2 "可配合 over()、权重以及 survey 前缀。"
+            local example1 "total sales"
+            local explain1 "估计 sales 的总体总量。"
+            local example2 "total sales, over(region)"
+            local explain2 "按 region 分组估计 sales 总量。"
         }
     }
     else if inlist("`cmd'", "summarize", "tabstat", "correlate", "pwcorr", "ttest", "tabulate") {
@@ -877,7 +928,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -925,11 +976,11 @@ program define hxsemantics, rclass
             local explain2 "估计阶段可把完整 mi estimate 前缀主体直接写在这里。"
         }
         else if "`cmd'" == "meta" {
-            local expr_label "meta 子命令与完整参数（如 set / summarize / regress）"
-            local example1 "meta summarize"
-            local explain1 "对已经声明的 meta 数据进行汇总。"
-            local example2 "meta regress x1 x2"
-            local explain2 "执行 meta 回归；数据声明可使用 meta set / meta esize。"
+            local expr_label "meta 子命令与完整参数（先 set/esize，再 summarize/regress/forest）"
+            local example1 "meta set es se"
+            local explain1 "第一步声明已计算好的效应量 es 和标准误 se。"
+            local example2 "meta summarize"
+            local explain2 "在已经声明的 meta 数据上汇总总体效应与异质性。"
         }
         else if "`cmd'" == "fmm" {
             local expr_label "类别数 + 冒号后的估计命令（如 2: regress y x1 x2）"
@@ -976,9 +1027,21 @@ program define hxsemantics, rclass
                 local example1 "jackknife r(mean): summarize y"
                 local explain1 "对 summarize 返回的均值进行 jackknife。"
             }
+            else if "`cmd'" == "permute" {
+                local example1 "permute treatment _b[treatment], reps(500): regress y treatment x1 x2"
+                local explain1 "随机置换 treatment，并用每次回归的 treatment 系数构造 permutation distribution。"
+                local example2 "help permute"
+                local explain2 "分层、聚类或复杂实验设计下必须让置换机制符合真实随机化结构。"
+            }
+            else if "`cmd'" == "statsby" {
+                local example1 "statsby mean=r(mean) sd=r(sd), by(group): summarize y"
+                local explain1 "对每个 group 重复 summarize y，并把均值、标准差收集成结果数据。"
+                local example2 "help statsby"
+                local explain2 "也可收集回归系数、检验统计量等 e()/r() 返回结果。"
+            }
             else {
-                local example1 "help `cmd'"
-                local explain1 "该命令包含前缀统计量、重复设置或冒号后的被执行命令，请按当前 help 填写完整主体。"
+                local example1 "help simulate"
+                local explain1 "simulate 需要一个能够在每次重复中生成随机数据并 return 标量的命令或 program；先定义该程序，再填写返回统计量与 reps()/seed()。"
             }
         }
         else if "`cmd'" == "bayes" {
@@ -998,12 +1061,54 @@ program define hxsemantics, rclass
             local example1 "help `cmd'"
             local explain1 "先确认上一项 Bayesian 估计结果，再按当前后估计命令的子命令语法填写。"
         }
+        else if "`cmd'" == "ci" {
+            local expr_label "CI 类型 + 变量（means / proportions / variances）"
+            local example1 "ci means y"
+            local explain1 "计算 y 均值的置信区间。"
+            local example2 "ci proportions binaryvar"
+            local explain2 "计算二元变量成功比例的置信区间。"
+        }
+        else if "`cmd'" == "ratio" {
+            local expr_label "分子/分母表达式（可一次填写多个 ratio）"
+            local example1 "ratio sales/cost"
+            local explain1 "估计总体均值之比 sales/cost，并报告标准误和置信区间。"
+            local example2 "help ratio"
+            local explain2 "多个 ratio、over()、权重和 VCE 设置可继续按当前 help 填写。"
+        }
+        else if "`cmd'" == "dtable" {
+            local expr_label "连续变量 + i.分类变量 + by()/tests/export 等 Table 1 设置"
+            local example1 "dtable price weight mpg i.rep78"
+            local explain1 "连续变量报告均值/标准差，i.rep78 报告类别频数与比例。"
+            local example2 "dtable age weight i.sex, by(group, tests)"
+            local explain2 "按 group 生成 Table 1，并请求组间差异检验。"
+        }
         else if "`cmd'" == "power" {
             local expr_label "检验类型与设计参数（如 onemean 0 0.5, power(.8)）"
             local example1 "power onemean 0 0.5, power(.8)"
             local explain1 "一元均值检验的效能 / 样本量设计。"
             local example2 "power twomeans 0 0.5, power(.8)"
             local explain2 "两组均值比较的效能 / 样本量设计。"
+        }
+        else if "`cmd'" == "ciwidth" {
+            local expr_label "CI 设计类型 + width()/sd()/probwidth()/N() 等精度参数"
+            local example1 "ciwidth twomeans, width(6) sd(5) probwidth(.96)"
+            local explain1 "计算两独立样本均值差 CI 宽度不超过 6 所需的样本量。"
+            local example2 "help ciwidth"
+            local explain2 "可求样本量、CI 宽度或达到目标宽度的概率。"
+        }
+        else if "`cmd'" == "gsbounds" {
+            local expr_label "efficacy()/futility() + nlooks() + power()/alpha() 等停止界值设定"
+            local example1 "gsbounds, efficacy(obfleming) futility(obfleming) nlooks(5) power(.9) alpha(.05)"
+            local explain1 "为 5 次分析计算 O'Brien–Fleming 疗效和无效停止界值。"
+            local example2 "help gsbounds"
+            local explain2 "边界类型、信息时间和单/双侧设计应在研究设计阶段明确。"
+        }
+        else if "`cmd'" == "gsdesign" {
+            local expr_label "检验类型 + 原假设/备择参数 + SD/alpha/power/information/边界设定"
+            local example1 "gsdesign twomeans 5.5 6.5, sd1(2) sd2(3) knownsds onesided alpha(.025) power(.9) nratio(2) information(50 65 80 90 100) efficacy(errobfleming) futility(errobfleming)"
+            local explain1 "设计两样本均值 group-sequential trial，并计算每次 look 的停止界值与样本量。"
+            local example2 "help gsdesign"
+            local explain2 "可切换 one/two-sample means、proportions、log-rank 或 user-defined method。"
         }
         else if "`cmd'" == "teffects" {
             local expr_label "估计器 + 结果方程 + 处理方程（如 psmatch (y) (treat x1 x2)）"
@@ -1543,6 +1648,17 @@ program define hxsemantics, rclass
 
     /* Family-level copy for catalog commands that rely on the generic syntax parser.
        Keep the parsed Stata syntax/flags unchanged; only improve beginner-facing semantics. */
+    if strpos(" ameans centile ci mean proportion ratio total dtable ", " `cmd' ") {
+        local title "`cmd' — 汇总统计与参数估计"
+        local purpose1 "用于均值、百分位、置信区间、比例、比率、总量或 Table 1 等基础描述与推断任务。"
+        local purpose2 "第一步只保留该命令真正需要的变量/表达式；分组、权重、VCE 和表格选项在运行前核对。"
+    }
+    else if strpos(" power ciwidth gsbounds gsdesign ", " `cmd' ") {
+        local title "`cmd' — 效能、精度与样本量设计"
+        local purpose1 "用于研究设计阶段计算 power、CI precision、停止界值或 group-sequential sample size。"
+        local purpose2 "效应大小、alpha、power、CI width、looks 和边界方法都应来自预先设定的研究设计。"
+    }
+
     if strpos(" table prtest sdtest oneway anova ranksum median signrank signtest ", " `cmd' ") {
         local title "`cmd' — 表格与假设检验"
         local purpose1 "用于描述分组结果或执行常见参数/非参数假设检验。"
