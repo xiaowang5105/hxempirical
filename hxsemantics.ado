@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.7  16aug2026
+*! hxsemantics 1.4.8  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1052,10 +1052,66 @@ program define hxsemantics, rclass
             local example1 "help `cmd'"
             local explain1 "这些命令的变量角色和参数顺序差异较大，页面保留官方原生命令主体，避免把分组变量或比较值误标成解释变量。"
         }
+        else if "`cmd'" == "exlogistic" {
+            local expr_label "二元/二项结果变量 + 解释变量"
+            local example1 "exlogistic response treatment gender hypertension"
+            local explain1 "使用 exact logistic 对小样本二元结果做条件精确推断。"
+            local example2 "help exlogistic"
+            local explain2 "条件化变量、内存/时间限制与 Monte Carlo 设置属于精确估计的重要选项。"
+        }
+        else if "`cmd'" == "expoisson" {
+            local expr_label "计数结果变量 + 解释变量 + exposure()/offset() 等设定"
+            local example1 "expoisson y x1 x2"
+            local explain1 "对计数结果执行 exact Poisson 回归。"
+            local example2 "help expoisson"
+            local explain2 "暴露量、条件化和计算控制选项运行前按当前 help 核对。"
+        }
+        else if "`cmd'" == "bitest" {
+            local expr_label "二元变量 = 原假设概率（如 outcome = .5）"
+            local example1 "bitest outcome = .5"
+            local explain1 "检验二元 outcome 的成功概率是否等于 0.5，使用精确二项分布。"
+            local example2 "help bitest"
+            local explain2 "即时汇总数据可改用 bitesti。"
+        }
+        else if "`cmd'" == "ksmirnov" {
+            local expr_label "变量 = 理论 CDF 表达式，或变量 + by() 两样本分组"
+            local example1 "ksmirnov x, by(group)"
+            local explain1 "比较 group 两组的经验分布是否相同。"
+            local example2 "help ksmirnov"
+            local explain2 "单样本检验需要提供理论累计分布函数表达式。"
+        }
+        else if "`cmd'" == "symmetry" {
+            local expr_label "配对/方阵分类变量 + exact 等检验选项"
+            local example1 "symmetry before after, exact"
+            local explain1 "检验配对分类结果 before/after 的对称性，并请求精确检验。"
+            local example2 "help symmetry"
+            local explain2 "边际同质与 exact 选项按表结构继续核对。"
+        }
+        else if "`cmd'" == "tetrachoric" {
+            local expr_label "两个或多个二元变量"
+            local example1 "tetrachoric y x1 x2"
+            local explain1 "估计二元变量背后潜在连续变量之间的 tetrachoric correlation。"
+            local example2 "help tetrachoric"
+            local explain2 "变量应具有二元编码；多变量时返回相关矩阵。"
+        }
         else if strpos(" cc cs ir ", " `cmd' ") {
             local expr_label "流行病学命令主体（病例 / 暴露 / 时间 / 分层参数）"
             local example1 "help `cmd'"
             local explain1 "病例对照、队列和发病率命令的变量角色不同，按当前 help 填写完整主体。"
+        }
+        else if "`cmd'" == "mcc" {
+            local expr_label "病例暴露变量 + 配对对照暴露变量（1:1 matched pairs）"
+            local example1 "mcc smoke1 smoke0"
+            local explain1 "每行是一对 matched case-control；smoke1 为病例暴露，smoke0 为其配对对照暴露。"
+            local example2 "help mcc"
+            local explain2 "mcc 适用于 1:1 配对；1:M 匹配应转用条件 logistic 等方法。"
+        }
+        else if "`cmd'" == "dstdize" {
+            local expr_label "事件变量 + 人口/权重变量 + 标准化分层变量 + by()/using()"
+            local example1 "dstdize deaths pop age_group, by(state)"
+            local explain1 "按 age_group 对各 state 的率做标准化；实际标准人口来源需结合研究设计核对。"
+            local example2 "help dstdize"
+            local explain2 "直接/间接标准化、外部标准人口和保存选项请按当前 Stata help 设置。"
         }
         else if strpos(" sureg mvreg canon manova ", " `cmd' ") {
             local expr_label "多方程 / 多变量模型主体（含括号、等号或变量组）"
@@ -1567,7 +1623,7 @@ program define hxsemantics, rclass
             local purpose2 "先确认失败事件、分析时间和删失定义；生存数据声明与模型 options 需在运行前核对。"
         }
     }
-    else if strpos(" cc cs ir ", " `cmd' ") {
+    else if strpos(" cc cs ir mcc dstdize ", " `cmd' ") {
         local title "`cmd' — 流行病学效应量"
         local purpose1 "用于病例对照、队列或发病率资料的比值比、风险比和相关效应量计算。"
         local purpose2 "先确认病例/暴露或事件/时间变量角色；分层与置信区间选项按 Stata 命令设置。"
@@ -1662,7 +1718,7 @@ program define hxsemantics, rclass
         local purpose1 "用于非参数回归或局部平滑，减少对函数形式的强假设。"
         local purpose2 "带宽、核函数和局部多项式阶数会影响结果；建议结合右侧图形或结果诊断。"
     }
-    else if strpos(" bitesti tabi ", " `cmd' ") {
+    else if strpos(" exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi ", " `cmd' ") {
         local title "`cmd' — 精确统计"
         local purpose1 "用于小样本或汇总计数资料的精确检验与列联表分析。"
         local purpose2 "直接填写计数或概率参数；检验方向和置信水平等选项在运行前核对。"

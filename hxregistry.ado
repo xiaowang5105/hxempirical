@@ -1,4 +1,4 @@
-*! hxregistry 3.1.8  16aug2026
+*! hxregistry 3.1.9  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,7 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
@@ -172,6 +172,15 @@ program define hxregistry, rclass
         local key_mdsmat "mdsmat multidimensional scaling matrix 多维尺度 矩阵 距离"
         local key_mvtest "mvtest multivariate test means covariance correlation normality 多元检验"
         local key_procrustes "procrustes transformation shape configuration 普鲁克拉斯 变换"
+        local key_mcc "mcc matched case control matched pairs epidemiology 配对 病例对照 McNemar"
+        local key_dstdize "dstdize standardize rates direct indirect standardization 标准化 标化率 流行病学"
+        local key_exlogistic "exlogistic exact logistic regression 精确 logistic 小样本 完全预测"
+        local key_expoisson "expoisson exact poisson regression 精确 poisson 小样本 计数"
+        local key_bitest "bitest exact binomial probability test 二项 精确检验"
+        local key_bitesti "bitesti immediate exact binomial probability test 二项 即时 精确检验"
+        local key_ksmirnov "ksmirnov kolmogorov smirnov exact distribution 非参数 分布 检验"
+        local key_symmetry "symmetry marginal homogeneity exact matched table 对称 边际同质 精确"
+        local key_tetrachoric "tetrachoric binary correlation exact 二元 相关 四分相关"
         local key_svyset "svyset survey design 调查数据 抽样设计 权重 分层 psu strata pweight"
         local key_svydescribe "svydescribe survey describe 调查数据 设计结构 分层 psu"
         local key_svy "svy survey prefix 调查数据 加权估计 复杂抽样"
@@ -302,7 +311,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "纵向/面板数据", "panel_longitudinal") local view "xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys"
     else if inlist(`"`method'"', "多层混合效应模型", "mixed_effects") local view "mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm"
     else if inlist(`"`method'"', "生存分析", "survival") local view "stset sts stcox streg stcrreg"
-    else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir"
+    else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir mcc dstdize"
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
     else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") {
@@ -320,7 +329,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "Meta分析", "meta") local view "meta"
     else if inlist(`"`method'"', "多重插补", "mi") local view "mi"
     else if inlist(`"`method'"', "非参数分析", "nonparametric") local view "ranksum median signrank signtest npregress kdensity lowess lpoly"
-    else if inlist(`"`method'"', "精确统计", "exact_stats") local view "bitesti tabi"
+    else if inlist(`"`method'"', "精确统计", "exact_stats") local view "exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi"
     else if inlist(`"`method'"', "重抽样", "resampling") local view "bootstrap jackknife permute simulate statsby"
     else if inlist(`"`method'"', "效能，精度和样品含量", "power_precision") local view "power"
     else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
