@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.5  16aug2026
+*! hxsemantics 1.4.6  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -945,10 +945,24 @@ program define hxsemantics, rclass
             local example2 "irt grm item1-item10"
             local explain2 "拟合 graded response model。"
         }
+        else if "`cmd'" == "svyset" {
+            local expr_label "PSU + sampling weight + strata()/fpc()/多阶段设计等声明"
+            local example1 "svyset psu [pweight=finalwgt], strata(strata)"
+            local explain1 "声明主抽样单元 psu、抽样权重 finalwgt 和分层变量 strata。"
+            local example2 "svyset school_id, weight(wt_school) || _n, weight(wt_student)"
+            local explain2 "多阶段调查可以逐层声明 sampling unit 和 stage-level weight。"
+        }
+        else if "`cmd'" == "svydescribe" {
+            local expr_label "要检查的变量（可留空）+ 调查设计描述 options"
+            local example1 "svydescribe"
+            local explain1 "查看当前 svyset 设计中的 strata、PSU、权重与设计结构。"
+            local example2 "svydescribe y"
+            local explain2 "同时查看 y 在各 strata / stage 中的缺失与非缺失情况。"
+        }
         else if "`cmd'" == "svy" {
             local expr_label "冒号后的估计命令（以 : 开头，如 : mean y）"
-            local example1 "svy: mean y"
-            local explain1 "在已 svyset 的调查设计下估计总体均值。"
+            local example1 "svy: mean weight"
+            local explain1 "在已 svyset 的调查设计下估计总体均值并使用设计型标准误。"
             local example2 "svy: regress y x1 x2"
             local explain2 "在复杂抽样设计下运行线性回归。"
         }
@@ -1524,6 +1538,16 @@ program define hxsemantics, rclass
         local title "`cmd' — 多元统计分析"
         local purpose1 "用于降维、典型相关、多元方差、判别或聚类等多变量分析。"
         local purpose2 "先选择参与分析的变量；提取方法、距离、类别或维度等命令特有参数放在最后。"
+    }
+    else if "`cmd'" == "svyset" {
+        local title "svyset — 声明调查抽样设计"
+        local purpose1 "把抽样权重、PSU、strata、FPC 和多阶段 sampling units 写入数据的调查设计声明。"
+        local purpose2 "这是 svy: 工作流的第一步；声明后用 svydescribe 检查，再运行 svy: 估计。"
+    }
+    else if "`cmd'" == "svydescribe" {
+        local title "svydescribe — 检查调查设计结构"
+        local purpose1 "检查当前 svyset 声明的分层、抽样单元、阶段和变量可用情况。"
+        local purpose2 "适合在正式估计前确认 PSU/strata 结构和缺失情况。"
     }
     else if "`cmd'" == "svy" {
         local title "svy — 调查数据估计"
