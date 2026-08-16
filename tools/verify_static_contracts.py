@@ -89,10 +89,10 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
-for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph"):
+for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "graph_combine", "graph"):
     if graph_cmd not in special_open:
         fail(f"structured Graphics route contract missing: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
@@ -152,6 +152,23 @@ for needle in (
 ):
     if needle not in java:
         fail(f"structured Graphics page contract missing: {needle}")
+for needle in (
+    'cchart · 缺陷数控制图',
+    'pchart · 不合格率控制图',
+    'rchart · R 极差控制图',
+    'xchart · X-bar 均值控制图',
+    'shewhart · X-bar + R 联合控制图',
+    'var1 = "cchart " + selected(this.depvar) + " " + selected(this.panel)',
+    'var1 = "pchart " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time)',
+    'pOpts.add("stabilized")',
+    'qcOpts.add("std(" + qcStd + ")")',
+    'qcOpts.add("lower(" + qcLower + ")")',
+    'xchart 的 lower() 与 upper() 必须同时填写或同时留空',
+    'return "样本内重复测量"',
+):
+    if needle not in java:
+        fail(f"quality-control Graphics page contract missing: {needle}")
+
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 
