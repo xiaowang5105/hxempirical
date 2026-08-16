@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.17  16aug2026
+*! hxsemantics 1.4.18  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -943,7 +943,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -998,18 +998,39 @@ program define hxsemantics, rclass
             local explain2 "在已经声明的 meta 数据上汇总总体效应与异质性。"
         }
         else if "`cmd'" == "fmm" {
-            local expr_label "类别数 + 冒号后的估计命令（如 2: regress y x1 x2）"
+            local expr_label "类别数 + lcprob() class-membership 模型 + 冒号后的基础估计命令"
             local example1 "fmm 2: regress y x1 x2"
-            local explain1 "拟合两类有限混合线性回归。"
-            local example2 "fmm 3: poisson y x1 x2"
-            local explain2 "拟合三类有限混合 Poisson 模型。"
+            local explain1 "拟合两类有限混合线性回归；类别数位于冒号前。"
+            local example2 "fmm 2, lcprob(z1 z2): poisson y x1 x2"
+            local explain2 "两类 Poisson mixture，并让 z1、z2 通过 multinomial-logit class model 解释潜在类别归属。"
         }
         else if "`cmd'" == "irt" {
-            local expr_label "IRT 模型 + 题项变量（如 2pl item1-item10）"
+            local expr_label "IRT 模型类型 + 题项变量 + group()/constraints 等（1pl / 2pl / 3pl / grm / pcm / rsm / nrm / hybrid）"
             local example1 "irt 2pl item1-item10"
-            local explain1 "拟合二参数 Logistic IRT 模型。"
-            local example2 "irt grm item1-item10"
-            local explain2 "拟合 graded response model。"
+            local explain1 "二元题项拟合 2PL：每个 item 可有不同 difficulty 和 discrimination。"
+            local example2 "irt grm item1-item10, group(urban)"
+            local explain2 "有序题项拟合 graded-response model，并用 group() 做多组 IRT / DIF 分析。"
+        }
+        else if "`cmd'" == "irtgraph" {
+            local expr_label "图形类型 icc/tcc/iif/tif + item()/at()/by() 等图形参数"
+            local example1 "irtgraph icc"
+            local explain1 "绘制上一项 IRT 模型的 item characteristic curves。"
+            local example2 "irtgraph tif"
+            local explain2 "绘制 test information function，查看量表在哪些 latent-trait 区间提供最多信息。"
+        }
+        else if "`cmd'" == "diflogistic" {
+            local expr_label "题项变量 + group() + ability() 等 logistic-regression DIF 设定"
+            local example1 "help diflogistic"
+            local explain1 "使用 logistic regression 检验 uniform / nonuniform differential item functioning；先按当前 help 指定 group 与 ability 变量。"
+            local example2 "irt 2pl item1-item10, group(urban)"
+            local explain2 "DIF 结果应与多组 IRT 的 item 参数差异一起判断。"
+        }
+        else if "`cmd'" == "difmh" {
+            local expr_label "题项变量 + group() + score() 等 Mantel–Haenszel DIF 设定"
+            local example1 "help difmh"
+            local explain1 "使用 Mantel–Haenszel 方法检查二元题项的 DIF；分组变量与匹配 score 必须按 help 明确指定。"
+            local example2 "irtgraph icc"
+            local explain2 "统计检验后可用 ICC 进一步查看题项在 latent trait 上的组间差异。"
         }
         else if "`cmd'" == "svyset" {
             local expr_label "PSU + sampling weight + strata()/fpc()/多阶段设计等声明"
@@ -2543,9 +2564,9 @@ program define hxsemantics, rclass
         local purpose1 "把总体表示为若干未观测组分，并允许不同组分拥有不同回归参数或分布。"
         local purpose2 "第一步先确定潜在组分数量和冒号后的基础估计命令；类别数应结合理论与模型比较判断。"
     }
-    else if "`cmd'" == "irt" {
-        local title "irt — 项目反应理论"
-        local purpose1 "用 Rasch、1PL/2PL/3PL、GRM 等模型分析潜在能力与题项反应之间的关系。"
+    else if strpos(" irt irtgraph diflogistic difmh ", " `cmd' ") {
+        local title "`cmd' — 项目反应理论"
+        local purpose1 "用于估计 IRT 模型、绘制 item/test characteristic 与 information curves，并检查 differential item functioning。"
         local purpose2 "先确定题项类型与 IRT 模型，再选择全部题项变量；不同题型不能随意套用同一响应模型。"
     }
     else if "`cmd'" == "alpha" {

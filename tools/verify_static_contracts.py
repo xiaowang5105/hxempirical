@@ -200,6 +200,25 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+irt_core = {"irt", "irtgraph", "diflogistic", "difmh"}
+missing_irt = sorted(irt_core - stats_cmds)
+if missing_irt:
+    fail("IRT command coverage missing: " + ", ".join(missing_irt))
+for needle in (
+    "irt 2pl item1-item10",
+    "irt grm item1-item10, group(urban)",
+    "irtgraph icc",
+    "irtgraph tif",
+    "fmm 2, lcprob(z1 z2): poisson y x1 x2",
+    "gsem (alcohol truant weapon theft vandalism <-), logit lclass(C 3)",
+):
+    if needle not in semantics:
+        fail(f"latent/IRT semantic contract missing: {needle}")
+# SEM/LCA/FMM are intentionally represented by their real Stata entry points.
+for fake in ("lca", "latentclass"):
+    if fake in stats_cmds:
+        fail(f"fake latent-class command leaked into catalog: {fake}")
+
 survival_workflow_core = {
     "ctset", "cttost", "ltable", "snapspan", "stset", "stdescribe", "stsum", "stci", "stcurve", "stbase",
     "stfill", "stgen", "stsplit", "stvary", "sttocc", "sttoct", "sts", "stcox", "streg", "stintreg", "stintcox",
