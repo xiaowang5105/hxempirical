@@ -1,4 +1,4 @@
-*! hxregistry 3.1.25  16aug2026
+*! hxregistry 3.1.26  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -501,10 +501,12 @@ program define hxregistry, rclass
     }
     else if inlist(`"`method'"', "多层混合效应模型", "mixed_effects") local view "mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm"
     else if inlist(`"`method'"', "生存分析", "survival") {
-        local view "ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct"
-        local view "`view' sts stcox streg stintreg"
+        /* Common estimation workflow first; data-management and legacy rate tools later. */
+        local view "stset stcox streg stintreg"
         if c(stata_version) >= 17 local view "`view' stintcox"
-        local view "`view' stcrreg stir strate stptime stmh stmc"
+        local view "`view' stcrreg sts stcurve stdescribe stsum stci"
+        local view "`view' stbase stfill stgen stsplit stvary sttocc sttoct"
+        local view "`view' stir strate stptime stmh stmc ctset cttost ltable snapspan"
     }
     else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape"
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"

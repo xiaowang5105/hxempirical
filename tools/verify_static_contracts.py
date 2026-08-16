@@ -155,6 +155,8 @@ if "样本选择模型" in stats_methods:
     fail("duplicate sample-selection method leaked into public Statistics navigation")
 if "选择模型" not in stats_methods:
     fail("public Selection models method missing")
+if 'local view "stset stcox streg stintreg"' not in registry:
+    fail("survival navigation must start with the common declaration/estimation workflow")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 
