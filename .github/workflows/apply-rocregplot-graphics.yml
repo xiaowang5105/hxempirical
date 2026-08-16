@@ -17,6 +17,26 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Align patcher anchor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/prepare_rocregplot_graphics.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''    'Arrays.asList("event_plot", "marginsplot", "coefplot").contains(command)',
+              'Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)',
+              label="result graph task hint",
+          )'''
+          new = '''    'Arrays.asList("event_plot", "marginsplot", "coefplot").contains(command)',
+              'Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)',
+              expected=2,
+              label="result graph task hint",
+          )'''
+          if s.count(old) != 1:
+              raise SystemExit('patcher task-hint anchor mismatch')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
       - name: Apply rocregplot source patch
         run: python tools/prepare_rocregplot_graphics.py
 
