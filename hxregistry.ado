@@ -1,4 +1,4 @@
-*! hxregistry 3.1.19  16aug2026
+*! hxregistry 3.1.20  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,7 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh dsge dsgenl alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
@@ -40,7 +40,7 @@ program define hxregistry, rclass
     local data_methods "导入与转换 数据检查 变量处理 样本处理 合并与追加 数据结构"
 
     /* Stata 18 Statistics menu order, followed by explicit HX navigation entries for searchable extensions. */
-    local stats_methods "汇总，表格和假设检验 线性模型及相关 二元结果 序数结果 分类结果 计数结果 分数结果 广义线性模型 选择模型 时间序列 多元时间序列 空间自回归模型 纵向/面板数据 多层混合效应模型 生存分析 流行病学及相关 内生协变量 样本选择模型 因果推断/处理效应 结构方程模型(SEM) 潜在类别分析(LCA) 有限混合模型(FMM) 项目反应理论(IRT) 多元分析 调查数据分析 Lasso回归 Meta分析 多重插补 非参数分析 精确统计 重抽样 效能，精度和样品含量 贝叶斯分析 贝叶斯模型平均 工具变量与内生性 估计后分析"
+    local stats_methods "汇总，表格和假设检验 线性模型及相关 二元结果 序数结果 分类结果 计数结果 分数结果 广义线性模型 选择模型 时间序列 多元时间序列 空间自回归模型 纵向/面板数据 多层混合效应模型 生存分析 流行病学及相关 内生协变量 样本选择模型 因果推断/处理效应 结构方程模型(SEM) 潜在类别分析(LCA) 有限混合模型(FMM) 项目反应理论(IRT) DSGE模型 多元分析 调查数据分析 Lasso回归 Meta分析 多重插补 非参数分析 精确统计 重抽样 效能，精度和样品含量 贝叶斯分析 贝叶斯模型平均 工具变量与内生性 估计后分析"
     if c(stata_version) < 18 {
         local stats_methods : subinstr local stats_methods " 贝叶斯模型平均" "", all
     }
@@ -140,6 +140,14 @@ program define hxregistry, rclass
         local key_irtgraph "irtgraph ICC TCC IIF TIF item characteristic information 项目反应 图形 信息函数 特征曲线"
         local key_diflogistic "diflogistic IRT differential item functioning logistic DIF 差异项目功能 逻辑回归"
         local key_difmh "difmh IRT Mantel Haenszel DIF differential item functioning 差异项目功能"
+        local key_dsge "dsge dynamic stochastic general equilibrium DSGE 动态随机一般均衡 线性化 宏观模型"
+        local key_dsgenl "dsgenl nonlinear DSGE dynamic stochastic general equilibrium 非线性 动态随机一般均衡"
+        local key_pkexamine "pkexamine pharmacokinetic concentration time AUC half-life cmax 药代动力学 浓度 时间 半衰期"
+        local key_pksumm "pksumm pharmacokinetic summary AUC distribution 药代动力学 汇总 正态性"
+        local key_pkcross "pkcross pharmacokinetic crossover experiment 交叉试验 药代动力学"
+        local key_pkequiv "pkequiv bioequivalence pharmacokinetic 生物等效 药代动力学 TOST"
+        local key_pkcollapse "pkcollapse pharmacokinetic collapse measurements reshape 药代动力学 AUC 数据转换"
+        local key_pkshape "pkshape pharmacokinetic Latin square crossover reshape 药代动力学 拉丁方 交叉设计 重塑"
         local key_tsset "tsset time series 时间序列 时间变量 声明"
         local key_ctset "ctset count-time survival 生存 计数时间 声明"
         local key_cttost "cttost count-time to survival 转换 生存数据"
@@ -452,7 +460,7 @@ program define hxregistry, rclass
         if c(stata_version) >= 17 local view "`view' stintcox"
         local view "`view' stcrreg stir strate stptime stmh stmc"
     }
-    else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir mcc dstdize"
+    else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape"
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
     else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") {
@@ -464,6 +472,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "潜在类别分析(LCA)", "lca") local view "gsem"
     else if inlist(`"`method'"', "有限混合模型(FMM)", "fmm") local view "fmm"
     else if inlist(`"`method'"', "项目反应理论(IRT)", "irt") local view "irt irtgraph diflogistic difmh"
+    else if inlist(`"`method'"', "DSGE模型", "dsge") local view "dsge dsgenl"
     else if inlist(`"`method'"', "多元分析", "multivariate") local view "alpha factor pca canon ca candisc hotelling manova mvreg mca mds mdslong mdsmat mvtest procrustes discrim cluster"
     else if inlist(`"`method'"', "调查数据分析", "survey") local view "svyset svydescribe svy"
     else if inlist(`"`method'"', "Lasso回归", "lasso") local view "lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress"

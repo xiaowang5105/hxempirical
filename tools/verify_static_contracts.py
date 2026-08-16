@@ -200,6 +200,31 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+dsge_core = {"dsge", "dsgenl"}
+missing_dsge = sorted(dsge_core - stats_cmds)
+if missing_dsge:
+    fail("DSGE command coverage missing: " + ", ".join(missing_dsge))
+if "DSGE模型" not in registry:
+    fail("DSGE method missing from Statistics navigation")
+pk_core = {"pkexamine", "pksumm", "pkcross", "pkequiv", "pkcollapse", "pkshape"}
+missing_pk = sorted(pk_core - stats_cmds)
+if missing_pk:
+    fail("pharmacokinetic command coverage missing: " + ", ".join(missing_pk))
+if "pk" in stats_cmds:
+    fail("umbrella help entry pk must not be exposed as an executable Statistics command")
+for needle in (
+    "dsge (p = {beta}*E(F.p) + {kappa}*y) (F.y = {rho}*y, state)",
+    "observed(r p) unobserved(x) exostate(z u)",
+    "pkexamine time concentration, graph",
+    "pksumm id time conc",
+    "pkcross y, param(3) id(idvar) sequence(seq) treatment(treat) period(period)",
+    "pkequiv auc treat period sequence id, limit(0.1) notost noboot",
+    "pkcollapse time conc1 conc2, id(id) stat(auc) keep(seq)",
+    "pkshape id seq period1 period2, order(RT TR)",
+):
+    if needle not in semantics:
+        fail(f"PK/DSGE semantic contract missing: {needle}")
+
 irt_core = {"irt", "irtgraph", "diflogistic", "difmh"}
 missing_irt = sorted(irt_core - stats_cmds)
 if missing_irt:

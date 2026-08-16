@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.18  16aug2026
+*! hxsemantics 1.4.19  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -943,7 +943,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -982,6 +982,20 @@ program define hxsemantics, rclass
             local explain1 "对二元结果 y 拟合 logit 链接的广义结构方程。"
             local example2 "gsem (alcohol truant weapon theft vandalism <-), logit lclass(C 3)"
             local explain2 "LCA 使用 gsem 的 lclass()；这里拟合 3 个潜在类别的二元题项模型。"
+        }
+        else if "`cmd'" == "dsge" {
+            local expr_label "线性化 DSGE 方程系统：控制变量方程 + (F.state = ..., state) 状态方程"
+            local example1 "dsge (p = {beta}*E(F.p) + {kappa}*y) (F.y = {rho}*y, state)"
+            local explain1 "两方程线性化 DSGE：p 是前瞻控制变量，y 是带冲击的状态变量；花括号内参数由模型估计。"
+            local example2 "help dsge"
+            local explain2 "正式模型应先 tsset；可继续加入 observed/unobserved 控制变量、多个状态方程和参数约束。"
+        }
+        else if "`cmd'" == "dsgenl" {
+            local expr_label "非线性 DSGE 方程系统 + observed()/unobserved()/endostate()/exostate()"
+            local example1 "dsgenl (1 = {beta}*(x/F.x)*(r/(F.p*z))) (1/{phi} + (p-1) = {phi}*x + {beta}*(F.p-1)) ({beta}*r = p^(1/{beta})*u) (ln(F.u) = {rhou}*ln(u)) (ln(F.z) = {rhoz}*ln(z)), observed(r p) unobserved(x) exostate(z u)"
+            local explain1 "官方 New Keynesian 示例：r、p 为 observed，x 为 unobserved control，z、u 为外生 state；F. 表示一期前瞻值。"
+            local example2 "help dsgenl"
+            local explain2 "需要内生 state 时继续使用 endostate()；稳态、识别与收敛诊断是非线性 DSGE 的模型核心。"
         }
         else if "`cmd'" == "mi" {
             local expr_label "mi 子命令与完整参数（如 set / impute / estimate）"
@@ -1561,6 +1575,48 @@ program define hxsemantics, rclass
             local explain1 "nested logit 的树层级直接写在 || 结构中；tree 需要事先按研究中的嵌套逻辑定义。"
             local example2 "help nlogit"
             local explain2 "多层 nesting、inclusive-value constraints 和 base alternatives 都属于识别结构。"
+        }
+        else if "`cmd'" == "pkexamine" {
+            local expr_label "时间变量 + 浓度变量 + if/in；可加 graph/trapezoid/fit()"
+            local example1 "pkexamine time concentration, graph"
+            local explain1 "从单个 subject 的 concentration–time 数据计算 AUC、Cmax、Tmax、elimination rate 和 half-life，并绘图。"
+            local example2 "help pkexamine"
+            local explain2 "对多 subject 数据通常先按 id 选择个体，或使用 pksumm 汇总全部 subjects 的 PK measures。"
+        }
+        else if "`cmd'" == "pksumm" {
+            local expr_label "subject ID + 时间变量 + 浓度变量 + graph/stat() 等汇总设定"
+            local example1 "pksumm id time conc"
+            local explain1 "对每个 subject 计算常见 PK measures，再汇总其均值、中位数、方差、偏度、峰度和正态性检验。"
+            local example2 "pksumm id time conc, graph stat(auc)"
+            local explain2 "在汇总全部 PK measures 的同时绘制 AUC 分布；stat() 可换成 half、ke、cmax 等。"
+        }
+        else if "`cmd'" == "pkcross" {
+            local expr_label "结果变量 + param() + id()/sequence()/treatment()/period() crossover 设计字段"
+            local example1 "pkcross y, param(3) id(idvar) sequence(seq) treatment(treat) period(period)"
+            local explain1 "分析 crossover experiment；显式给出 subject、sequence、treatment 与 period 角色。"
+            local example2 "help pkcross"
+            local explain2 "carryover、period 与 sequence 效应应结合 crossover 设计核对，不能按普通独立样本比较解释。"
+        }
+        else if "`cmd'" == "pkequiv" {
+            local expr_label "PK measure + treatment + period + sequence + subject ID + equivalence limits"
+            local example1 "pkequiv auc treat period sequence id, limit(0.1) notost noboot"
+            local explain1 "对 AUC 进行 crossover bioequivalence 分析，并把等效界限设为 10%。"
+            local example2 "help pkequiv"
+            local explain2 "bioequivalence 的 limit、TOST/CI 和 bootstrap 设定应来自研究方案与监管口径。"
+        }
+        else if "`cmd'" == "pkcollapse" {
+            local expr_label "时间变量 + 一个或多个浓度变量 + id() + stat()/keep()"
+            local example1 "pkcollapse time conc1 conc2, id(id) stat(auc) keep(seq)"
+            local explain1 "把原始 concentration–time 记录压缩为 subject-level PK measurement 数据，同时保留 seq。"
+            local example2 "help pkcollapse"
+            local explain2 "pkcollapse 会重构当前内存数据；运行前保存原始 concentration–time 明细。"
+        }
+        else if "`cmd'" == "pkshape" {
+            local expr_label "subject ID + sequence + period measurements + order()"
+            local example1 "pkshape id seq period1 period2, order(RT TR)"
+            local explain1 "把 2×2 crossover/Latin-square 的宽表 period measurements 重塑为 outcome、treat、carry、period 等长表字段。"
+            local example2 "help pkshape"
+            local explain2 "pkshape 会直接重组内存数据；order() 必须与实际 treatment sequence 一致，运行前先保存原数据。"
         }
         else if "`cmd'" == "hetregress" {
             local expr_label "Y + X + het() 方差方程 + ML/twostep 等估计设定"
@@ -2539,9 +2595,9 @@ program define hxsemantics, rclass
             local purpose2 "先确认失败事件、分析时间和删失定义；生存数据声明与模型 options 需在运行前核对。"
         }
     }
-    else if strpos(" cc cs ir mcc dstdize ", " `cmd' ") {
+    else if strpos(" cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape ", " `cmd' ") {
         local title "`cmd' — 流行病学效应量"
-        local purpose1 "用于病例对照、队列或发病率资料的比值比、风险比和相关效应量计算。"
+        local purpose1 "用于病例对照、队列、发病率资料，以及 pharmacokinetic concentration–time、crossover 和 bioequivalence 分析。"
         local purpose2 "先确认病例/暴露或事件/时间变量角色；分层与置信区间选项按 Stata 命令设置。"
     }
     else if strpos(" eregress eprobit eoprobit eintreg ", " `cmd' ") {
@@ -2563,6 +2619,11 @@ program define hxsemantics, rclass
         local title "fmm — 有限混合模型"
         local purpose1 "把总体表示为若干未观测组分，并允许不同组分拥有不同回归参数或分布。"
         local purpose2 "第一步先确定潜在组分数量和冒号后的基础估计命令；类别数应结合理论与模型比较判断。"
+    }
+    else if strpos(" dsge dsgenl ", " `cmd' ") {
+        local title "`cmd' — 动态随机一般均衡模型"
+        local purpose1 "用于求解或估计线性化与非线性 DSGE 方程系统，并保留前瞻变量、状态变量和结构参数的原生模型表达。"
+        local purpose2 "先 tsset 并明确 observed/unobserved controls 与 endogenous/exogenous states；稳定性、识别和稳态属于必要诊断。"
     }
     else if strpos(" irt irtgraph diflogistic difmh ", " `cmd' ") {
         local title "`cmd' — 项目反应理论"
