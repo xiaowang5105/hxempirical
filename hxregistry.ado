@@ -1,4 +1,4 @@
-*! hxregistry 3.1.7  16aug2026
+*! hxregistry 3.1.8  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,7 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
@@ -162,6 +162,16 @@ program define hxregistry, rclass
         local key_ivreghdfe "ivreghdfe high dimensional fixed effects instrument 高维固定效应 工具变量 内生性"
         local key_did_builder "did difference in differences event study treat post event_time 平行趋势 事件研究 双重差分 政策冲击 动态效应"
         local key_ppmlhdfe "ppmlhdfe poisson pseudo maximum likelihood fixed effects 泊松 伪极大似然 高维固定效应"
+        local key_alpha "alpha cronbach reliability 量表 信度 克隆巴赫"
+        local key_ca "ca correspondence analysis 对应分析 列联表"
+        local key_candisc "candisc canonical discriminant analysis 典型 判别分析"
+        local key_hotelling "hotelling t squared multivariate means 多元 均值 检验"
+        local key_mca "mca multiple joint correspondence analysis 多重 联合 对应分析"
+        local key_mds "mds multidimensional scaling 多维尺度 距离"
+        local key_mdslong "mdslong multidimensional scaling long 多维尺度 长表 距离"
+        local key_mdsmat "mdsmat multidimensional scaling matrix 多维尺度 矩阵 距离"
+        local key_mvtest "mvtest multivariate test means covariance correlation normality 多元检验"
+        local key_procrustes "procrustes transformation shape configuration 普鲁克拉斯 变换"
         local key_svyset "svyset survey design 调查数据 抽样设计 权重 分层 psu strata pweight"
         local key_svydescribe "svydescribe survey describe 调查数据 设计结构 分层 psu"
         local key_svy "svy survey prefix 调查数据 加权估计 复杂抽样"
@@ -304,7 +314,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "潜在类别分析(LCA)", "lca") local view "gsem"
     else if inlist(`"`method'"', "有限混合模型(FMM)", "fmm") local view "fmm"
     else if inlist(`"`method'"', "项目反应理论(IRT)", "irt") local view "irt"
-    else if inlist(`"`method'"', "多元分析", "multivariate") local view "factor pca canon cca manova mvreg discrim cluster"
+    else if inlist(`"`method'"', "多元分析", "multivariate") local view "alpha factor pca canon ca candisc hotelling manova mvreg mca mds mdslong mdsmat mvtest procrustes discrim cluster"
     else if inlist(`"`method'"', "调查数据分析", "survey") local view "svyset svydescribe svy"
     else if inlist(`"`method'"', "Lasso回归", "lasso") local view "lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress"
     else if inlist(`"`method'"', "Meta分析", "meta") local view "meta"

@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.6  16aug2026
+*! hxsemantics 1.4.7  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1057,7 +1057,7 @@ program define hxsemantics, rclass
             local example1 "help `cmd'"
             local explain1 "病例对照、队列和发病率命令的变量角色不同，按当前 help 填写完整主体。"
         }
-        else if strpos(" sureg mvreg canon cca manova ", " `cmd' ") {
+        else if strpos(" sureg mvreg canon manova ", " `cmd' ") {
             local expr_label "多方程 / 多变量模型主体（含括号、等号或变量组）"
             if "`cmd'" == "sureg" {
                 local example1 "sureg (y1 x1 x2) (y2 x1 x3)"
@@ -1065,8 +1065,71 @@ program define hxsemantics, rclass
             }
             else {
                 local example1 "help `cmd'"
-                local explain1 "该模型包含多个结果或变量组，直接保留原生语法比猜测单一 Y/X 角色更可靠。"
+                local explain1 "该模型包含多个结果或变量组，直接保留原生语法避免误判单一 Y/X 角色。"
             }
+        }
+        else if "`cmd'" == "ca" {
+            local expr_label "行类别变量 + 列类别变量（可含 crossed variables）"
+            local example1 "ca rowcat colcat"
+            local explain1 "对 rowcat × colcat 列联表执行简单对应分析。"
+            local example2 "help ca"
+            local explain2 "crossed variables、normalization 和图形设定按研究任务继续核对。"
+        }
+        else if "`cmd'" == "candisc" {
+            local expr_label "判别变量 + group() 已知组别"
+            local example1 "candisc x1 x2 x3, group(group)"
+            local explain1 "用 x1–x3 构造典型判别函数来区分已知 group。"
+            local example2 "help candisc"
+            local explain2 "组别变量和判别变量都属于核心输入。"
+        }
+        else if "`cmd'" == "hotelling" {
+            local expr_label "多元变量 + by() 或 mu() 比较设定"
+            local example1 "hotelling x1 x2, by(group)"
+            local explain1 "比较两个 group 在 x1、x2 联合均值向量上的差异。"
+            local example2 "help hotelling"
+            local explain2 "单样本、配对或两组设定按当前 help 选择。"
+        }
+        else if "`cmd'" == "mca" {
+            local expr_label "多个分类变量 + dimensions()/method() 等 MCA/JCA 设定"
+            local example1 "mca q1 q2 q3"
+            local explain1 "对 q1–q3 执行多重对应分析。"
+            local example2 "help mca"
+            local explain2 "维数和 joint correspondence 等设定按数据结构核对。"
+        }
+        else if "`cmd'" == "mds" {
+            local expr_label "变量列表 + method()/measure()/dimensions() 等 MDS 设定"
+            local example1 "mds x1 x2 x3"
+            local explain1 "根据观测之间的多变量距离构造低维配置。"
+            local example2 "help mds"
+            local explain2 "metric/nonmetric、距离度量和维数是核心模型设定。"
+        }
+        else if "`cmd'" == "mdslong" {
+            local expr_label "距离变量 + id() / pair identifiers + MDS 设定"
+            local example1 "help mdslong"
+            local explain1 "输入是对象两两距离的长表；先核对对象 ID 和距离变量角色。"
+            local example2 "mdslong ..."
+            local explain2 "页面保留原生命令主体，避免把 long-format proximity 数据误当普通 X 变量。"
+        }
+        else if "`cmd'" == "mdsmat" {
+            local expr_label "距离 / 相异度矩阵名 + MDS 设定"
+            local example1 "help mdsmat"
+            local explain1 "输入核心是 Stata matrix，而非当前数据中的普通变量列表。"
+            local example2 "mdsmat D"
+            local explain2 "示意：对事先准备的相异度矩阵 D 做 MDS。"
+        }
+        else if "`cmd'" == "mvtest" {
+            local expr_label "子命令 + 变量与检验设定（means/correlations/covariances/normality）"
+            local example1 "mvtest normality x1 x2 x3"
+            local explain1 "检验 x1–x3 的多元正态性。"
+            local example2 "help mvtest"
+            local explain2 "不同子命令的假设与参数结构不同，第一步先明确检验目标。"
+        }
+        else if "`cmd'" == "procrustes" {
+            local expr_label "目标配置 + 来源配置 + transformation options"
+            local example1 "help procrustes"
+            local explain1 "Procrustes 比较两组多维配置；变量需要成对对应。"
+            local example2 "procrustes ..."
+            local explain2 "旋转、平移和缩放限制按比较目标设置。"
         }
         else if strpos(" heckman heckprobit heckoprobit heckpoisson ", " `cmd' ") {
             local expr_label "结果方程 + select() 选择方程（两套变量角色必须同时明确）"
@@ -1534,7 +1597,19 @@ program define hxsemantics, rclass
         local purpose1 "用 Rasch、1PL/2PL/3PL、GRM 等模型分析潜在能力与题项反应之间的关系。"
         local purpose2 "先确定题项类型与 IRT 模型，再选择全部题项变量；不同题型不能随意套用同一响应模型。"
     }
-    else if strpos(" factor pca canon cca manova discrim cluster ", " `cmd' ") {
+    else if "`cmd'" == "alpha" {
+        local title "alpha — Cronbach's alpha 量表信度"
+        local purpose1 "评估多个题项的内部一致性，并可生成求和/标准化量表。"
+        local purpose2 "直接选择属于同一量表的题项变量；反向题应先核对方向或使用相应 options。"
+        local has_depvar 0
+        local has_varlist 1
+        local vars_label "同一量表的题项变量"
+        local example1 "alpha item1-item10"
+        local explain1 "计算 item1 到 item10 的 Cronbach's alpha。"
+        local example2 "alpha item1-item10, item"
+        local explain2 "同时查看删除各题项后的信度信息。"
+    }
+    else if strpos(" factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster ", " `cmd' ") {
         local title "`cmd' — 多元统计分析"
         local purpose1 "用于降维、典型相关、多元方差、判别或聚类等多变量分析。"
         local purpose2 "先选择参与分析的变量；提取方法、距离、类别或维度等命令特有参数放在最后。"
