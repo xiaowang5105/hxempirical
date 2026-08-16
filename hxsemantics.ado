@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.22  16aug2026
+*! hxsemantics 1.4.23  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -2649,6 +2649,162 @@ program define hxsemantics, rclass
         local explain1 "无序多类别结果的随机效应面板 multinomial logit。"
         local example2 "help xtmlogit"
         local explain2 "基准类别、固定/随机效应可用性和面板内变异要求运行前核对。"
+    }
+
+    /* Graphics aliases preserve native multiword Stata syntax while offering one navigable UI token. */
+    if strpos(" graph_bar graph_dot graph_pie graph_matrix twoway_contour graph_combine ", " `cmd' ") {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_if 0
+        local has_in 0
+        local has_weight 0
+        local has_using 0
+        local has_newvar 0
+        local has_expression 1
+        local has_absorb 0
+        local has_vce 0
+        local has_cluster 0
+        local has_iv 0
+        local needs_panel 0
+        local model_before 0
+        local show_advanced 1
+        if "`cmd'" == "graph_bar" {
+            local title "graph bar — 条形图"
+            local purpose1 "对一个或多个数值变量绘制统计量条形图，并可用 over() 按类别分组。"
+            local purpose2 "页面主体只填写 graph bar 后面的原生内容；实时命令始终生成真正的 graph bar。"
+            local expr_label "统计量 + 数值变量 + over()/asyvars 等（graph bar 后面的内容）"
+            local example1 "graph bar le le_w le_b"
+            local explain1 "绘制三个变量的默认均值条形图。"
+            local example2 "graph bar heatdd cooldd, over(region) blabel(total)"
+            local explain2 "按 region 分组并显示 bar labels。"
+        }
+        else if "`cmd'" == "graph_dot" {
+            local title "graph dot — 汇总点图"
+            local purpose1 "绘制均值、百分位等 summary statistics 的 dot chart；这与分布型 dotplot 是两类图。"
+            local purpose2 "需要按类别比较时直接写 over()；实时命令生成 graph dot。"
+            local expr_label "统计量 + 数值变量 + over() 等（graph dot 后面的内容）"
+            local example1 "graph dot wage, over(occ)"
+            local explain1 "按 occupation 显示 wage 的汇总点图。"
+            local example2 "graph dot wage hours, over(occ) vertical"
+            local explain2 "同时画 wage、hours，并改为 vertical dot chart。"
+        }
+        else if "`cmd'" == "graph_pie" {
+            local title "graph pie — 饼图"
+            local purpose1 "用数值变量的总量或 over() 分组构造 pie slices。"
+            local purpose2 "类别频数型饼图通常直接使用 over(category)。"
+            local expr_label "数值变量 + over()/plabel()/pie() 等（graph pie 后面的内容）"
+            local example1 "graph pie pop, over(region)"
+            local explain1 "按 region 划分 pop 的饼图。"
+            local example2 "graph pie pop, over(region) plabel(_all name)"
+            local explain2 "在每个 slice 上显示类别名称。"
+        }
+        else if "`cmd'" == "graph_matrix" {
+            local title "graph matrix — 散点图矩阵"
+            local purpose1 "一次查看多个变量两两关系，并在对角线显示变量标签。"
+            local purpose2 "变量较多时矩阵会迅速变密；先放核心连续变量。"
+            local expr_label "变量列表 + half/diagonal()/marker options（graph matrix 后面的内容）"
+            local example1 "graph matrix mpg weight length"
+            local explain1 "绘制 mpg、weight、length 的 scatterplot matrix。"
+            local example2 "help graph matrix"
+            local explain2 "需要半矩阵、标签或 marker 调整时按原生 graph matrix options 补充。"
+        }
+        else if "`cmd'" == "twoway_contour" {
+            local title "twoway contour — 等高线图"
+            local purpose1 "把 z 在 y–x 平面上的数值变化显示为填充等高区域。"
+            local purpose2 "前三个变量顺序固定为 z y x；当前 Stata 16–18 兼容层不展示 Stata 19 heatmap。"
+            local expr_label "z y x + levels()/ccuts()/color options（twoway contour 后面的内容）"
+            local example1 "twoway contour z y x"
+            local explain1 "以 x、y 为坐标，用 z 的大小形成填充等高线。"
+            local example2 "help twoway contour"
+            local explain2 "等高层数、cutpoints 和颜色等继续使用原生 contour options。"
+        }
+        else if "`cmd'" == "graph_combine" {
+            local title "graph combine — 组合已有图形"
+            local purpose1 "把多个已命名或已保存的 Stata graphs 排成一张组合图。"
+            local purpose2 "先确保子图已经存在；cols()/rows()/xcommon/ycommon 控制布局与公共坐标。"
+            local expr_label "图形名/文件 + cols()/rows()/xcommon/ycommon 等（graph combine 后面的内容）"
+            local example1 "graph combine gr1 gr2, cols(2)"
+            local explain1 "把 gr1、gr2 横向排成两列。"
+            local example2 "graph combine gr1 gr2, ycommon"
+            local explain2 "组合两图并强制使用共同 y-axis scale。"
+        }
+    }
+
+    if strpos(" symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower ", " `cmd' ") {
+        local title "`cmd' — 分布诊断图"
+        local purpose1 "用于检查对称性、分位数/概率分布、变量变换或密集散点的分布结构。"
+        local purpose2 "这组是 Stata 官方 distributional diagnostic graphics；graph dot 另用于 summary dot charts。"
+        if "`cmd'" == "symplot" {
+            local example1 "symplot price"
+            local explain1 "检查 price 分布关于中位数的对称程度。"
+        }
+        else if "`cmd'" == "quantile" {
+            local example1 "quantile price"
+            local explain1 "绘制 price 的 quantile plot。"
+        }
+        else if "`cmd'" == "qnorm" {
+            local example1 "qnorm price"
+            local explain1 "用 quantile–normal plot 检查 price 与正态分布的偏离。"
+        }
+        else if "`cmd'" == "pnorm" {
+            local example1 "pnorm price"
+            local explain1 "绘制 normal probability plot。"
+        }
+        else if "`cmd'" == "qchi" {
+            local example1 "qchi ch, df(2)"
+            local explain1 "将 ch 的分位数与 2 自由度 chi-squared 分布比较。"
+        }
+        else if "`cmd'" == "pchi" {
+            local example1 "pchi ch, df(2)"
+            local explain1 "绘制相对于 chi-squared 分布的 probability plot。"
+        }
+        else if "`cmd'" == "qqplot" {
+            local example1 "qqplot weightd weightf"
+            local explain1 "直接比较两个变量的 empirical quantiles。"
+        }
+        else if "`cmd'" == "gladder" {
+            local example1 "gladder mpg, fraction"
+            local explain1 "用 ladder-of-powers 图探索使 mpg 更接近正态/对称的变换。"
+        }
+        else if "`cmd'" == "qladder" {
+            local example1 "qladder heatdd"
+            local explain1 "比较多种 power transformations 的 quantile-normal 表现。"
+        }
+        else if "`cmd'" == "dotplot" {
+            local example1 "dotplot age"
+            local explain1 "把原始 age 分布显示为堆叠 dots；用途不同于 graph dot 的 summary chart。"
+        }
+        else if "`cmd'" == "spikeplot" {
+            local example1 "spikeplot age"
+            local explain1 "用 spikes 显示一维分布。"
+        }
+        else if "`cmd'" == "sunflower" {
+            local example1 "sunflower mpg displ"
+            local explain1 "用 sunflower rays 表示重叠观测密度，适合密集 bivariate scatter。"
+        }
+        local example2 "help `cmd'"
+        local explain2 "查看当前 Stata 版本的完整绘图 options。"
+    }
+
+    if strpos(" cchart pchart rchart xchart shewhart serrbar ", " `cmd' ") {
+        local title "`cmd' — 质量控制图"
+        local purpose1 "用于 statistical process control：count/proportion/range/mean/Shewhart control charts 或 standard-error bars。"
+        local purpose2 "控制图的样本单位、控制限和 subgroup 结构必须与实际过程采样设计一致。"
+        if "`cmd'" == "shewhart" {
+            local example1 "shewhart m1-m5, connect(l)"
+            local explain1 "对 m1–m5 的 subgroup measurements 绘制 Shewhart control chart。"
+        }
+        else if "`cmd'" == "serrbar" {
+            local example1 "serrbar mean se x"
+            local explain1 "在 x 轴上绘制 mean ± se 的 standard-error bars。"
+        }
+        else {
+            local example1 "help `cmd'"
+            local explain1 "先按当前命令 Help 确认 count/proportion/range/mean control-chart 的样本结构字段。"
+        }
+        local example2 "help `cmd'"
+        local explain2 "查看控制限、nograph、generate() 和图形定制等命令特有选项。"
     }
 
     /* Family-level copy for catalog commands that rely on the generic syntax parser.

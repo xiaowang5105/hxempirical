@@ -1,4 +1,4 @@
-*! hxresolve 3.1.3  12aug2026
+*! hxresolve 3.1.4  16aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -11,27 +11,34 @@ program define hxresolve, rclass
         exit 198
     }
 
-    capture quietly which `cmd'
+    /* Multiword Graphics commands use stable one-token UI aliases.
+       Probe the real Stata parent command for installation/help/parser metadata,
+       while keeping the alias for semantic roles and native preview generation. */
+    local probe_cmd "`cmd'"
+    if strpos(" graph_bar graph_dot graph_pie graph_matrix graph_combine ", " `cmd' ") local probe_cmd "graph"
+    else if "`cmd'" == "twoway_contour" local probe_cmd "twoway"
+
+    capture quietly which `probe_cmd'
     local installed = cond(_rc, 0, 1)
     local source ""
     if `installed' {
-        capture quietly findfile `cmd'.ado
+        capture quietly findfile `probe_cmd'.ado
         if !_rc local source `"`r(fn)'"'
         if `"`source'"' == "" local source "Stata 内置命令或可执行组件"
     }
 
     local helpfile ""
-    capture quietly findfile `cmd'.sthlp
+    capture quietly findfile `probe_cmd'.sthlp
     if !_rc local helpfile `"`r(fn)'"'
     if `"`helpfile'"' == "" {
-        capture quietly findfile `cmd'.hlp
+        capture quietly findfile `probe_cmd'.hlp
         if !_rc local helpfile `"`r(fn)'"'
     }
     local dlgfile ""
-    capture quietly findfile `cmd'.dlg
+    capture quietly findfile `probe_cmd'.dlg
     if !_rc local dlgfile `"`r(fn)'"'
 
-    quietly hxparser, command(`cmd') source("`source'") ///
+    quietly hxparser, command(`probe_cmd') source("`source'") ///
         helpfile("`helpfile'") dlgfile("`dlgfile'")
     local parser_source_rc = r(source_rc)
     local parser_help_rc = r(help_rc)

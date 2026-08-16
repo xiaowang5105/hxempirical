@@ -14070,6 +14070,12 @@ public final class HxWorkbench {
                      )
                      : ("graph_box".equals(this.currentCommand) ? "graph box" : ("did_trends".equals(this.currentCommand) ? "hxtrendplot" : this.currentCommand))
                );
+            if ("graph_bar".equals(var1)) var1 = "graph bar";
+            else if ("graph_dot".equals(var1)) var1 = "graph dot";
+            else if ("graph_pie".equals(var1)) var1 = "graph pie";
+            else if ("graph_matrix".equals(var1)) var1 = "graph matrix";
+            else if ("twoway_contour".equals(var1)) var1 = "twoway contour";
+            else if ("graph_combine".equals(var1)) var1 = "graph combine";
             int var2 = HxWorkbench.StataBridge.execute("help " + var1, true);
             if (var2 == 0) {
                HxWorkbench.StataBridge.execute("capture window manage forward viewer", false);

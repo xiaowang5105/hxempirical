@@ -1,4 +1,4 @@
-*! hxregistry 3.1.23  16aug2026
+*! hxregistry 3.1.24  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -26,7 +26,7 @@ program define hxregistry, rclass
         local reg_cmds : subinstr local reg_cmds " xtdidregress" "", all
     }
     local post_cmds "test testparm testnl lincom nlcom contrast pwcompare predict predictnl margins lrtest hausman suest linktest estimates estat"
-    local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity dotplot graph_box lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg marginsplot coefplot event_plot"
+    local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
@@ -330,6 +330,30 @@ program define hxregistry, rclass
         local key_bmaregress "bmaregress bma bayesian model averaging 贝叶斯模型平均 模型不确定性 变量选择"
         local key_predict "predict 预测值 残差"
         local key_margins "margins 边际效应 调节效应"
+        local key_graph_bar "graph bar bar chart 条形图 柱状图 over 分组 均值 频数"
+        local key_graph_dot "graph dot dot chart 点图 over 分组 均值"
+        local key_graph_pie "graph pie pie chart 饼图 over 分组 百分比"
+        local key_graph_matrix "graph matrix scatterplot matrix 散点图矩阵 多变量"
+        local key_twoway_contour "twoway contour contour plot 等高线 三变量 z y x"
+        local key_graph_combine "graph combine combine graphs 图形组合 多图 拼图"
+        local key_cchart "cchart quality control count chart 质量控制 c图 计数"
+        local key_pchart "pchart quality control proportion chart 质量控制 p图 比例"
+        local key_rchart "rchart quality control range chart 质量控制 R图 极差"
+        local key_xchart "xchart quality control mean chart 质量控制 Xbar图 均值"
+        local key_shewhart "shewhart quality control chart 质量控制 控制限"
+        local key_serrbar "serrbar standard error bar chart 标准误 误差棒"
+        local key_symplot "symplot symmetry plot distribution 对称图 分布诊断"
+        local key_quantile "quantile quantile plot distribution 分位数图"
+        local key_qnorm "qnorm quantile normal plot 正态 分位数图"
+        local key_pnorm "pnorm normal probability plot 正态 概率图"
+        local key_qchi "qchi quantile chi squared plot 卡方 分位数图"
+        local key_pchi "pchi chi squared probability plot 卡方 概率图"
+        local key_qqplot "qqplot quantile quantile two variables Q-Q 两变量 分位数"
+        local key_gladder "gladder ladder of powers distribution transformation 变换 梯图"
+        local key_qladder "qladder quantile normal ladder transformation 梯图 正态"
+        local key_dotplot "dotplot distribution dot plot 分布 点图 堆叠"
+        local key_spikeplot "spikeplot spike plot distribution 尖峰图 分布"
+        local key_sunflower "sunflower density distribution bivariate scatter 密度 向日葵图"
         local key_testparm "testparm joint Wald parameter terms 联合检验 参数组 因子变量"
         local key_testnl "testnl nonlinear Wald hypothesis 非线性 假设检验 delta method"
         local key_nlcom "nlcom nonlinear combination coefficients delta method 非线性 系数组合"
@@ -524,13 +548,13 @@ program define hxregistry, rclass
     /* Stata Graphics menu. Multiword graph families use the native one-token
        entry point where the generic parser cannot safely represent a subcommand. */
     else if inlist(`"`method'"', "二维图(散点图，折线图等)", "twoway_graphs") local view "twoway scatter line connected lfit qfit lowess lpoly"
-    else if inlist(`"`method'"', "条形图", "bar_graph") local view "twoway"
-    else if inlist(`"`method'"', "点图", "dot_graph") local view "dotplot"
-    else if inlist(`"`method'"', "饼图", "pie_graph") local view "graph"
+    else if inlist(`"`method'"', "条形图", "bar_graph") local view "graph_bar"
+    else if inlist(`"`method'"', "点图", "dot_graph") local view "graph_dot"
+    else if inlist(`"`method'"', "饼图", "pie_graph") local view "graph_pie"
     else if inlist(`"`method'"', "直方图", "histogram_graph") local view "histogram"
     else if inlist(`"`method'"', "箱线图", "box_graph") local view "graph_box"
-    else if inlist(`"`method'"', "等高线图", "contour_graph") local view "twoway"
-    else if inlist(`"`method'"', "散点图矩阵", "matrix_graph") local view "graph"
+    else if inlist(`"`method'"', "等高线图", "contour_graph") local view "twoway_contour"
+    else if inlist(`"`method'"', "散点图矩阵", "matrix_graph") local view "graph_matrix"
     else if inlist(`"`method'"', "分布图", "distribution_graph") local view "histogram kdensity"
     else if inlist(`"`method'"', "平滑和密度", "smooth_density") local view "kdensity lowess lpoly"
     else if inlist(`"`method'"', "回归诊断图", "reg_diagnostic_graph") local view "rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot"
@@ -539,9 +563,9 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "生存分析图", "survival_graph") local view "sts"
     else if inlist(`"`method'"', "ROC分析", "roc_graph") local view "roctab rocfit roccomp rocgold rocreg"
     else if inlist(`"`method'"', "多元分析图", "multivariate_graph") local view "pca factor cluster"
-    else if inlist(`"`method'"', "质量控制", "quality_graph") local view "graph"
-    else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "marginsplot coefplot event_plot"
-    else if inlist(`"`method'"', "图形组合", "graph_combine") local view "graph"
+    else if inlist(`"`method'"', "质量控制", "quality_graph") local view "cchart pchart rchart xchart shewhart serrbar"
+    else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
+    else if inlist(`"`method'"', "图形组合", "graph_combine") local view "graph_combine"
     else if inlist(`"`method'"', "管理图形", "graph_manage") local view "graph"
     else if inlist(`"`method'"', "更改方案/大小", "graph_scheme") local view "graph"
 

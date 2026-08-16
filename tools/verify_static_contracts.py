@@ -31,6 +31,8 @@ launcher = read("hxinstall.do")
 pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
 semantics = read("hxsemantics.ado")
+preview = read("hxpreview.ado")
+resolve = read("hxresolve.ado")
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
 core_match = re.search(r'local core\s+"([^"]+)"', entry)
@@ -213,6 +215,64 @@ for needle in (
         fail(f"nonparametric semantic contract missing: {needle}")
 if 'if c(stata_version) >= 17 {' not in semantics:
     fail("nptrend version-aware semantic branch missing")
+
+graph_aliases = {"graph_bar", "graph_dot", "graph_pie", "graph_matrix", "twoway_contour", "graph_combine"}
+missing_graph_aliases = sorted(graph_aliases - graph_cmds)
+if missing_graph_aliases:
+    fail("Graphics multiword aliases missing: " + ", ".join(missing_graph_aliases))
+for route in (
+    '"条形图", "bar_graph") local view "graph_bar"',
+    '"点图", "dot_graph") local view "graph_dot"',
+    '"饼图", "pie_graph") local view "graph_pie"',
+    '"等高线图", "contour_graph") local view "twoway_contour"',
+    '"散点图矩阵", "matrix_graph") local view "graph_matrix"',
+    '"图形组合", "graph_combine") local view "graph_combine"',
+):
+    if route not in registry:
+        fail(f"Graphics native route missing: {route}")
+quality_graphs = {"cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar"}
+if quality_graphs - graph_cmds:
+    fail("quality-control Graphics commands missing: " + ", ".join(sorted(quality_graphs - graph_cmds)))
+distribution_graphs = {"symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower"}
+if distribution_graphs - graph_cmds:
+    fail("distribution diagnostic Graphics commands missing: " + ", ".join(sorted(distribution_graphs - graph_cmds)))
+if "heatmap" in graph_cmds or "twoway_heatmap" in graph_cmds:
+    fail("Stata 19 heatmap must not leak into the Stata 16-18 Graphics catalog")
+preview_contracts = {
+    "if \"`command'\" == \"graph_bar\" local preview \"graph bar\"",
+    "if \"`command'\" == \"graph_dot\" local preview \"graph dot\"",
+    "if \"`command'\" == \"graph_pie\" local preview \"graph pie\"",
+    "if \"`command'\" == \"graph_matrix\" local preview \"graph matrix\"",
+    "if \"`command'\" == \"twoway_contour\" local preview \"twoway contour\"",
+    "if \"`command'\" == \"graph_combine\" local preview \"graph combine\"",
+}
+for needle in preview_contracts:
+    if needle not in preview:
+        fail(f"native Graphics preview mapping missing: {needle}")
+for needle in (
+    "if strpos(\" graph_bar graph_dot graph_pie graph_matrix graph_combine \", \" `cmd' \") local probe_cmd \"graph\"",
+    "else if \"`cmd'\" == \"twoway_contour\" local probe_cmd \"twoway\"",
+):
+    if needle not in resolve:
+        fail(f"Graphics alias resolver probe missing: {needle}")
+for alias, native in (
+    ("graph_bar", "graph bar"), ("graph_dot", "graph dot"), ("graph_pie", "graph pie"),
+    ("graph_matrix", "graph matrix"), ("twoway_contour", "twoway contour"), ("graph_combine", "graph combine"),
+):
+    if f'"{alias}".equals(var1)' not in java or f'var1 = "{native}"' not in java:
+        fail(f"Java Help alias mapping missing: {alias} -> {native}")
+for needle in (
+    "graph bar heatdd cooldd, over(region) blabel(total)",
+    "graph dot wage, over(occ)",
+    "graph pie pop, over(region)",
+    "graph matrix mpg weight length",
+    "twoway contour z y x",
+    "graph combine gr1 gr2, cols(2)",
+    "symplot price", "qnorm price", "qqplot weightd weightf", "spikeplot age", "sunflower mpg displ",
+    "shewhart m1-m5, connect(l)", "serrbar mean se x",
+):
+    if needle not in semantics:
+        fail(f"Graphics semantic contract missing: {needle}")
 
 postestimation_core = {
     "test", "testparm", "testnl", "lincom", "nlcom", "contrast", "pwcompare", "predict", "predictnl", "margins",
