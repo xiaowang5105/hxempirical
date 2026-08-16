@@ -14331,16 +14331,18 @@ public final class HxWorkbench {
 
       private static String commandMethod(String var0) {
          if ("hxconvert".equals(var0)) {
+            return "HX Workflow|数据转换";
+         } else if (Arrays.asList("use", "import", "export", "save").contains(var0)) {
             return "数据处理|导入与转换";
-         } else if (Arrays.asList("缺失值分析", "duplicates", "misstable").contains(var0)) {
+         } else if (Arrays.asList("缺失值分析", "describe", "codebook", "isid", "assert", "count", "compare", "duplicates", "misstable").contains(var0)) {
             return "数据处理|数据检查";
-         } else if (Arrays.asList("generate", "replace", "encode", "decode", "destring", "tostring", "winsor2").contains(var0)) {
+         } else if (Arrays.asList("generate", "egen", "replace", "recode", "clonevar", "split", "rename", "order", "label", "format", "compress", "encode", "decode", "destring", "tostring", "winsor2").contains(var0)) {
             return "数据处理|变量处理";
-         } else if (Arrays.asList("keep", "drop").contains(var0)) {
+         } else if (Arrays.asList("keep", "drop", "expand").contains(var0)) {
             return "数据处理|样本处理";
-         } else if (Arrays.asList("merge", "append").contains(var0)) {
+         } else if (Arrays.asList("merge", "append", "joinby", "cross", "frlink", "frget").contains(var0)) {
             return "数据处理|合并与追加";
-         } else if (Arrays.asList("reshape", "collapse", "xtset", "tsset").contains(var0)) {
+         } else if (Arrays.asList("reshape", "collapse", "contract", "fillin", "stack", "xpose", "sort", "gsort", "xtset", "tsset", "frame", "frames").contains(var0)) {
             return "数据处理|数据结构";
          } else if (Arrays.asList("summarize", "tabstat").contains(var0)) {
             return "统计|汇总，表格和假设检验";

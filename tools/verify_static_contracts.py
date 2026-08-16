@@ -298,6 +298,18 @@ for data_entry_contract in (
         fail(f"native Data entrypoint/card parity missing: {data_entry_contract}")
 if 'return "打开、导入、导出和保存 Stata 或外部数据";' not in java:
     fail("Data import/export method summary still reflects the old HX converter")
+if 'return "HX Workflow|数据转换";' not in java:
+    fail("hxconvert command path must be labeled as HX Workflow")
+for data_method_contract in (
+    'Arrays.asList("use", "import", "export", "save").contains(var0)',
+    'Arrays.asList("缺失值分析", "describe", "codebook", "isid", "assert", "count", "compare", "duplicates", "misstable").contains(var0)',
+    'Arrays.asList("generate", "egen", "replace", "recode", "clonevar", "split", "rename", "order", "label", "format", "compress", "encode", "decode", "destring", "tostring", "winsor2").contains(var0)',
+    'Arrays.asList("keep", "drop", "expand").contains(var0)',
+    'Arrays.asList("merge", "append", "joinby", "cross", "frlink", "frget").contains(var0)',
+    'Arrays.asList("reshape", "collapse", "contract", "fillin", "stack", "xpose", "sort", "gsort", "xtset", "tsset", "frame", "frames").contains(var0)',
+):
+    if data_method_contract not in java:
+        fail(f"Java Data commandMethod parity missing: {data_method_contract}")
 for official in ("didregress", "xtdidregress"):
     if official not in stats_cmds:
         fail(f"official DID command missing from Statistics catalog: {official}")
