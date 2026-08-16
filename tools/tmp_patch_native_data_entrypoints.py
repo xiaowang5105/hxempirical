@@ -36,17 +36,29 @@ jp = Path("src/main/java/com/hexie/stata/HxWorkbench.java")
 j = jp.read_text(encoding="utf-8")
 
 # Public/home shortcuts must enter the native Data workflow. Keep hxconvert reachable only through HX Workflow.
+old_excel = 'excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));'
+excel_count = j.count(old_excel)
+if excel_count < 2:
+    raise SystemExit(f"expected two Excel/CSV hxconvert buttons, got {excel_count}")
+j = j.replace(old_excel, 'excel.addActionListener(e -> this.openCommandPage("import"));')
+
+old_var8 = 'var8.addActionListener(var1x -> this.navigateTo("data", "导入与转换", "hxconvert"));'
+var8_count = j.count(old_var8)
+if var8_count != 1:
+    raise SystemExit(f"expected one compact import hxconvert button, got {var8_count}")
+j = j.replace(old_var8, 'var8.addActionListener(var1x -> this.openCommandPage("import"));', 1)
+
 old_route = '() -> this.navigateTo("data", "导入与转换", "hxconvert")'
 route_count = j.count(old_route)
 if route_count < 4:
     raise SystemExit(f"expected multiple stale native-data shortcuts, got {route_count}")
 j = j.replace(old_route, '() -> this.browseMethod("data", "导入与转换")')
-# Dedicated Excel/CSV buttons have a precise native destination.
-old_excel = 'excel.addActionListener(e -> this.browseMethod("data", "导入与转换"));'
-excel_count = j.count(old_excel)
-if excel_count < 2:
-    raise SystemExit(f"expected two Excel/CSV native-entry buttons, got {excel_count}")
-j = j.replace(old_excel, 'excel.addActionListener(e -> this.openCommandPage("import"));')
+
+old_router = 'this.navigateTo("data", "导入与转换", "hxconvert");'
+router_count = j.count(old_router)
+if router_count != 1:
+    raise SystemExit(f"expected one natural-language hxconvert route, got {router_count}")
+j = j.replace(old_router, 'this.browseMethod("data", "导入与转换");', 1)
 
 # Method-card command previews should reflect the actual current Registry routes.
 a, b, data_prev = scope(j, "      private static String dataMethodPreview(String method)", "      private static String genericMethodPreview(String category, String method)")
@@ -97,4 +109,4 @@ if 'return "打开、导入、导出和保存 Stata 或外部数据";' not in ja
 '''
 v = once(v, anchor, anchor + checks, "native Data entrypoint contracts")
 vp.write_text(v, encoding="utf-8", newline="\n")
-print(f"HX_NATIVE_DATA_ENTRYPOINT_PATCH_OK stale_routes={route_count} excel_buttons={excel_count}")
+print(f"HX_NATIVE_DATA_ENTRYPOINT_PATCH_OK tiles={route_count} excel={excel_count} compact={var8_count} router={router_count}")
