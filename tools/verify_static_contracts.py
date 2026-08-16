@@ -218,6 +218,26 @@ if 'cluster_dendrogram" local probe_cmd "cluster"' not in resolve:
     fail("cluster dendrogram UI alias must probe the native cluster command")
 if 'else if ("cluster_dendrogram".equals(var1)) var1 = "cluster dendrogram";' not in java:
     fail("Java command preview must emit native cluster dendrogram syntax")
+if 'local view "sts_graph"' not in registry:
+    fail("Survival Graphics navigation must route to sts graph alias")
+if 'cluster_dendrogram" local preview "cluster dendrogram"' not in preview:
+    fail("cluster dendrogram preview alias missing")
+if 'sts_graph" local preview "sts graph"' not in preview:
+    fail("sts graph preview alias missing")
+if 'local title "sts graph — 生存函数图"' not in semantics:
+    fail("sts graph dedicated semantics missing")
+for fallback_contract in (
+    'return Collections.singletonList("graph_bar");',
+    'return Collections.singletonList("graph_dot");',
+    'return Collections.singletonList("graph_pie");',
+    'return Collections.singletonList("graph_matrix");',
+    'return Collections.singletonList("sts_graph");',
+    'return Collections.singletonList("graph_combine");',
+    'return Collections.singletonList("set");',
+    'return Arrays.asList("use", "import", "export", "save");',
+):
+    if fallback_contract not in java:
+        fail(f"Java fallback parity contract missing: {fallback_contract}")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 

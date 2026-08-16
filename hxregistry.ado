@@ -1,4 +1,4 @@
-*! hxregistry 3.1.32  16aug2026
+*! hxregistry 3.1.33  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -26,7 +26,7 @@ program define hxregistry, rclass
         local reg_cmds : subinstr local reg_cmds " xtdidregress" "", all
     }
     local post_cmds "test testparm testnl lincom nlcom contrast pwcompare predict predictnl margins lrtest hausman suest linktest estimates estat"
-    local graph_cmds "graph set twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
+    local graph_cmds "graph set twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg sts_graph screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
@@ -611,7 +611,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "回归诊断图", "reg_diagnostic_graph") local view "rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot"
     else if inlist(`"`method'"', "时间序列图", "ts_graph") local view "tsline"
     else if inlist(`"`method'"', "面板数据折线图", "panel_line_graph") local view "xtline"
-    else if inlist(`"`method'"', "生存分析图", "survival_graph") local view "sts"
+    else if inlist(`"`method'"', "生存分析图", "survival_graph") local view "sts_graph"
     else if inlist(`"`method'"', "ROC分析", "roc_graph") local view "roctab rocfit roccomp rocgold rocreg"
     else if inlist(`"`method'"', "多元分析图", "multivariate_graph") local view "screeplot scoreplot loadingplot biplot cluster_dendrogram cabiplot caprojection mdsconfig mdsshepard procoverlay"
     else if inlist(`"`method'"', "质量控制", "quality_graph") local view "cchart pchart rchart xchart shewhart serrbar"

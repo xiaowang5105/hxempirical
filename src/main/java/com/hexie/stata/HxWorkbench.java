@@ -4946,7 +4946,7 @@ public final class HxWorkbench {
             case "生存分析图": return "sts graph";
             case "ROC分析": return "roctab · rocfit · roccomp";
             case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · dendrogram";
-            case "质量控制": return "质量控制相关图形";
+            case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";
             case "更多统计图形": return "marginsplot · 更多统计图形";
             case "图形组合": return "graph combine";
             case "管理图形": return "graph display · graph save · graph export";
@@ -6454,19 +6454,19 @@ public final class HxWorkbench {
          }          else if ("二维图(散点图，折线图等)".equals(var0)) {
             return Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly");
          }          else if ("条形图".equals(var0)) {
-            return Collections.singletonList("twoway");
+            return Collections.singletonList("graph_bar");
          }          else if ("点图".equals(var0)) {
-            return Collections.singletonList("dotplot");
+            return Collections.singletonList("graph_dot");
          }          else if ("饼图".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_pie");
          }          else if ("直方图".equals(var0)) {
             return Collections.singletonList("histogram");
          }          else if ("箱线图".equals(var0)) {
             return Collections.singletonList("graph_box");
          }          else if ("等高线图".equals(var0)) {
-            return Collections.singletonList("twoway");
+            return Collections.singletonList("twoway_contour");
          }          else if ("散点图矩阵".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_matrix");
          }          else if ("分布图".equals(var0)) {
             return Arrays.asList("histogram", "kdensity");
          }          else if ("平滑和密度".equals(var0)) {
@@ -6478,33 +6478,33 @@ public final class HxWorkbench {
          }          else if ("面板数据折线图".equals(var0)) {
             return Collections.singletonList("xtline");
          }          else if ("生存分析图".equals(var0)) {
-            return Collections.singletonList("sts");
+            return Collections.singletonList("sts_graph");
          }          else if ("ROC分析".equals(var0)) {
             return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg");
          }          else if ("多元分析图".equals(var0)) {
             return Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay");
          }          else if ("质量控制".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Arrays.asList("cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar");
          }          else if ("更多统计图形".equals(var0)) {
             return Arrays.asList("marginsplot", "coefplot", "event_plot");
          }          else if ("图形组合".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_combine");
          }          else if ("管理图形".equals(var0)) {
             return Collections.singletonList("graph");
          }          else if ("更改方案/大小".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("set");
          } else if ("导入与转换".equals(var0)) {
-            return Collections.singletonList("hxconvert");
+            return Arrays.asList("use", "import", "export", "save");
          } else if ("数据检查".equals(var0)) {
-            return Arrays.asList("misstable", "duplicates");
+            return Arrays.asList("describe", "codebook", "isid", "assert", "count", "compare", "duplicates", "misstable");
          } else if ("变量处理".equals(var0)) {
-            return Arrays.asList("generate", "replace", "encode", "decode", "destring", "tostring", "winsor2");
+            return Arrays.asList("generate", "egen", "replace", "recode", "clonevar", "split", "rename", "order", "label", "format", "compress", "encode", "decode", "destring", "tostring", "winsor2");
          } else if ("样本处理".equals(var0)) {
-            return Arrays.asList("keep", "drop");
+            return Arrays.asList("keep", "drop", "expand");
          } else if ("合并与追加".equals(var0)) {
-            return Arrays.asList("merge", "append");
+            return Arrays.asList("merge", "append", "joinby", "cross", "frlink", "frget");
          } else if ("数据结构".equals(var0)) {
-            return Arrays.asList("reshape", "collapse", "xtset", "tsset");
+            return Arrays.asList("reshape", "collapse", "contract", "fillin", "stack", "xpose", "sort", "gsort", "xtset", "tsset", "frame", "frames");
          } else if ("描述统计".equals(var0)) {
             return Arrays.asList("summarize", "tabstat");
          } else if ("相关分析".equals(var0)) {
@@ -14077,6 +14077,7 @@ public final class HxWorkbench {
             else if ("twoway_contour".equals(var1)) var1 = "twoway contour";
             else if ("graph_combine".equals(var1)) var1 = "graph combine";
             else if ("cluster_dendrogram".equals(var1)) var1 = "cluster dendrogram";
+            else if ("sts_graph".equals(var1)) var1 = "sts graph";
             int var2 = HxWorkbench.StataBridge.execute("help " + var1, true);
             if (var2 == 0) {
                HxWorkbench.StataBridge.execute("capture window manage forward viewer", false);

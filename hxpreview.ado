@@ -1,4 +1,4 @@
-*! hxpreview 1.3.2  16aug2026
+*! hxpreview 1.3.3  16aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -40,6 +40,8 @@ program define hxpreview, rclass
     if "`command'" == "graph_matrix" local preview "graph matrix"
     if "`command'" == "twoway_contour" local preview "twoway contour"
     if "`command'" == "graph_combine" local preview "graph combine"
+    if "`command'" == "cluster_dendrogram" local preview "cluster dendrogram"
+    if "`command'" == "sts_graph" local preview "sts graph"
     if "`command'" == "misstable" local preview "misstable summarize"
     if "`command'" == "duplicates" local preview "duplicates report"
     local opt ""
