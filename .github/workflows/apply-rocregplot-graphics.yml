@@ -76,21 +76,15 @@ jobs:
           from pathlib import Path
           p = Path('tools/verify_static_contracts.py')
           s = p.read_text(encoding='utf-8')
-          old = '''    if graph_cmd not in special_open:
-              fail(f"structured Graphics route contract missing: {graph_cmd}")
-          if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
-          '''
-          new = '''    if graph_cmd not in special_open:
-              fail(f"structured Graphics route contract missing: {graph_cmd}")
-          intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
+          anchor = 'if \'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";\' not in java:'
+          gate = '''intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
           for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_special_graphics:
               if f'"{graph_cmd}"' not in special_open:
                   fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
-          if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
           '''
-          if s.count(old) != 1:
-              raise SystemExit(f'coverage insertion anchor mismatch: {s.count(old)}')
-          p.write_text(s.replace(old, new), encoding='utf-8')
+          if s.count(anchor) != 1:
+              raise SystemExit(f'coverage insertion anchor mismatch: {s.count(anchor)}')
+          p.write_text(s.replace(anchor, gate + anchor), encoding='utf-8')
           PY
 
       - name: Create Stata SFI compile stubs
