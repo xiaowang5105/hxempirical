@@ -89,10 +89,10 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
-for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp"):
+for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph"):
     if graph_cmd not in special_open:
         fail(f"structured Graphics route contract missing: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
