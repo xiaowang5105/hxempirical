@@ -7764,6 +7764,23 @@ public final class HxWorkbench {
             if (this.xtregDepVar != null && variable.equals(Objects.toString(this.xtregDepVar.getSelectedItem(), ""))) return "因变量 Y";
             if (this.xtregIndepList != null && this.xtregIndepList.getSelectedValuesList().contains(variable)) return "解释变量 X";
          }
+         if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+            if ("binreg".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元 / 二项结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+               if (variable.equals(this.expression.getText().trim())) return "试验次数 n()";
+            } else if ("biprobit".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元结果 Y1";
+               if (variable.equals(selected(this.panel))) return "二元结果 Y2";
+               if (this.variables.getSelectedValuesList().contains(variable)) return this.model.getSelectedIndex() == 0 ? "共享解释变量 X" : "方程 1 解释变量";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "方程 2 解释变量";
+            } else if ("hetprobit".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "均值方程 X";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "方差方程 het()";
+               if (variable.equals(this.expression.getText().trim())) return "方差方程 offset()";
+            }
+         }
          if (isStructuredLinearRelatedCommand(this.currentCommand)) {
             if ("intreg".equals(this.currentCommand)) {
                if (variable.equals(selected(this.depvar))) return "区间下端点";
@@ -11525,6 +11542,10 @@ public final class HxWorkbench {
          return Arrays.asList("hetregress", "intreg", "tobit", "truncreg", "sqreg").contains(command);
       }
 
+      private static boolean isStructuredBinaryOutcomeCommand(String command) {
+         return Arrays.asList("binreg", "biprobit", "hetprobit").contains(command);
+      }
+
       private static boolean isStructuredPrSdTestCommand(String command) {
          return Arrays.asList("prtest", "sdtest").contains(command);
       }
@@ -11581,6 +11602,278 @@ public final class HxWorkbench {
          if (rc != 0) {
             this.statusLabel.setText("xtset 失败，返回码：" + rc);
             JOptionPane.showMessageDialog(this, "面板结构声明失败：\n" + setup + "\n\n请检查面板键、重复时间或变量类型。", "xtset 失败", JOptionPane.WARNING_MESSAGE);
+            return false;
+         }
+         return true;
+      }
+
+      private void rebuildStructuredBinaryOutcomeForm() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+
+         this.model.removeAllItems();
+         if (binreg) {
+            this.model.addItem("优势比 OR（logit link）");
+            this.model.addItem("风险比 RR（log link）");
+            this.model.addItem("健康比 HR（log-complement link）");
+            this.model.addItem("风险差 RD（identity link）");
+         } else if (biprobit) {
+            this.model.addItem("共享解释变量：Y1 Y2 X");
+            this.model.addItem("分方程：分别指定 X");
+            this.model.addItem("部分可观测：分方程 + partial");
+         } else {
+            this.model.addItem("异方差 Probit：均值方程 + het() 方差方程");
+         }
+         this.model.setSelectedIndex(0);
+
+         this.genericWeightType.removeAllItems();
+         for (String weight : Arrays.asList("无", "fweight", "iweight", "pweight")) this.genericWeightType.addItem(weight);
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+
+         this.vce.removeAllItems();
+         this.vce.addItem("default");
+         this.vce.addItem("robust");
+         this.vce.addItem("cluster");
+         this.vce.setSelectedItem("default");
+         this.cluster.setSelectedItem(null);
+
+         this.enableVariableDrop(this.depvar, biprobit ? "二元结果 Y1" : "二元 / 二项结果 Y");
+         this.enableVariableDrop(this.variables, biprobit ? "共享 X / 方程 1 X" : (hetprobit ? "均值方程 X" : "解释变量 X"));
+         this.enableVariableDrop(this.panel, "二元结果 Y2");
+         this.enableVariableDrop(this.absorb, biprobit ? "方程 2 X" : "方差方程 het()");
+         this.enableVariableDrop(this.expression, binreg ? "试验次数 n()" : "方差方程 offset()");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String step1;
+         String step2;
+         if (binreg) {
+            title = "binreg · 二项 GLM（OR / RR / HR / RD）";
+            example = "binreg y x1 x2, rr";
+            insight = "binreg 的关键不是换一个二元回归名字，而是明确你要报告的效应尺度。OR 使用 logit link；RR 使用 log link；HR 使用 log-complement link；RD 使用 identity link。若数据是每组成功次数而不是逐个 0/1 观测，可在 n() 填试验总数或对应变量。";
+            syntax = "binreg depvar [indepvars] [if] [in] [weight] [, or | rr | hr | rd n(#|varname) vce(...) options]";
+            step1 = "选择结果与解释变量";
+            step2 = "选择报告尺度";
+         } else if (biprobit) {
+            title = "biprobit · 双变量 Probit";
+            example = "biprobit (y1 = x1 x2) (y2 = x1 x3), vce(robust)";
+            insight = "biprobit 联合估计两个二元 Probit 方程并允许潜在误差相关。Stata 同时支持 Y1 Y2 共用一组 X 的简写，以及两个括号方程分别指定 X；partial 是部分可观测模型，不应与普通双变量 Probit 混为一类。";
+            syntax = "biprobit depvar1 depvar2 [indepvars] ...  |  biprobit (depvar1 = indepvars1) (depvar2 = indepvars2) [, partial ...]";
+            step1 = "选择两个二元结果";
+            step2 = "设置两个方程";
+         } else {
+            title = "hetprobit · 异方差 Probit";
+            example = "hetprobit y x1, het(z1 z2)";
+            insight = "hetprobit 把结果的条件均值与潜变量误差方差分开建模。het() 不是普通附加控制变量，而是方差方程，并且是官方语法中的必填结构；均值方程和方差方程变量应按研究机制分别选择。";
+            syntax = "hetprobit depvar [indepvars] [if] [in] [weight], het(varlist [, offset(varname)]) [options]";
+            step1 = "设置均值方程";
+            step2 = "设置方差方程";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153(step1, step2, "样本与检查"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, step1, binreg
+            ? "结果变量可以是逐个二元结果，也可以是成功次数；解释变量保持标准 Stata varlist。"
+            : (biprobit ? "两个结果变量都必须是二元结果；Y1 与 Y2 不能是同一个变量。" : "先设置二元结果 Y 与均值方程解释变量 X。"));
+         JPanel coreBody = this.genericCardBody();
+         this.addGenericBodyField(coreBody, biprobit ? "二元结果 Y1" : "二元 / 二项结果 Y", this.depvar);
+         if (biprobit) this.addGenericBodyField(coreBody, "二元结果 Y2", this.panel);
+         this.addGenericBodyField(coreBody, biprobit ? "共享 X / 方程 1 X" : (hetprobit ? "均值方程解释变量 X" : "解释变量 X"), this.listPane(this.variables));
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel modelCard = this.xtregWizardCardV130(2, step2, binreg
+            ? "选择 OR / RR / HR / RD 后，页面自动生成对应 Stata 原生 link/reporting option。"
+            : (biprobit ? "共享 X 模式使用简写；分方程模式分别使用两组解释变量；partial 只在第三种模式自动加入。" : "het() 方差方程至少需要 1 个变量；方差方程自己的 offset() 可选。"));
+         JPanel modelBody = this.genericCardBody();
+         this.addGenericBodyField(modelBody, binreg ? "效应尺度" : (biprobit ? "方程结构" : "模型结构"), this.model);
+         if (binreg) {
+            this.addGenericBodyField(modelBody, "试验次数 n()（可选：正整数或变量名）", this.expression);
+         } else if (biprobit) {
+            this.addGenericBodyField(modelBody, "方程 2 解释变量（仅分方程模式）", this.listPane(this.absorb));
+         } else {
+            this.addGenericBodyField(modelBody, "方差方程变量 het()（必填）", this.listPane(this.absorb));
+            this.addGenericBodyField(modelBody, "方差方程 offset() 变量（可选）", this.expression);
+         }
+         modelCard.add(modelBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(modelCard, c);
+
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与检查", "if / in、权重、标准误和其他原生 options 放在最后；页面不会替你改变 Stata 的估计定义。二元结果命令按官方语法只提供 fweight / iweight / pweight。 ");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+         weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+         this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+         JPanel vceRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         vceRow.setOpaque(false);
+         vceRow.add(this.fieldBlock("标准误方式", this.vce));
+         vceRow.add(this.fieldBlock("聚类变量（仅 cluster）", this.cluster));
+         this.addGenericBodyField(sampleBody, "标准误", vceRow);
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredBinaryOutcomePreview();
+         this.statusLabel.setText(command + "：二元模型核心结构已拆开；低频 maximization / constraints 等继续保留原生 options。 ");
+      }
+
+      private static String binaryOption(String name, String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         if (value.startsWith(name + "(")) return value;
+         return name + "(" + value + ")";
+      }
+
+      private static String biprobitEquation(String y, List<String> xs) {
+         if (y == null || y.isBlank()) return "";
+         return xs == null || xs.isEmpty() ? y : y + " = " + String.join(" ", xs);
+      }
+
+      private void updateStructuredBinaryOutcomePreview() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+         String y1 = selected(this.depvar);
+         String y2 = selected(this.panel);
+         List<String> x1 = this.variables.getSelectedValuesList();
+         List<String> x2 = this.absorb.getSelectedValuesList();
+
+         StringBuilder preview = new StringBuilder(command);
+         if (biprobit && this.model.getSelectedIndex() > 0) {
+            String eq1 = biprobitEquation(y1, x1);
+            String eq2 = biprobitEquation(y2, x2);
+            if (!eq1.isBlank()) preview.append(" (").append(eq1).append(")");
+            if (!eq2.isBlank()) preview.append(" (").append(eq2).append(")");
+         } else {
+            if (!y1.isBlank()) preview.append(" ").append(y1);
+            if (biprobit && !y2.isBlank()) preview.append(" ").append(y2);
+            if (!x1.isEmpty()) preview.append(" ").append(String.join(" ", x1));
+         }
+
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+
+         String weightType = selected(this.genericWeightType);
+         String weightVar = selected(this.genericWeightVar);
+         if (!"无".equals(weightType) && !weightVar.isBlank()) preview.append(" [").append(weightType).append("=").append(weightVar).append("]");
+
+         ArrayList<String> opts = new ArrayList<>();
+         if (binreg) {
+            String[] scaleOpts = {"or", "rr", "hr", "rd"};
+            int idx = Math.max(0, Math.min(this.model.getSelectedIndex(), scaleOpts.length - 1));
+            opts.add(scaleOpts[idx]);
+            String trials = binaryOption("n", this.expression.getText());
+            if (!trials.isBlank()) opts.add(trials);
+         } else if (biprobit) {
+            if (this.model.getSelectedIndex() == 2) opts.add("partial");
+         } else if (hetprobit) {
+            if (!x2.isEmpty()) {
+               String offsetRaw = this.expression.getText().trim();
+               String offset = binaryOption("offset", offsetRaw);
+               opts.add("het(" + String.join(" ", x2) + (offset.isBlank() ? "" : ", " + offset) + ")");
+            }
+         }
+
+         String vc = selected(this.vce);
+         if ("cluster".equals(vc)) {
+            String cl = selected(this.cluster);
+            if (!cl.isBlank()) opts.add("vce(cluster " + cl + ")");
+         } else if (!vc.isBlank() && !"default".equals(vc)) {
+            opts.add("vce(" + vc + ")");
+         }
+         String nativeOptions = this.options.getText().trim();
+         if (!nativeOptions.isBlank()) opts.add(nativeOptions);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredBinaryOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+         String y1 = selected(this.depvar);
+         String y2 = selected(this.panel);
+
+         if (y1.isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择结果变量。", "结果变量尚未完整", 1);
+            return false;
+         }
+         if (biprobit) {
+            if (y2.isBlank()) {
+               JOptionPane.showMessageDialog(this, "biprobit 需要选择第二个二元结果 Y2。", "第二个结果变量缺失", 1);
+               return false;
+            }
+            if (y1.equals(y2)) {
+               JOptionPane.showMessageDialog(this, "biprobit 的 Y1 与 Y2 必须是两个不同的结果变量。", "结果变量重复", 1);
+               return false;
+            }
+         }
+         if (hetprobit && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "hetprobit 的 het() 方差方程是必填项；请至少选择 1 个方差方程变量。", "方差方程尚未完整", 1);
+            return false;
+         }
+         if (binreg) {
+            String trials = this.expression.getText().trim();
+            if (!trials.isBlank() && trials.matches("[+-]?\\d+(?:\\.\\d+)?")) {
+               try {
+                  double n = Double.parseDouble(trials);
+                  if (n <= 0 || n != Math.rint(n)) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "binreg 的 n() 若填写常数，必须是正整数；也可以直接填写保存试验次数的变量名。", "试验次数无效", 1);
+                  return false;
+               }
+            }
+         }
+         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 vce(cluster) 后，请指定聚类变量。", "聚类变量缺失", 1);
             return false;
          }
          return true;
@@ -12189,6 +12482,11 @@ public final class HxWorkbench {
             if (!"default".equals(value)) this.vce.addItem(value);
          }
          if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) this.vce.addItem("cluster");
+
+         if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredBinaryOutcomeForm();
+            return;
+         }
 
          if (isStructuredLinearRelatedCommand(this.currentCommand)) {
             this.rebuildStructuredLinearRelatedForm();
@@ -13853,6 +14151,8 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
+            } else if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredBinaryOutcomePreview();
             } else if (isStructuredLinearRelatedCommand(this.currentCommand)) {
                this.updateStructuredLinearRelatedPreview();
             } else if (isStructuredPrSdTestCommand(this.currentCommand)) {
@@ -14635,6 +14935,7 @@ public final class HxWorkbench {
 
       private boolean validateOrdinaryCommandBeforeRun() {
          String command = this.currentCommand;
+         if (isStructuredBinaryOutcomeCommand(command) && !this.validateStructuredBinaryOutcomeBeforeRun()) return false;
          if (isStructuredLinearRelatedCommand(command) && !this.validateStructuredLinearRelatedBeforeRun()) return false;
          if (isStructuredPrSdTestCommand(command)) {
             String first = selected(this.depvar);
@@ -15994,7 +16295,9 @@ public final class HxWorkbench {
       private void configureGenericWeightTypes() {
          String var1 = selected(this.genericWeightType);
          List<String> var2;
-         if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
+         if (Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog").contains(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "iweight", "pweight");
+         } else if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "aweight", "pweight");
          } else if ("ppmlhdfe".equals(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "pweight");

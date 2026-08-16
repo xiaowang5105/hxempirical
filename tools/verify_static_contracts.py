@@ -44,6 +44,16 @@ expected_total = len(core_components) + 2
 if int(total_match.group(1)) != expected_total:
     fail(f"doctor total mismatch: declared={total_match.group(1)} expected={expected_total}")
 
+# Binary-outcome Statistics method must remain fully classified.
+binary_method_match = re.search(r'"二元结果"[^\n]*local view "([^"]+)"', registry)
+if not binary_method_match:
+    fail("binary-outcome Statistics method catalog not found")
+binary_catalog = set(binary_method_match.group(1).split())
+binary_structured = {"binreg", "biprobit", "hetprobit"}
+binary_guided_safe = {"logit", "logistic", "probit", "scobit", "cloglog"}
+if binary_catalog != binary_structured | binary_guided_safe:
+    fail(f"binary-outcome catalog classification drift: {sorted(binary_catalog - (binary_structured | binary_guided_safe))}")
+
 # oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
 if not oneclick_packages or oneclick_packages.group(1).split() != ["tuples", "oneclick"]:
@@ -138,6 +148,33 @@ if '至少需要设置一个 ll()/ul() 界限' in java:
 for cmd in linear_native_body:
     if f' {cmd} ' not in semantics:
         fail(f"complex linear-related native-body command missing from semantics: {cmd}")
+
+for needle in (
+    'private static boolean isStructuredBinaryOutcomeCommand(String command)',
+    '"binreg", "biprobit", "hetprobit"',
+    'private void rebuildStructuredBinaryOutcomeForm()',
+    'private void updateStructuredBinaryOutcomePreview()',
+    'private boolean validateStructuredBinaryOutcomeBeforeRun()',
+    'binreg · 二项 GLM（OR / RR / HR / RD）',
+    'biprobit · 双变量 Probit',
+    'hetprobit · 异方差 Probit',
+    '优势比 OR（logit link）',
+    '共享解释变量：Y1 Y2 X',
+    '部分可观测：分方程 + partial',
+    'opts.add(scaleOpts[idx])',
+    'opts.add("partial")',
+    'opts.add("het(" + String.join(" ", x2)',
+    'hetprobit 的 het() 方差方程是必填项',
+    'biprobit 的 Y1 与 Y2 必须是两个不同的结果变量',
+    'binreg 的 n() 若填写常数，必须是正整数',
+    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog")',
+    'Arrays.asList("无", "fweight", "iweight", "pweight")',
+):
+    if needle not in java:
+        fail(f"structured binary-outcome UI contract missing: {needle}")
+for cmd in binary_structured:
+    if f' {cmd} ' not in semantics:
+        fail(f"binary structured command lost native-body safety fallback: {cmd}")
 
 for needle in (
     'private static boolean isStructuredPrSdTestCommand(String command)',
