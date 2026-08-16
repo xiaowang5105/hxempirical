@@ -17,6 +17,21 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Align patcher anchor
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/prepare_summary_tests_ui.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'java = replace_once(java, anchor, replacement, "inspector roles")'
+          new = '''if java.count(anchor) < 1:
+              raise SystemExit("HX_SUMMARY_TEST_PATCH_FAIL inspector roles: anchor missing")
+          java = java.replace(anchor, replacement, 1)'''
+          if s.count(old) != 1:
+              raise SystemExit('patcher inspector-role call mismatch')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
+
       - name: Apply source patch
         run: python tools/prepare_summary_tests_ui.py
 
