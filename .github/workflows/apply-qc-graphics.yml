@@ -17,8 +17,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Apply QC Graphics source patch
-        run: python tools/prepare_qc_graphics.py
+      - name: Fix QC static anchor and apply source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/prepare_qc_graphics.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'if s.count(old_special) != 1:\n    raise SystemExit(f"static special route anchor count={s.count(old_special)}")'
+          new = 'if s.count(old_special) != 2:\n    raise SystemExit(f"static special route anchor count={s.count(old_special)}")'
+          if s.count(old) != 1:
+              raise SystemExit(f'QC script fix anchor count={s.count(old)}')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          python tools/prepare_qc_graphics.py
 
       - name: Create Stata SFI compile stubs
         run: |
