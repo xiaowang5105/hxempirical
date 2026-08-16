@@ -17,8 +17,19 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Apply Graphics back-half source patch
-        run: python tools/prepare_graphics_backhalf.py
+      - name: Fix ambiguous header anchor and apply source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/prepare_graphics_backhalf.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'insert_before(header_anchor, header_addition, "back-half graph headers")'
+          new = 'text = text.replace(header_anchor, header_addition + header_anchor, 1)'
+          if s.count(old) != 1:
+              raise SystemExit(f'header patch anchor count={s.count(old)}')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          python tools/prepare_graphics_backhalf.py
 
       - name: Create Stata SFI compile stubs
         run: |
