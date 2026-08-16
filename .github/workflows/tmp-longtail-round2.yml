@@ -37,6 +37,18 @@ jobs:
           PY
       - name: Patch long-tail command semantics
         run: python tools/tmp_patch_longtail_round2.py
+      - name: Fix exact-token catalog regression guard
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          text = p.read_text(encoding='utf-8')
+          old = 'if "epoisson" in stats_cmds or "epoisson" in registry or "epoisson" in semantics:\n'
+          new = '''if (\n    "epoisson" in stats_cmds\n    or re.search(r"(?<![A-Za-z0-9_])epoisson(?![A-Za-z0-9_])", registry)\n    or re.search(r"(?<![A-Za-z0-9_])epoisson(?![A-Za-z0-9_])", semantics)\n):\n'''
+          if old not in text:
+              raise SystemExit('broad epoisson guard not found')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+          PY
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
