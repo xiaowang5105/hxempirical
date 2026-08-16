@@ -4103,7 +4103,7 @@ public final class HxWorkbench {
          quick.add(quickTitle, BorderLayout.NORTH);
          JPanel quickGrid = new JPanel(new GridLayout(1, 6, 10, 0));
          quickGrid.setOpaque(false);
-         quickGrid.add(this.homeQuickTileV130("导入数据", "Excel / CSV / DTA", "▣", () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         quickGrid.add(this.homeQuickTileV130("导入数据", "Excel / CSV / DTA", "▣", () -> this.browseMethod("data", "导入与转换")));
          quickGrid.add(this.homeQuickTileV130("描述统计", "summarize / tabstat", "▥", () -> this.openCommandPage("summarize")));
          quickGrid.add(this.homeQuickTileV130("基准回归", "xtreg / reghdfe", "↗", () -> this.openBaselineRegressionWorkspace()));
          quickGrid.add(this.homeQuickTileV130("固定效应", "areg / reghdfe", "▦", () -> this.openCommandPage("reghdfe")));
@@ -4141,7 +4141,7 @@ public final class HxWorkbench {
          JButton dta = this.refButton("打开 DTA", true);
          dta.addActionListener(e -> this.chooseAndLoadDta());
          JButton excel = this.refButton("导入 Excel/CSV", false);
-         excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         excel.addActionListener(e -> this.openCommandPage("import"));
          JButton auto = this.refButton("auto 示例", false);
          auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true));
          dataButtons.add(dta); dataButtons.add(excel); dataButtons.add(auto);
@@ -4153,7 +4153,7 @@ public final class HxWorkbench {
          body.add(Box.createVerticalStrut(14));
 
          Object[][] commonRows = new Object[][]{
-            {"导入数据", "Excel / CSV / DTA", "▣", (Runnable)() -> this.navigateTo("data", "导入与转换", "hxconvert")},
+            {"导入数据", "Excel / CSV / DTA", "▣", (Runnable)() -> this.browseMethod("data", "导入与转换")},
             {"描述统计", "summarize / tabstat", "▥", (Runnable)() -> this.openCommandPage("summarize")},
             {"基准回归", "xtreg / reghdfe / regress", "↗", (Runnable)() -> this.openBaselineRegressionWorkspace()},
             {"固定效应", "areg / reghdfe / xtreg", "▦", (Runnable)() -> this.openCommandPage("reghdfe")},
@@ -4175,7 +4175,7 @@ public final class HxWorkbench {
          recent.add(history, BorderLayout.SOUTH);
 
          Object[][] moreRows = new Object[][]{
-            {"导入与转换", "Excel / CSV / DTA", "⇄", (Runnable)() -> this.navigateTo("data", "导入与转换", "hxconvert")},
+            {"导入与转换", "Excel / CSV / DTA", "⇄", (Runnable)() -> this.browseMethod("data", "导入与转换")},
             {"数据检查", "缺失 / 重复 / 唯一键", "◎", (Runnable)() -> this.browseMethod("data", "数据检查")},
             {"变量处理", "generate / replace", "✣", (Runnable)() -> this.browseMethod("data", "变量处理")},
             {"样本处理", "keep / drop", "⌑", (Runnable)() -> this.browseMethod("data", "样本处理")},
@@ -4320,7 +4320,7 @@ public final class HxWorkbench {
          JButton dta = this.refButton("打开 DTA", true);
          dta.addActionListener(e -> this.chooseAndLoadDta());
          JButton excel = this.refButton("导入 Excel/CSV", false);
-         excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         excel.addActionListener(e -> this.openCommandPage("import"));
          JButton auto = this.refButton("auto 示例", false);
          auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true));
          dataButtons.add(dta); dataButtons.add(excel); dataButtons.add(auto);
@@ -4346,7 +4346,7 @@ public final class HxWorkbench {
          common.add(commonTitle, BorderLayout.NORTH);
          JPanel taskGrid = new JPanel(new GridLayout(2,3,12,12));
          taskGrid.setOpaque(false);
-         taskGrid.add(this.refTask("", "导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         taskGrid.add(this.refTask("", "导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.browseMethod("data", "导入与转换")));
          taskGrid.add(this.refTask("", "描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
          taskGrid.add(this.refTask("", "基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
          taskGrid.add(this.refTask("", "固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
@@ -4383,7 +4383,7 @@ public final class HxWorkbench {
          more.add(moreTitle, BorderLayout.NORTH);
          JPanel moreGrid = new JPanel(new GridLayout(3,3,10,10));
          moreGrid.setOpaque(false);
-         moreGrid.add(this.refTask("", "导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         moreGrid.add(this.refTask("", "导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.browseMethod("data", "导入与转换")));
          moreGrid.add(this.refTask("", "数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
          moreGrid.add(this.refTask("", "变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
          moreGrid.add(this.refTask("", "样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
@@ -4525,7 +4525,7 @@ public final class HxWorkbench {
                } else if (!containsAny(var2, "oneclick", "控制变量组合", "组合稳健", "规格稳健", "稳健性组合", "控制变量怎么加", "结果稳不稳")
                   && (!var2.contains("控制变量") || !var2.contains("稳") && !var2.contains("组合") && !var2.contains("敏感"))) {
                   if (containsAny(var2, "导入", "excel", "csv", "转换dta", "转dta", "数据转换")) {
-                     this.navigateTo("data", "导入与转换", "hxconvert");
+                     this.browseMethod("data", "导入与转换");
                   } else if (containsAny(var2, "面板回归", "xtreg", "随机效应", "面板固定")) {
                      this.browseMethod("reg", "面板模型");
                   } else if (containsAny(var2, "工具变量", "2sls", "内生性", "ivregress", "ivreghdfe")) {
@@ -4960,12 +4960,12 @@ public final class HxWorkbench {
 
       private static String dataMethodPreview(String method) {
          switch (method) {
-            case "导入与转换": return "Excel · CSV · TXT → DTA";
-            case "数据检查": return "misstable · duplicates";
-            case "变量处理": return "generate · replace · encode · winsor2";
-            case "样本处理": return "keep · drop · if · in";
-            case "合并与追加": return "merge · append";
-            case "数据结构": return "reshape · collapse · xtset · tsset";
+            case "导入与转换": return "use · import · export · save";
+            case "数据检查": return "describe · codebook · isid · assert · duplicates";
+            case "变量处理": return "generate · egen · recode · rename · encode";
+            case "样本处理": return "keep · drop · expand";
+            case "合并与追加": return "merge · append · joinby · frlink / frget";
+            case "数据结构": return "reshape · collapse · contract · xtset / tsset · frame";
             default: return "查看该分类下的 Stata 命令";
          }
       }
@@ -6587,17 +6587,17 @@ public final class HxWorkbench {
 
       private static String methodSummary(String var0) {
          if ("导入与转换".equals(var0)) {
-            return "把外部文件转换为可分析的 Stata 数据";
+            return "打开、导入、导出和保存 Stata 或外部数据";
          } else if ("数据检查".equals(var0)) {
-            return "检查缺失、重复和关键键值";
+            return "检查结构、编码、唯一键、约束、缺失和重复";
          } else if ("变量处理".equals(var0)) {
-            return "生成、修改、缩尾和转换变量类型";
+            return "生成、重编码、重命名、标签、格式与类型转换";
          } else if ("样本处理".equals(var0)) {
-            return "按研究条件保留或删除样本";
+            return "筛选、删除或按规则扩展观测";
          } else if ("合并与追加".equals(var0)) {
-            return "横向匹配主副表或纵向连接数据";
+            return "按键合并、纵向追加、组合或跨 Frame 连接数据";
          } else if ("数据结构".equals(var0)) {
-            return "转换宽长格式、汇总或声明面板";
+            return "宽长转换、汇总、重组、排序并声明面板或时间结构";
          } else if ("描述统计".equals(var0)) {
             return "查看均值、标准差、分位数和样本量";
          } else if ("相关分析".equals(var0)) {
@@ -7516,7 +7516,7 @@ public final class HxWorkbench {
 
          var6.addActionListener(var1x -> this.runUtility("sysuse auto, clear", true));
          var7.addActionListener(var1x -> this.chooseAndLoadDta());
-         var8.addActionListener(var1x -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         var8.addActionListener(var1x -> this.openCommandPage("import"));
          var5.add(var6);
          var5.add(var7);
          var5.add(var8);

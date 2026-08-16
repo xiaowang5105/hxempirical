@@ -285,6 +285,19 @@ for java_stats_contract in (
         fail(f"Java Statistics parity contract missing: {java_stats_contract}")
 if '"内生协变量", "样本选择模型"' in java:
     fail("duplicate sample-selection method remains in Java public Statistics navigation")
+if 'navigateTo("data", "导入与转换", "hxconvert")' in java:
+    fail("public Java Data shortcuts must not bypass native Data I/O for hxconvert")
+for data_entry_contract in (
+    'case "导入与转换": return "use · import · export · save";',
+    'case "数据检查": return "describe · codebook · isid · assert · duplicates";',
+    'case "变量处理": return "generate · egen · recode · rename · encode";',
+    'openCommandPage("import")',
+    'browseMethod("data", "导入与转换")',
+):
+    if data_entry_contract not in java:
+        fail(f"native Data entrypoint/card parity missing: {data_entry_contract}")
+if 'return "打开、导入、导出和保存 Stata 或外部数据";' not in java:
+    fail("Data import/export method summary still reflects the old HX converter")
 for official in ("didregress", "xtdidregress"):
     if official not in stats_cmds:
         fail(f"official DID command missing from Statistics catalog: {official}")
