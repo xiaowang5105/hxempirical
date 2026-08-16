@@ -214,6 +214,38 @@ for needle in (
 if 'if c(stata_version) >= 17 {' not in semantics:
     fail("nptrend version-aware semantic branch missing")
 
+postestimation_core = {
+    "test", "testparm", "testnl", "lincom", "nlcom", "contrast", "pwcompare", "predict", "predictnl", "margins",
+    "lrtest", "hausman", "suest", "linktest", "estimates", "estat",
+}
+missing_post = sorted(postestimation_core - stats_cmds)
+if missing_post:
+    fail("postestimation command coverage missing: " + ", ".join(missing_post))
+post_declared = set(local_words(registry, "post_cmds"))
+missing_post_category = sorted(postestimation_core - post_declared)
+if missing_post_category:
+    fail("post command category missing: " + ", ".join(missing_post_category))
+if "假设检验 组合与比较 预测与边际 模型管理与诊断" not in registry:
+    fail("task-oriented postestimation method groups missing")
+for needle in (
+    "testparm i.group",
+    "testnl (_b[x])^2 = 1",
+    "nlcom (_b[x])^2",
+    "contrast ar.agegroup, nowald effects",
+    "pwcompare agegrp, effects mcompare(tukey)",
+    "predictnl xb2 = predict(xb)^2, se(se_xb2)",
+    "lrtest restricted unrestricted",
+    "hausman fixed random",
+    "suest model1 model2",
+    "linktest",
+    "estimates store model1",
+    "estat ic",
+):
+    if needle not in semantics:
+        fail(f"postestimation semantic contract missing: {needle}")
+if "marginsplot" not in graph_cmds:
+    fail("marginsplot must remain in Graphics while being reachable from postestimation")
+
 bayesian_core = {"bayes", "bayesmh", "bayespredict", "bayesreps", "bayesstats", "bayesgraph", "bayestest"}
 missing_bayes = sorted(bayesian_core - stats_cmds)
 if missing_bayes:

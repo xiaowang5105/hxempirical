@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.21  16aug2026
+*! hxsemantics 1.4.22  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -733,7 +733,7 @@ program define hxsemantics, rclass
             }
         }
     }
-    else if inlist("`cmd'", "test", "lincom", "predict", "margins") {
+    else if inlist("`cmd'", "test", "testparm", "testnl", "lincom", "nlcom", "predict", "margins") {
         local has_depvar 0
         local has_varlist 0
         local has_expression 1
@@ -749,6 +749,26 @@ program define hxsemantics, rclass
             local example2 "test x c1 c2"
             local explain2 "联合检验 x、c1、c2 的系数是否都为 0。"
         }
+        else if "`cmd'" == "testparm" {
+            local template "expression_body"
+            local title "testparm — 联合检验一组模型项"
+            local purpose1 "对一组系数、因子变量 levels 或交互项执行联合 Wald 检验。"
+            local purpose2 "特别适合检验 i.group、交互项或一组滞后项是否整体显著。"
+            local example1 "testparm i.group"
+            local explain1 "联合检验 group 的所有非基准类别系数是否同时为 0。"
+            local example2 "testparm c.x#i.group"
+            local explain2 "联合检验 x 与 group 的全部交互项。"
+        }
+        else if "`cmd'" == "testnl" {
+            local template "expression_body"
+            local title "testnl — 非线性 Wald 假设检验"
+            local purpose1 "检验由回归系数组成的非线性约束，并用 delta method 计算 Wald statistic。"
+            local purpose2 "表达式直接引用 _b[var] 或 equation-specific coefficient names。"
+            local example1 "testnl (_b[x])^2 = 1"
+            local explain1 "检验 x 系数平方是否等于 1。"
+            local example2 "testnl _b[x1]/_b[x2] = 1"
+            local explain2 "检验两个系数之比是否等于 1。"
+        }
         else if "`cmd'" == "lincom" {
             local template "expression_body"
             local title "lincom — 计算回归系数的线性组合"
@@ -758,6 +778,16 @@ program define hxsemantics, rclass
             local explain1 "计算 x 与 c1 两个系数之和。"
             local example2 "lincom x - c1"
             local explain2 "计算 x 与 c1 两个系数之差。"
+        }
+        else if "`cmd'" == "nlcom" {
+            local template "expression_body"
+            local title "nlcom — 非线性系数组合"
+            local purpose1 "计算系数的比率、乘积、转折点等非线性函数，并用 delta method 给出标准误和区间。"
+            local purpose2 "表达式通常直接引用 _b[var]；多方程模型应使用 equation-specific coefficient names。"
+            local example1 "nlcom (_b[x])^2"
+            local explain1 "报告 x 系数平方及其 delta-method 标准误。"
+            local example2 "nlcom -_b[x]/(2*_b[c.x#c.x])"
+            local explain2 "计算二次项模型的 turning point。"
         }
         else if "`cmd'" == "predict" {
             local template "predict"
@@ -943,7 +973,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict contrast pwcompare predictnl lrtest hausman suest linktest estimates estat power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1210,6 +1240,69 @@ program define hxsemantics, rclass
             local explain1 "连续变量报告均值/标准差，i.rep78 报告类别频数与比例。"
             local example2 "dtable age weight i.sex, by(group, tests)"
             local explain2 "按 group 生成 Table 1，并请求组间差异检验。"
+        }
+        else if "`cmd'" == "contrast" {
+            local expr_label "contrast operator + factor variable/interaction + effects/nowald/mcompare() 等"
+            local example1 "contrast ar.agegroup, nowald effects"
+            local explain1 "对 agegroup 做 reverse-adjacent contrasts，直接比较每一档与前一档的 adjusted linear prediction。"
+            local example2 "contrast p.agegroup"
+            local explain2 "用 orthogonal polynomial contrasts 检查有序类别的 linear/quadratic/cubic 等趋势。"
+        }
+        else if "`cmd'" == "pwcompare" {
+            local expr_label "factor variable + effects + mcompare() 多重比较校正"
+            local example1 "pwcompare agegrp, effects mcompare(tukey)"
+            local explain1 "对 agegrp 所有 level 做 pairwise comparisons，并用 Tukey HSD 调整推断。"
+            local example2 "help pwcompare"
+            local explain2 "Bonferroni、Sidak、Scheffe 等 mcompare() 选择应与预先设定的比较族对应。"
+        }
+        else if "`cmd'" == "predictnl" {
+            local expr_label "新变量 = nonlinear prediction expression + se()/ci()"
+            local example1 "predictnl xb2 = predict(xb)^2, se(se_xb2)"
+            local explain1 "把 linear prediction 的平方作为非线性预测量，并用 delta method 生成标准误 se_xb2。"
+            local example2 "help predictnl"
+            local explain2 "expression 可组合 predict()、系数与数据变量；复杂表达式运行前核对当前模型支持的 predict statistic。"
+        }
+        else if "`cmd'" == "lrtest" {
+            local expr_label "受限模型 estimates-name + 非受限模型 estimates-name"
+            local example1 "lrtest restricted unrestricted"
+            local explain1 "比较两个已保存且使用同一数据/likelihood 的 nested maximum-likelihood models。"
+            local example2 "help lrtest"
+            local explain2 "LR test 依赖模型嵌套与可比 likelihood；robust/pseudolikelihood 场景应改用适当 Wald 或 score-type 检验。"
+        }
+        else if "`cmd'" == "hausman" {
+            local expr_label "consistent model estimates-name + efficient-under-H0 model estimates-name + sigmamore/sigmaless 等"
+            local example1 "hausman fixed random"
+            local explain1 "比较已保存的 fixed 与 random effects estimates，检验两组系数系统差异。"
+            local example2 "help hausman"
+            local explain2 "Hausman 检验需要两组可比估计结果；协方差矩阵差与模型设定应在解释前核对。"
+        }
+        else if "`cmd'" == "suest" {
+            local expr_label "两个或多个 estimates-name + vce()/cluster() 等 stacked sandwich 设定"
+            local example1 "suest model1 model2"
+            local explain1 "把 model1、model2 的参数向量与 robust covariance 合并，随后可用 test/testnl 做跨模型系数检验。"
+            local example2 "help suest"
+            local explain2 "先 estimates store 各模型；部分估计器不支持 suest，需要查看对应 postestimation help。"
+        }
+        else if "`cmd'" == "linktest" {
+            local expr_label "模型设定 link test options（通常直接运行）"
+            local example1 "linktest"
+            local explain1 "在兼容的单方程模型后回归结果对 _hat 与 _hatsq；_hatsq 显著提示函数形式可能遗漏。"
+            local example2 "help linktest"
+            local explain2 "linktest 是 specification diagnostic，不能替代对理论变量、残差和识别假设的检查。"
+        }
+        else if "`cmd'" == "estimates" {
+            local expr_label "store/restore/table/stats/save/use/replay 等 estimates suite 子命令"
+            local example1 "estimates store model1"
+            local explain1 "把当前 estimation results 在内存中命名为 model1，供后续比较、预测或检验。"
+            local example2 "estimates table model1 model2, b(%9.3f) se"
+            local explain2 "把两个已保存模型的 coefficients 与 standard errors 并列表格。"
+        }
+        else if "`cmd'" == "estat" {
+            local expr_label "当前估计器支持的 estat 子命令：ic/vif/gof/hettest/vce/..."
+            local example1 "estat ic"
+            local explain1 "在支持的 likelihood-based model 后显示 AIC/BIC 等 information criteria。"
+            local example2 "estat vce"
+            local explain2 "显示当前 coefficient variance–covariance matrix；具体可用 estat 子命令随估计器变化。"
         }
         else if "`cmd'" == "power" {
             local expr_label "检验类型与设计参数（如 onemean 0 0.5, power(.8)）"
