@@ -54,6 +54,14 @@ binary_guided_safe = {"logit", "logistic", "probit", "scobit", "cloglog"}
 if binary_catalog != binary_structured | binary_guided_safe:
     fail(f"binary-outcome catalog classification drift: {sorted(binary_catalog - (binary_structured | binary_guided_safe))}")
 
+# Ordinal-outcome Statistics method must remain fully classified, including Stata 17+ ziologit.
+if 'local view "ologit oprobit hetoprobit zioprobit"' not in registry:
+    fail("ordinal-outcome Statistics base catalog not found")
+if "if c(stata_version) >= 17 local view \"`view' ziologit\"" not in registry:
+    fail("ordinal-outcome ziologit Stata 17 gate missing")
+ordinal_structured = {"hetoprobit", "zioprobit", "ziologit"}
+ordinal_guided_safe = {"ologit", "oprobit"}
+
 # oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
 if not oneclick_packages or oneclick_packages.group(1).split() != ["tuples", "oneclick"]:
@@ -148,6 +156,30 @@ if '至少需要设置一个 ll()/ul() 界限' in java:
 for cmd in linear_native_body:
     if f' {cmd} ' not in semantics:
         fail(f"complex linear-related native-body command missing from semantics: {cmd}")
+
+for needle in (
+    'private static boolean isStructuredOrdinalOutcomeCommand(String command)',
+    '"hetoprobit", "zioprobit", "ziologit"',
+    'private void rebuildStructuredOrdinalOutcomeForm()',
+    'private void updateStructuredOrdinalOutcomePreview()',
+    'private boolean validateStructuredOrdinalOutcomeBeforeRun()',
+    'hetoprobit · 异方差有序 Probit',
+    'zioprobit · 零膨胀有序 Probit',
+    'ziologit · 零膨胀有序 Logit',
+    '协变量，不含常数 noconstant',
+    '仅常数 _cons',
+    'hetoprobit 的 het() 方差方程是必填项',
+    '的 inflate() 是必填项',
+    'inflate(_cons)',
+    'structuredOrdinalOffset(this.expression.getText())',
+    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit")',
+    'return Arrays.asList("ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit")',
+):
+    if needle not in java:
+        fail(f"structured ordinal-outcome UI contract missing: {needle}")
+for cmd in ordinal_structured:
+    if f' {cmd} ' not in semantics:
+        fail(f"ordinal structured command lost native-body safety fallback: {cmd}")
 
 for needle in (
     'private static boolean isStructuredBinaryOutcomeCommand(String command)',
