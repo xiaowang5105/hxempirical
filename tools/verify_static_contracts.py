@@ -157,6 +157,10 @@ if "选择模型" not in stats_methods:
     fail("public Selection models method missing")
 if 'local view "stset stcox streg stintreg"' not in registry:
     fail("survival navigation must start with the common declaration/estimation workflow")
+if 'local view "var varsoc vargranger varlmar varnorm varstable irf"' not in registry:
+    fail("multivariate time-series navigation must start with the routine VAR workflow")
+if 'if c(stata_version) >= 17 local view "didregress xtdidregress"' not in registry:
+    fail("Stata 17+ causal navigation must surface DID estimators first")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 

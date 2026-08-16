@@ -1,4 +1,4 @@
-*! hxregistry 3.1.26  16aug2026
+*! hxregistry 3.1.27  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -487,8 +487,10 @@ program define hxregistry, rclass
         local view "`view' psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth"
     }
     else if inlist(`"`method'"', "多元时间序列", "multivariate_ts") {
-        local view "var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf"
+        /* Put the routine VAR workflow before structural/specialized systems. */
+        local view "var varsoc vargranger varlmar varnorm varstable irf"
         if c(stata_version) >= 18 local view "`view' lpirf"
+        local view "`view' svar vec vecrank veclmar vecnorm vecstable varbasic varwle"
         local view "`view' mgarch dfactor sspace xcorr"
     }
     else if inlist(`"`method'"', "空间自回归模型", "spatial_ar") local view "spregress spivregress spxtregress"
@@ -512,9 +514,13 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
     else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") {
-        local view "teffects eteffects etregress etpoisson stteffects"
-        if c(stata_version) >= 17 local view "`view' didregress xtdidregress telasso"
-        if c(stata_version) >= 18 local view "`view' mediate hdidregress xthdidregress"
+        /* Surface common DID estimators first when the installed Stata supports them. */
+        local view ""
+        if c(stata_version) >= 17 local view "didregress xtdidregress"
+        if c(stata_version) >= 18 local view "`view' hdidregress xthdidregress mediate"
+        local view "`view' teffects eteffects etregress etpoisson stteffects"
+        if c(stata_version) >= 17 local view "`view' telasso"
+        local view = trim(itrim("`view'"))
     }
     else if inlist(`"`method'"', "结构方程模型(SEM)", "sem") local view "sem gsem"
     else if inlist(`"`method'"', "潜在类别分析(LCA)", "lca") local view "gsem"
