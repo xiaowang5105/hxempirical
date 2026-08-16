@@ -11649,7 +11649,7 @@ public final class HxWorkbench {
             coreTitle = "结果与解释变量";
             coreSubtitle = "先选择删失结果变量和解释变量。";
             methodTitle = "删失界限";
-            methodSubtitle = "至少设置一个界限；数字或变量名会生成 ll()/ul()，min/max 分别生成裸 ll/ul。";
+            methodSubtitle = "界限可以留空；若设置，数字或变量名会生成 ll()/ul()，min/max 分别生成裸 ll/ul。留空前请确认模型确实不需要显式删失界限。";
          } else if (truncreg) {
             title = "truncreg · 截断回归";
             example = "truncreg y x1 x2, ll(16)";
@@ -11658,7 +11658,7 @@ public final class HxWorkbench {
             coreTitle = "结果与解释变量";
             coreSubtitle = "选择截断样本中的结果变量和解释变量。";
             methodTitle = "截断界限";
-            methodSubtitle = "至少设置一个截断点；可填数值或包含逐观测截断点的变量名。";
+            methodSubtitle = "界限可以留空；若设置，可填数值或包含逐观测截断点的变量名。留空前请确认模型确实不需要显式截断点。";
          } else {
             title = "sqreg · 同时分位数回归";
             example = "sqreg y x1 x2, quantiles(.25 .5 .75) reps(100)";
@@ -11849,10 +11849,6 @@ public final class HxWorkbench {
          }
          if (hetregress && this.model.getSelectedIndex() == 1 && !"无".equals(selected(this.genericWeightType))) {
             JOptionPane.showMessageDialog(this, "hetregress 的 Two-step GLS 不接受权重；请把权重类型改为“无”，或改用 Maximum likelihood。", "Two-step GLS 不支持权重", 1);
-            return false;
-         }
-         if ((tobit || truncreg) && this.expression.getText().trim().isBlank() && this.newvar.getText().trim().isBlank()) {
-            JOptionPane.showMessageDialog(this, command + " 至少需要设置一个 ll()/ul() 界限；无删失/截断的普通连续结果请优先使用 regress。", "界限尚未设置", 1);
             return false;
          }
          if (sqreg) {

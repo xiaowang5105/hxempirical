@@ -124,7 +124,7 @@ for needle in (
     'structuredLimitOption("ll", this.expression.getText(), tobit)',
     'opts.add("quantiles(" + qs + ")")',
     'Two-step GLS 必须选择至少 1 个 het() 方差方程变量',
-    '至少需要设置一个 ll()/ul() 界限',
+    '界限可以留空；若设置，数字或变量名会生成 ll()/ul()',
     'sqreg 的 quantiles() 必须是 0–1 之间的小数',
     'qreg percentile validation',
 ):
@@ -133,6 +133,8 @@ for needle in (
             fail("qreg percentile notation validation was not widened to official syntax")
     elif needle not in java:
         fail(f"structured linear-related UI contract missing: {needle}")
+if '至少需要设置一个 ll()/ul() 界限' in java:
+    fail("tobit/truncreg UI must not require limits more strictly than native Stata syntax")
 for cmd in linear_native_body:
     if f' {cmd} ' not in semantics:
         fail(f"complex linear-related native-body command missing from semantics: {cmd}")
