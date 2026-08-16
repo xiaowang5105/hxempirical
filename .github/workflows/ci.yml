@@ -24,6 +24,9 @@ jobs:
       - name: Verify Stata static contracts
         run: python tools/verify_static_contracts.py
 
+      - name: Verify shipped JAR matches Java source
+        run: python tools/verify_hxworkbench_jar_sync.py
+
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
