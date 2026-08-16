@@ -19,8 +19,8 @@ replace_once(
 )
 
 marker = '        else if strpos(" mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm ", " `cmd\' ") {\n'
-if text.count(marker) != 2:
-    raise SystemExit(f"expected two mixed-family markers, got {text.count(marker)}")
+if text.count(marker) != 1:
+    raise SystemExit(f"expected one mixed-family marker, got {text.count(marker)}")
 
 block = '''        else if "`cmd'" == "arima" {
             local expr_label "结果变量 + 外生变量（可选）+ ARIMA 阶数 / AR-MA 设定"
