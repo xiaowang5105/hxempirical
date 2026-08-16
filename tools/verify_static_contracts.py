@@ -387,6 +387,22 @@ for command, method_label in graph_command_method_contracts.items():
         fail(f"Graphics commandMethod canonical classification missing: {command} -> {method_label}")
 if 'return "图形|分布图";' in command_method_scope:
     fail("stale broad distribution commandPath label remains after specific Graphics classification")
+graph_method_preview_contracts = (
+    'case "生存分析图": return "sts graph";',
+    'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg";',
+    'case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";',
+    'case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";',
+    'case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";',
+    'case "管理图形": return "graph dir · graph display · graph save · graph export";',
+    'case "更改方案/大小": return "set scheme";',
+)
+for preview_contract in graph_method_preview_contracts:
+    if preview_contract not in java:
+        fail(f"Graphics method-card preview parity missing: {preview_contract}")
+if 'case "更多统计图形": return "marginsplot · 更多统计图形";' in java:
+    fail("placeholder Graphics method preview remains")
+if 'case "更改方案/大小": return "set scheme · graph set";' in java:
+    fail("Graphics settings card advertises a route not present in its current command list")
 
 
 # Catalog correctness: Stata ERM has eregress/eintreg/eprobit/eoprobit; epoisson is not a public command.

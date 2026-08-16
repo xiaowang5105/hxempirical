@@ -4933,27 +4933,27 @@ public final class HxWorkbench {
 
       private static String graphMethodPreview(String method) {
          switch (method) {
-            case "二维图(散点图，折线图等)": return "twoway · scatter · line · connected";
-            case "条形图": return "graph bar · graph hbar";
-            case "点图": return "graph dot · dotplot";
+            case "二维图(散点图，折线图等)": return "twoway · scatter · line · connected · lfit · qfit";
+            case "条形图": return "graph bar";
+            case "点图": return "graph dot";
             case "饼图": return "graph pie";
             case "直方图": return "histogram";
-            case "箱线图": return "graph box · graph hbox";
+            case "箱线图": return "graph box";
             case "等高线图": return "twoway contour";
             case "散点图矩阵": return "graph matrix";
             case "分布图": return "histogram · kdensity";
             case "平滑和密度": return "kdensity · lowess · lpoly";
-            case "回归诊断图": return "rvfplot · rvpplot · avplot";
+            case "回归诊断图": return "rvfplot · rvpplot · avplot · lvr2plot · cprplot";
             case "时间序列图": return "tsline";
             case "面板数据折线图": return "xtline";
             case "生存分析图": return "sts graph";
-            case "ROC分析": return "roctab · rocfit · roccomp";
-            case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · dendrogram";
+            case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg";
+            case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";
             case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";
-            case "更多统计图形": return "marginsplot · 更多统计图形";
+            case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot";
             case "图形组合": return "graph combine";
-            case "管理图形": return "graph display · graph save · graph export";
-            case "更改方案/大小": return "set scheme · graph set";
+            case "管理图形": return "graph dir · graph display · graph save · graph export";
+            case "更改方案/大小": return "set scheme";
             default: return "查看该分类下的 Stata 图形命令";
          }
       }
