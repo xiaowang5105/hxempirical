@@ -23,6 +23,8 @@ jobs:
           python-version: '3.12'
       - name: Patch Bayesian and BMA catalogs
         run: python tools/tmp_patch_bayesian_bma_catalog.py
+      - name: Refresh legacy Stata 18 summary gate contract
+        run: python tools/tmp_refresh_bayesian_gate_contract.py
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
