@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.11  16aug2026
+*! hxsemantics 1.4.12  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -928,7 +928,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm sureg reg3 mvreg frontier binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1218,6 +1218,20 @@ program define hxsemantics, rclass
             local example2 "help dstdize"
             local explain2 "直接/间接标准化、外部标准人口和保存选项请按当前 Stata help 设置。"
         }
+        else if "`cmd'" == "gnbreg" {
+            local expr_label "计数 Y + 均值方程 X + lnalpha() 离散参数方程"
+            local example1 "gnbreg y x1 x2, lnalpha(z1 z2)"
+            local explain1 "均值由 x1、x2 解释，同时允许负二项离散参数 alpha 随 z1、z2 系统变化。"
+            local example2 "help gnbreg"
+            local explain2 "当 dispersion 无需协变量解释时，普通 nbreg 更直接；lnalpha() 应有明确异质性依据。"
+        }
+        else if "`cmd'" == "cpoisson" {
+            local expr_label "计数 Y + X + ll()/ul() 删失界限"
+            local example1 "cpoisson accidents i.past i.parent i.ntickets, ul(3) irr"
+            local explain1 "3 表示 3 次及以上时，用 ul(3) 处理右删失计数并报告 incidence-rate ratios。"
+            local example2 "help cpoisson"
+            local explain2 "删失保留观测但隐藏界限外真实计数；截断则是整个观测未进入样本。"
+        }
         else if "`cmd'" == "binreg" {
             local expr_label "二元结果 Y + X + rr/rd/or 或 link() 报告尺度"
             local example1 "binreg y x1 x2, rr"
@@ -1385,6 +1399,13 @@ program define hxsemantics, rclass
             local explain1 "样本只观察到 y>0 的个体时，用左截断回归修正抽样机制。"
             local example2 "help truncreg"
             local explain2 "截断意味着界限外观测整体未进入样本；界限必须对应真实抽样规则。"
+        }
+        else if "`cmd'" == "churdle" {
+            local expr_label "结果模型类型 + Y + X + select() hurdle 方程 + ll()/ul() 界限"
+            local example1 "churdle linear money dating teenager nkids, select(newborn hours distance weekends) ll(0)"
+            local explain1 "正值部分用线性模型解释 money，select() 用 Probit 建模是否跨过 0 这一 hurdle。"
+            local example2 "help churdle"
+            local explain2 "可选择 linear、exponential 或 probit outcome model；hurdle 方程与结果方程可使用不同变量。"
         }
         else if "`cmd'" == "boxcox" {
             local expr_label "Y + X + model()/lrtest 等 Box–Cox 变换设定"
@@ -1865,7 +1886,12 @@ program define hxsemantics, rclass
 
     /* Family-level copy for catalog commands that rely on the generic syntax parser.
        Keep the parsed Stata syntax/flags unchanged; only improve beginner-facing semantics. */
-    if strpos(" binreg biprobit ", " `cmd' ") {
+    if strpos(" gnbreg cpoisson ", " `cmd' ") {
+        local title "`cmd' — 计数结果扩展模型"
+        local purpose1 "用于离散程度本身存在协变量异质性，或计数结果发生左/右/区间删失的场景。"
+        local purpose2 "lnalpha() 与 ll()/ul() 都属于数据生成过程的核心设定，页面直接保留原生语法。"
+    }
+    else if strpos(" binreg biprobit ", " `cmd' ") {
         local title "`cmd' — 二元结果模型"
         local purpose1 "用于二项响应尺度估计或两个相关二元结果的联合 Probit 建模。"
         local purpose2 "报告尺度或多方程结构属于模型核心，页面直接保留原生语法。"
@@ -1880,7 +1906,7 @@ program define hxsemantics, rclass
         local purpose1 "用于条件/多类别结果，或 case × alternative 结构的 discrete-choice 数据。"
         local purpose2 "CM 工作流先 cmset，再检查 choice sets，最后估计；case-specific 与 alternative-specific 变量必须分开。"
     }
-    else if strpos(" hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm reg3 frontier ", " `cmd' ") {
+    else if strpos(" hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm reg3 frontier ", " `cmd' ") {
         local title "`cmd' — 线性模型及相关"
         local purpose1 "用于异方差、删失/截断、非线性、方程系统、GMM、函数形式或随机前沿等线性模型扩展。"
         local purpose2 "这些命令的核心语法差异较大；页面直接保留真正的方程、边界、矩条件或前缀结构。"

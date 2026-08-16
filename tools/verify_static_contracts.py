@@ -200,6 +200,20 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+count_core = {"poisson", "nbreg", "gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"}
+missing_count = sorted(count_core - stats_cmds)
+if missing_count:
+    fail("count outcome commands missing: " + ", ".join(missing_count))
+if "churdle" not in stats_cmds:
+    fail("Cragg hurdle regression missing from Statistics catalog")
+for needle in (
+    'gnbreg y x1 x2, lnalpha(z1 z2)',
+    'cpoisson accidents i.past i.parent i.ntickets, ul(3) irr',
+    'churdle linear money dating teenager nkids, select(newborn hours distance weekends) ll(0)',
+):
+    if needle not in semantics:
+        fail(f"count/hurdle semantic contract missing: {needle}")
+
 binary_core = {"logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog"}
 missing_binary = sorted(binary_core - stats_cmds)
 if missing_binary:
@@ -368,7 +382,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 discrete_choice_catalog=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 causal_catalog=1 xthdid_panel=1 survey_workflow=1 multivariate_catalog=1 exact_epi_catalog=1 linear_catalog=1 discrete_choice_catalog=1 count_catalog=1 hurdle_model=1 summary_catalog=1 power_precision=1 resampling_examples=1 meta_workflow=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.
