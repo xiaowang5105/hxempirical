@@ -1,4 +1,4 @@
-*! hxregistry 3.1.21  16aug2026
+*! hxregistry 3.1.22  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,14 +8,14 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh dsge dsgenl alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress nptrend kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh dsge dsgenl alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress nptrend kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmaregress bmacoefsample bmagraph bmastats bmapredict predict margins"
     if c(stata_version) < 17 {
-        foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox {
+        foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox bayesvarstable bayesirf bayesfcast {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
     if c(stata_version) < 18 {
-        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign ivfprobit ivqregress arimasoc arfimasoc lpirf {
+        foreach cmd in mediate hdidregress xthdidregress bmaregress bmacoefsample bmagraph bmastats bmapredict dtable gsbounds gsdesign ivfprobit ivqregress arimasoc arfimasoc lpirf {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -149,6 +149,15 @@ program define hxregistry, rclass
         local key_pkcollapse "pkcollapse pharmacokinetic collapse measurements reshape 药代动力学 AUC 数据转换"
         local key_pkshape "pkshape pharmacokinetic Latin square crossover reshape 药代动力学 拉丁方 交叉设计 重塑"
         local key_nptrend "nptrend nonparametric trend Cochran Armitage Jonckheere Terpstra Cuzick 趋势检验 非参数 有序组 exact"
+        local key_bayestest "bayestest Bayesian hypothesis model comparison interval Bayes factor 贝叶斯 假设检验 模型比较"
+        local key_bayesreps "bayesreps Bayesian posterior predictive MCMC replicates 后验预测 复制样本 模型检查"
+        local key_bayesvarstable "bayesvarstable Bayesian VAR stability eigenvalue 贝叶斯 VAR 稳定性 特征根"
+        local key_bayesirf "bayesirf Bayesian IRF FEVD impulse response 贝叶斯 脉冲响应 方差分解"
+        local key_bayesfcast "bayesfcast Bayesian dynamic forecast VAR 贝叶斯 动态预测"
+        local key_bmacoefsample "bmacoefsample Bayesian model averaging posterior coefficient sample BMA 系数 后验抽样"
+        local key_bmagraph "bmagraph BMA PMP PIP model size variable map coefficient density 模型概率 图"
+        local key_bmastats "bmastats BMA posterior inclusion probability PIP model size jointness LPS 统计"
+        local key_bmapredict "bmapredict BMA prediction posterior predictive mean credible interval 预测"
         local key_tsset "tsset time series 时间序列 时间变量 声明"
         local key_ctset "ctset count-time survival 生存 计数时间 声明"
         local key_cttost "cttost count-time to survival 转换 生存数据"
@@ -486,9 +495,12 @@ program define hxregistry, rclass
         local view "power ciwidth"
         if c(stata_version) >= 18 local view "`view' gsbounds gsdesign"
     }
-    else if inlist(`"`method'"', "贝叶斯分析", "bayes") local view "bayes bayesmh bayespredict bayesstats bayesgraph"
+    else if inlist(`"`method'"', "贝叶斯分析", "bayes") {
+        local view "bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest"
+        if c(stata_version) >= 17 local view "`view' bayesvarstable bayesirf bayesfcast"
+    }
     else if inlist(`"`method'"', "贝叶斯模型平均", "bma") {
-        if c(stata_version) >= 18 local view "bmaregress"
+        if c(stata_version) >= 18 local view "bmaregress bmacoefsample bmagraph bmastats bmapredict"
         else local view ""
     }
     else if inlist(`"`method'"', "工具变量与内生性", "iv_extensions") {

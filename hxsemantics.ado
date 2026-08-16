@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.20  16aug2026
+*! hxsemantics 1.4.21  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -943,7 +943,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -1106,10 +1106,89 @@ program define hxsemantics, rclass
             local example1 "bayesmh y x, likelihood(normal({sigma2})) prior({y:x _cons}, normal(0,100))"
             local explain1 "bayesmh 的似然和先验均属于完整模型主体。"
         }
-        else if strpos(" bayespredict bayesstats bayesgraph ", " `cmd' ") {
-            local expr_label "Bayesian 后估计子命令 / 结果对象与参数"
-            local example1 "help `cmd'"
-            local explain1 "先确认上一项 Bayesian 估计结果，再按当前后估计命令的子命令语法填写。"
+        else if "`cmd'" == "bayespredict" {
+            local expr_label "预测结果变量 / 模拟结果对象 + mean/median/saving() 等 posterior-predictive 设定"
+            local example1 "bayespredict pmean, mean"
+            local explain1 "在上一项 Bayesian 模型后，为每条观测计算 posterior predictive mean 并保存为 pmean。"
+            local example2 "help bayespredict"
+            local explain2 "完整 MCMC predictions 可保存到独立数据文件；需要可重复结果时显式设置随机数种子。"
+        }
+        else if "`cmd'" == "bayesreps" {
+            local expr_label "新变量前缀 + nreps() + rseed()（MCMC replicated outcomes）"
+            local example1 "bayesreps yrep*, nreps(10)"
+            local explain1 "从 posterior predictive distribution 随机抽取 10 组 outcome replicates，写入当前数据的 yrep1–yrep10。"
+            local example2 "help bayesreps"
+            local explain2 "适合快速 posterior predictive model checks；Stata 16+。"
+        }
+        else if "`cmd'" == "bayesstats" {
+            local expr_label "summary/ic/ess/grubin/ppvalues 等 Bayesian 后验统计子命令"
+            local example1 "bayesstats summary"
+            local explain1 "汇总当前 Bayesian MCMC 样本中的参数后验均值、中位数和 credible intervals。"
+            local example2 "help bayesstats"
+            local explain2 "模型比较、有效样本量、多链收敛和 posterior predictive p-values 继续按对应子命令设置。"
+        }
+        else if "`cmd'" == "bayesgraph" {
+            local expr_label "diagnostics/trace/ac 等图形子命令 + 参数对象"
+            local example1 "bayesgraph diagnostics {inflation:L1.ogap}"
+            local explain1 "对指定 Bayesian 参数同时检查 trace、autocorrelation 等 MCMC 诊断图。"
+            local example2 "help bayesgraph"
+            local explain2 "运行前确认参数名来自当前 Bayesian estimation results。"
+        }
+        else if "`cmd'" == "bayestest" {
+            local expr_label "interval/model 等 Bayesian hypothesis-test 子命令 + 参数或 stored estimates"
+            local example1 "bayestest model lag1 lag2 lag3"
+            local explain1 "比较已保存的 lag1、lag2、lag3 Bayesian 模型，报告 marginal likelihood 与 posterior model probabilities。"
+            local example2 "help bayestest"
+            local explain2 "interval 可做区间假设检验；model 比较前必须保存兼容的 Bayesian estimation results。"
+        }
+        else if "`cmd'" == "bayesvarstable" {
+            local expr_label "上一项 bayes: var 的稳定性检验参数（通常可直接运行）"
+            local example1 "bayesvarstable"
+            local explain1 "检查 Bayesian VAR companion matrix 的 eigenvalue stability，并报告所有根位于单位圆内的 posterior probability。"
+            local example2 "help bayesvarstable"
+            local explain2 "该入口为 Stata 17+，前一项结果必须来自 bayes: var。"
+        }
+        else if "`cmd'" == "bayesirf" {
+            local expr_label "create/graph/table/cgraph/ograph + IRF 结果集与 impulse/response 设定"
+            local example1 "bayesirf create birf, set(birfex)"
+            local explain1 "在 Bayesian VAR 或 Bayesian DSGE 后创建 birf，并保存到 birfex.irf。"
+            local example2 "bayesirf graph irf, impulse(fedfunds)"
+            local explain2 "绘制 fedfunds shock 的 posterior IRF credible bands；Stata 17+。"
+        }
+        else if "`cmd'" == "bayesfcast" {
+            local expr_label "compute/graph + 新变量前缀 + step()/credible interval 等动态预测设定"
+            local example1 "bayesfcast compute f_, step(10)"
+            local explain1 "在 bayes: var 后生成未来 10 期 Bayesian dynamic forecasts，并以 f_ 为变量名前缀。"
+            local example2 "bayesfcast graph f_inflation f_ogap f_fedfunds"
+            local explain2 "绘制 posterior dynamic forecasts 及不确定性区间；Stata 17+。"
+        }
+        else if "`cmd'" == "bmacoefsample" {
+            local expr_label "simulate/saving()/rseed() 等 BMA 系数 posterior-sample 设定"
+            local example1 "bmacoefsample, rseed(18)"
+            local explain1 "在 bmaregress 后模拟 regression coefficients 的 posterior sample，供 credible intervals 和后续 Bayesian summaries 使用。"
+            local example2 "bmacoefsample, saving(bmacoef)"
+            local explain2 "把 BMA 参数 posterior sample 保存为 bmacoef.dta；Stata 18+。"
+        }
+        else if "`cmd'" == "bmagraph" {
+            local expr_label "pmp/msize/varmap/coefdensity 等 BMA 图形子命令"
+            local example1 "bmagraph pmp"
+            local explain1 "绘制 posterior model probabilities，查看模型空间中的主要高概率模型。"
+            local example2 "bmagraph msize"
+            local explain2 "绘制 posterior model-size distribution；Stata 18+。"
+        }
+        else if "`cmd'" == "bmastats" {
+            local expr_label "models/msize/pip/jointness/lps 等 BMA 统计子命令"
+            local example1 "bmastats pip"
+            local explain1 "报告候选 predictors 的 posterior inclusion probabilities。"
+            local example2 "bmastats models"
+            local explain2 "汇总 posterior model probabilities 与变量包含情况；Stata 18+。"
+        }
+        else if "`cmd'" == "bmapredict" {
+            local expr_label "新预测变量 + mean/cri 等 BMA posterior-predictive 设定"
+            local example1 "bmapredict pmean, mean"
+            local explain1 "计算包含 model uncertainty 的 BMA posterior predictive mean。"
+            local example2 "bmapredict cri_l cri_u, cri rseed(18)"
+            local explain2 "生成 posterior predictive credible interval 上下界；需要可用的 BMA posterior sample。"
         }
         else if "`cmd'" == "ci" {
             local expr_label "CI 类型 + 变量（means / proportions / variances）"
@@ -2725,15 +2804,15 @@ program define hxsemantics, rclass
         local purpose1 "用于研究设计阶段计算统计效能、所需样本量或可检测效应。"
         local purpose2 "先明确检验类型、效应大小、显著性水平和目标 power，再核对设计参数。"
     }
-    else if strpos(" bayes bayesmh bayespredict bayesstats bayesgraph ", " `cmd' ") {
+    else if strpos(" bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast ", " `cmd' ") {
         local title "`cmd' — 贝叶斯分析"
         local purpose1 "用于贝叶斯模型估计、MCMC、后验预测、诊断或结果图形。"
         local purpose2 "先验、采样设置和后验结果对象是核心；运行前应明确当前是估计、诊断还是后估计任务。"
     }
-    else if "`cmd'" == "bmaregress" {
-        local title "bmaregress — 贝叶斯模型平均线性回归"
-        local purpose1 "用于在线性回归候选模型之间进行贝叶斯模型平均并反映模型不确定性。"
-        local purpose2 "候选变量、always/group、模型先验和 g-prior 会影响结果，运行前应明确模型空间。"
+    else if strpos(" bmaregress bmacoefsample bmagraph bmastats bmapredict ", " `cmd' ") {
+        local title "`cmd' — 贝叶斯模型平均"
+        local purpose1 "用于 BMA 线性回归、posterior coefficient sampling、模型概率/变量包含诊断与 model-averaged prediction。"
+        local purpose2 "这些入口都属于 Stata 18+；先完成 bmaregress，再按当前后估计任务选择 sampling、graph、stats 或 predict。"
     }
     else if "`cmd'" == "graph" {
         local title "graph — Stata 图形管理入口"

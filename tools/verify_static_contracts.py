@@ -214,6 +214,43 @@ for needle in (
 if 'if c(stata_version) >= 17 {' not in semantics:
     fail("nptrend version-aware semantic branch missing")
 
+bayesian_core = {"bayes", "bayesmh", "bayespredict", "bayesreps", "bayesstats", "bayesgraph", "bayestest"}
+missing_bayes = sorted(bayesian_core - stats_cmds)
+if missing_bayes:
+    fail("Bayesian core command coverage missing: " + ", ".join(missing_bayes))
+bayes17 = {"bayesvarstable", "bayesirf", "bayesfcast"}
+missing_bayes17 = sorted(bayes17 - stats_cmds)
+if missing_bayes17:
+    fail("Stata 17 Bayesian VAR postestimation missing: " + ", ".join(missing_bayes17))
+if "stintcox bayesvarstable bayesirf bayesfcast" not in registry:
+    fail("Stata 17 Bayesian VAR commands missing from version gate")
+bma18 = {"bmaregress", "bmacoefsample", "bmagraph", "bmastats", "bmapredict"}
+missing_bma = sorted(bma18 - stats_cmds)
+if missing_bma:
+    fail("Stata 18 BMA workflow missing: " + ", ".join(missing_bma))
+if "bmaregress bmacoefsample bmagraph bmastats bmapredict" not in registry:
+    fail("Stata 18 BMA commands missing from version gate or method route")
+if "bayesselect" in stats_cmds:
+    fail("post-Stata-18 bayesselect must not leak into the Stata 16-18 catalog")
+for needle in (
+    "bayespredict pmean, mean",
+    "bayesreps yrep*, nreps(10)",
+    "bayesstats summary",
+    "bayesgraph diagnostics {inflation:L1.ogap}",
+    "bayestest model lag1 lag2 lag3",
+    "bayesvarstable",
+    "bayesirf create birf, set(birfex)",
+    "bayesirf graph irf, impulse(fedfunds)",
+    "bayesfcast compute f_, step(10)",
+    "bayesfcast graph f_inflation f_ogap f_fedfunds",
+    "bmacoefsample, rseed(18)",
+    "bmagraph pmp",
+    "bmastats pip",
+    "bmapredict pmean, mean",
+):
+    if needle not in semantics:
+        fail(f"Bayesian/BMA semantic contract missing: {needle}")
+
 dsge_core = {"dsge", "dsgenl"}
 missing_dsge = sorted(dsge_core - stats_cmds)
 if missing_dsge:
@@ -491,8 +528,10 @@ missing_power = sorted(power_core - stats_cmds)
 if missing_power:
     fail("power/precision commands missing: " + ", ".join(missing_power))
 for gated in ("dtable", "gsbounds", "gsdesign"):
-    if f'foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign' not in registry:
-        fail("Stata 18 summary/power version gate missing")
+    if gated not in stats_cmds:
+        fail(f"Stata 18 summary/power command missing: {gated}")
+if "dtable gsbounds gsdesign" not in registry:
+    fail("Stata 18 summary/power version gate missing")
 for needle in (
     'centile y, centile(25 50 75)',
     'ci means y',
