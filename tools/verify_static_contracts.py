@@ -99,6 +99,44 @@ intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
 for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_special_graphics:
     if f'"{graph_cmd}"' not in special_open:
         fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
+linear_method_match = re.search(r'"线性模型及相关"[^\n]*local view "([^"]+)"', registry)
+if not linear_method_match:
+    fail("linear-related Statistics method catalog not found")
+linear_catalog = set(linear_method_match.group(1).split())
+linear_structured = {"hetregress", "intreg", "tobit", "truncreg", "sqreg"}
+linear_guided_safe = {"regress", "areg", "reghdfe", "cnsreg", "rreg", "qreg", "iqreg", "bsqreg", "vwls", "eivreg", "correlate", "pwcorr"}
+linear_native_body = {"churdle", "boxcox", "fp", "nl", "nlsur", "gmm", "sureg", "reg3", "mvreg", "frontier"}
+if linear_catalog != linear_structured | linear_guided_safe | linear_native_body:
+    fail(f"linear-related catalog classification drift: {sorted(linear_catalog - (linear_structured | linear_guided_safe | linear_native_body))}")
+for needle in (
+    'private static boolean isStructuredLinearRelatedCommand(String command)',
+    '"hetregress", "intreg", "tobit", "truncreg", "sqreg"',
+    'private void rebuildStructuredLinearRelatedForm()',
+    'private void updateStructuredLinearRelatedPreview()',
+    'private boolean validateStructuredLinearRelatedBeforeRun()',
+    'hetregress · 异方差线性回归',
+    'intreg · 区间回归',
+    'tobit · 删失回归',
+    'truncreg · 截断回归',
+    'sqreg · 同时分位数回归',
+    'opts.add("twostep")',
+    'opts.add("het(" + String.join(" ", hetVars) + ")")',
+    'structuredLimitOption("ll", this.expression.getText(), tobit)',
+    'opts.add("quantiles(" + qs + ")")',
+    'Two-step GLS 必须选择至少 1 个 het() 方差方程变量',
+    '至少需要设置一个 ll()/ul() 界限',
+    'sqreg 的 quantiles() 必须是 0–1 之间的小数',
+    'qreg percentile validation',
+):
+    if needle == 'qreg percentile validation':
+        if '1–100 之间的百分数，例如 0.25 或 25' not in java:
+            fail("qreg percentile notation validation was not widened to official syntax")
+    elif needle not in java:
+        fail(f"structured linear-related UI contract missing: {needle}")
+for cmd in linear_native_body:
+    if f' {cmd} ' not in semantics:
+        fail(f"complex linear-related native-body command missing from semantics: {cmd}")
+
 for needle in (
     'private static boolean isStructuredPrSdTestCommand(String command)',
     'return Arrays.asList("prtest", "sdtest").contains(command);',
