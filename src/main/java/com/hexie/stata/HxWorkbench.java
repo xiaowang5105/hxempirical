@@ -14416,14 +14416,48 @@ public final class HxWorkbench {
             return "统计|估计后分析";
          } else if ("did_builder".equals(var0)) {
             return "DID 专区|DID分步构建";
-         } else if (Arrays.asList("histogram", "kdensity", "graph_box").contains(var0)) {
-            return "图形|分布图";
-         } else if (Arrays.asList("scatter", "lfit", "twoway").contains(var0)) {
+         } else if (Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit").contains(var0)) {
             return "图形|二维图(散点图，折线图等)";
+         } else if ("graph_bar".equals(var0)) {
+            return "图形|条形图";
+         } else if ("graph_dot".equals(var0)) {
+            return "图形|点图";
+         } else if ("graph_pie".equals(var0)) {
+            return "图形|饼图";
+         } else if ("histogram".equals(var0)) {
+            return "图形|直方图";
+         } else if ("graph_box".equals(var0)) {
+            return "图形|箱线图";
+         } else if ("twoway_contour".equals(var0)) {
+            return "图形|等高线图";
+         } else if ("graph_matrix".equals(var0)) {
+            return "图形|散点图矩阵";
+         } else if (Arrays.asList("kdensity", "lowess", "lpoly").contains(var0)) {
+            return "图形|平滑和密度";
+         } else if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(var0)) {
+            return "图形|回归诊断图";
+         } else if ("tsline".equals(var0)) {
+            return "图形|时间序列图";
+         } else if ("xtline".equals(var0)) {
+            return "图形|面板数据折线图";
+         } else if ("sts_graph".equals(var0)) {
+            return "图形|生存分析图";
+         } else if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(var0)) {
+            return "图形|ROC分析";
+         } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(var0)) {
+            return "图形|多元分析图";
+         } else if (Arrays.asList("cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar").contains(var0)) {
+            return "图形|质量控制";
+         } else if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "marginsplot", "coefplot").contains(var0)) {
+            return "图形|更多统计图形";
+         } else if ("graph_combine".equals(var0)) {
+            return "图形|图形组合";
+         } else if ("graph".equals(var0)) {
+            return "图形|管理图形";
+         } else if ("set".equals(var0)) {
+            return "图形|更改方案/大小";
          } else if ("did_trends".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
-         } else if (Arrays.asList("coefplot", "marginsplot").contains(var0)) {
-            return "图形|更多统计图形";
          } else if ("event_plot".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
          } else if ("oneclick".equals(var0)) {

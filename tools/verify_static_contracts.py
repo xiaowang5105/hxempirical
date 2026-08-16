@@ -358,6 +358,35 @@ if 'return "回归模型|工具变量";' in command_method_scope:
     fail("native IV commands still use the legacy regression commandPath classification")
 if 'return "后估计|系数检验";' in command_method_scope or 'return "后估计|预测边际";' in command_method_scope:
     fail("native postestimation commands still use legacy post commandPath labels")
+graph_command_method_contracts = {
+    "scatter": "图形|二维图(散点图，折线图等)",
+    "graph_bar": "图形|条形图",
+    "graph_dot": "图形|点图",
+    "graph_pie": "图形|饼图",
+    "histogram": "图形|直方图",
+    "graph_box": "图形|箱线图",
+    "twoway_contour": "图形|等高线图",
+    "graph_matrix": "图形|散点图矩阵",
+    "kdensity": "图形|平滑和密度",
+    "rvfplot": "图形|回归诊断图",
+    "tsline": "图形|时间序列图",
+    "xtline": "图形|面板数据折线图",
+    "sts_graph": "图形|生存分析图",
+    "roctab": "图形|ROC分析",
+    "screeplot": "图形|多元分析图",
+    "cluster_dendrogram": "图形|多元分析图",
+    "cchart": "图形|质量控制",
+    "qnorm": "图形|更多统计图形",
+    "marginsplot": "图形|更多统计图形",
+    "graph_combine": "图形|图形组合",
+    "graph": "图形|管理图形",
+    "set": "图形|更改方案/大小",
+}
+for command, method_label in graph_command_method_contracts.items():
+    if command not in command_method_scope or f'return "{method_label}";' not in command_method_scope:
+        fail(f"Graphics commandMethod canonical classification missing: {command} -> {method_label}")
+if 'return "图形|分布图";' in command_method_scope:
+    fail("stale broad distribution commandPath label remains after specific Graphics classification")
 
 
 # Catalog correctness: Stata ERM has eregress/eintreg/eprobit/eoprobit; epoisson is not a public command.
