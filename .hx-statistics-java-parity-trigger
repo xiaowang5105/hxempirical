@@ -1,1 +1,1 @@
-trigger 2026-08-16 statistics java parity
+trigger 2026-08-16 statistics java parity retry 2
