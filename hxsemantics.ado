@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.2  16aug2026
+*! hxsemantics 1.4.3  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit epoisson eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -903,12 +903,19 @@ program define hxsemantics, rclass
         local example2 "`cmd' ..."
         local explain2 "页面会把这里填写的主体原样接到命令名后，并在运行前显示完整 Stata 命令。"
 
-        if inlist("`cmd'", "sem", "gsem") {
-            local expr_label "模型方程（不重复命令名；如 (y <- x1 x2)）"
+        if "`cmd'" == "sem" {
+            local expr_label "线性 SEM 路径 / 方程（不重复 sem；如 (y <- x1 x2)）"
             local example1 "sem (y <- x1 x2)"
-            local explain1 "直接用路径 / 方程语法描述结构模型。"
-            local example2 "gsem (y <- x1 x2, family(bernoulli) link(logit))"
-            local explain2 "gsem 的 family/link 可与方程写在同一主体中。"
+            local explain1 "最小线性路径模型：用 x1、x2 解释连续结果 y。"
+            local example2 "sem (L1 -> m1 m2) (L2 -> m3 m4) (L3 <- L1 L2)"
+            local explain2 "测量模型和结构路径可以在同一条 sem 命令中组合。"
+        }
+        else if "`cmd'" == "gsem" {
+            local expr_label "广义 SEM 方程 + family()/link()/随机效应/潜在类别设定"
+            local example1 "gsem (y <- x1 x2, family(bernoulli) link(logit))"
+            local explain1 "对二元结果 y 拟合 logit 链接的广义结构方程。"
+            local example2 "help gsem"
+            local explain2 "多层、潜在类别、选择模型等 gsem 结构差异很大，复杂模型继续按当前 help 核对。"
         }
         else if "`cmd'" == "mi" {
             local expr_label "mi 子命令与完整参数（如 set / impute / estimate）"
@@ -1013,14 +1020,52 @@ program define hxsemantics, rclass
             }
         }
         else if strpos(" heckman heckprobit heckoprobit heckpoisson ", " `cmd' ") {
-            local expr_label "结果方程 + 选择方程主体（含 select() 等命令特有结构）"
-            local example1 "help `cmd'"
-            local explain1 "样本选择模型至少包含结果方程和选择机制，完整主体可以明确两套变量角色。"
+            local expr_label "结果方程 + select() 选择方程（两套变量角色必须同时明确）"
+            if "`cmd'" == "heckman" {
+                local example1 "heckman wage educ age, select(married children educ age)"
+                local explain1 "连续结果 wage 只在被选择样本中观察；select() 描述进入样本的机制。"
+                local example2 "help heckman"
+                local explain2 "需要显式选择指示变量、两步法或 VCE 设置时继续核对当前 help。"
+            }
+            else if "`cmd'" == "heckprobit" {
+                local example1 "heckprobit y x1 x2, select(selected = z1 z2 x1)"
+                local explain1 "主方程是二元 Probit；selected 及 z1、z2、x1 构成选择方程。"
+                local example2 "help heckprobit"
+                local explain2 "运行前确认选择指示的 0/1 编码和排除限制。"
+            }
+            else if "`cmd'" == "heckoprobit" {
+                local example1 "heckoprobit satisfaction educ age, select(work=educ age i.married##c.children)"
+                local explain1 "主结果是有序类别，work 方程描述结果被观察到的选择过程。"
+                local example2 "help heckoprobit"
+                local explain2 "阈值、选择方程和标准误设置都应按研究设计核对。"
+            }
+            else {
+                local example1 "heckpoisson patents investment i.firmtype, select(applied = investment size i.firmtype)"
+                local explain1 "主方程解释计数结果 patents，applied 方程处理非随机样本选择。"
+                local example2 "help heckpoisson"
+                local explain2 "选择机制与计数过程应分别有清楚的经济含义。"
+            }
         }
-        else if strpos(" eregress eprobit eoprobit epoisson eintreg ", " `cmd' ") {
-            local expr_label "主结果方程 + 内生协变量 / 处理方程主体"
-            local example1 "help `cmd'"
-            local explain1 "扩展回归模型可能同时包含多个内生方程，页面使用完整原生主体避免丢失方程结构。"
+        else if strpos(" eregress eprobit eoprobit eintreg ", " `cmd' ") {
+            local expr_label "主结果方程 + endogenous()/select()/entreat() 等扩展方程"
+            if "`cmd'" == "eregress" {
+                local example1 "eregress y x1, endogenous(x2 = x3 x4)"
+                local explain1 "在线性结果方程中把 x2 作为内生协变量，并用 x3、x4 建模。"
+            }
+            else if "`cmd'" == "eprobit" {
+                local example1 "eprobit y x1, endogenous(x2 = x3 x4)"
+                local explain1 "二元 Probit 结果方程，同时显式建立 x2 的内生协变量方程。"
+            }
+            else if "`cmd'" == "eoprobit" {
+                local example1 "eoprobit y x1, endogenous(x2 = x3 x4)"
+                local explain1 "有序 Probit 结果方程，同时显式建立 x2 的内生协变量方程。"
+            }
+            else {
+                local example1 "eintreg ylower yupper x1, endogenous(x2 = x3 x4)"
+                local explain1 "区间结果必须同时给出下界和上界，再加入内生协变量方程。"
+            }
+            local example2 "help `cmd'"
+            local explain2 "ERM 还可组合 select() 与 entreat()；复杂联立结构运行前核对当前 Stata help。"
         }
         else if "`cmd'" == "arima" {
             local expr_label "结果变量 + 外生变量（可选）+ ARIMA 阶数 / AR-MA 设定"
@@ -1123,6 +1168,48 @@ program define hxsemantics, rclass
             local explain1 "在已声明的空间面板数据上估计固定效应空间自回归模型。"
             local example2 "spxtregress y x, re dvarlag(W) errorlag(M)"
             local explain2 "随机效应空间面板模型使用同样的空间权重结构。"
+        }
+        else if "`cmd'" == "xtgee" {
+            local expr_label "Y + X + family() + link() + corr()（GEE 核心设定）"
+            local example1 "xtgee union age not_smsa, family(binomial) link(probit) corr(exchangeable)"
+            local explain1 "二元结果采用 Probit 链接，并用 exchangeable 工作相关结构处理面板内相关。"
+            local example2 "xtgee y x1 x2, family(gaussian) link(identity) corr(independent)"
+            local explain2 "连续结果可使用 Gaussian + identity；相关结构应由数据与研究设计决定。"
+        }
+        else if "`cmd'" == "xttobit" {
+            local expr_label "Y + X + ll()/ul() 截尾界限"
+            local example1 "xttobit y x1 x2, ll(0)"
+            local explain1 "随机效应面板 Tobit，结果在 0 处左删失。"
+            local example2 "help xttobit"
+            local explain2 "右删失或双侧删失时继续设置 ul() / ll()。"
+        }
+        else if "`cmd'" == "xtintreg" {
+            local expr_label "结果下界 + 结果上界 + X（例如 ylower yupper x1 x2）"
+            local example1 "xtintreg ylower yupper x1 x2 x3"
+            local explain1 "ylower、yupper 分别记录区间结果的下界和上界；这两个结果变量都属于核心语法。"
+            local example2 "help xtintreg"
+            local explain2 "左删失、右删失和精确观测通过上下界变量中的缺失/相等关系表达。"
+        }
+        else if "`cmd'" == "xtfrontier" {
+            local expr_label "Y + X + ti/tvd + production/cost 等前沿设定"
+            local example1 "xtfrontier y x1 x2, ti"
+            local explain1 "估计时间不变 inefficiency 的面板随机前沿模型。"
+            local example2 "xtfrontier y x1 x2, tvd"
+            local explain2 "tvd 允许 inefficiency 随时间按共同衰减结构变化。"
+        }
+        else if "`cmd'" == "xtabond" {
+            local expr_label "Y + X + lags()/maxldep()/pre()/endogenous()/twostep 等动态面板设定"
+            local example1 "xtabond y x1 x2, lags(1)"
+            local explain1 "Arellano–Bond 差分 GMM；lags(1) 指定因变量动态滞后阶数。"
+            local example2 "help xtabond"
+            local explain2 "工具变量集合、预定变量、两步估计和 AR 检验会显著影响结果，运行前逐项核对。"
+        }
+        else if "`cmd'" == "xtdpdsys" {
+            local expr_label "Y + X + lags()/maxldep()/pre()/endogenous()/twostep 等系统 GMM 设定"
+            local example1 "xtdpdsys y x1 x2, lags(1)"
+            local explain1 "Arellano–Bover/Blundell–Bond 系统估计同时利用差分方程和水平方程矩条件。"
+            local example2 "help xtdpdsys"
+            local explain2 "系统 GMM 的工具变量数量与有效性需要在研究中单独诊断。"
         }
         else if strpos(" mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm ", " `cmd' ") {
             local expr_label "固定部分 + || 随机效应层级（如 y x1 x2 || school: x2 || class:）"
@@ -1232,6 +1319,38 @@ program define hxsemantics, rclass
         }
     }
 
+    /* Panel estimators whose Y/X grammar remains safe still get command-specific examples. */
+    if "`cmd'" == "xtpoisson" {
+        local example1 "xtpoisson y x1 x2, fe"
+        local explain1 "固定效应面板 Poisson；运行前页面会先按所选数据结构执行 xtset。"
+        local example2 "xtpoisson y x1 x2, re"
+        local explain2 "随机效应面板 Poisson。"
+    }
+    else if "`cmd'" == "xtnbreg" {
+        local example1 "xtnbreg y x1 x2, re"
+        local explain1 "随机效应面板负二项模型。"
+        local example2 "xtnbreg y x1 x2, fe"
+        local explain2 "固定效应参数化应结合研究目标和 Stata 定义解释。"
+    }
+    else if "`cmd'" == "xtcloglog" {
+        local example1 "xtcloglog y x1 x2, re"
+        local explain1 "随机效应面板 complementary log-log 模型。"
+        local example2 "help xtcloglog"
+        local explain2 "总体平均等模型选项按当前 Stata 版本核对。"
+    }
+    else if "`cmd'" == "xtoprobit" {
+        local example1 "xtoprobit y x1 x2"
+        local explain1 "有序结果的随机效应面板 Probit。"
+        local example2 "help xtoprobit"
+        local explain2 "先确认结果类别具有明确顺序。"
+    }
+    else if "`cmd'" == "xtmlogit" {
+        local example1 "xtmlogit y x1 x2, re"
+        local explain1 "无序多类别结果的随机效应面板 multinomial logit。"
+        local example2 "help xtmlogit"
+        local explain2 "基准类别、固定/随机效应可用性和面板内变异要求运行前核对。"
+    }
+
     /* Family-level copy for catalog commands that rely on the generic syntax parser.
        Keep the parsed Stata syntax/flags unchanged; only improve beginner-facing semantics. */
     if strpos(" table prtest sdtest oneway anova ranksum median signrank signtest ", " `cmd' ") {
@@ -1319,7 +1438,7 @@ program define hxsemantics, rclass
         local purpose1 "用于病例对照、队列或发病率资料的比值比、风险比和相关效应量计算。"
         local purpose2 "先确认病例/暴露或事件/时间变量角色；分层与置信区间选项按 Stata 命令设置。"
     }
-    else if strpos(" eregress eprobit eoprobit epoisson eintreg ", " `cmd' ") {
+    else if strpos(" eregress eprobit eoprobit eintreg ", " `cmd' ") {
         local title "`cmd' — 内生协变量模型"
         local purpose1 "用于结果方程中存在内生解释变量时的扩展回归模型。"
         local purpose2 "需要明确主结果方程与内生变量方程；复杂联立结构按 Stata 原生语法填写。"
@@ -1334,10 +1453,15 @@ program define hxsemantics, rclass
         local purpose1 "用于同时估计多个路径、潜变量和测量/结构关系。"
         local purpose2 "模型方程通常需要直接按 Stata SEM/GSEM 语法表达；复杂路径和 family/link 设置保留原生写法。"
     }
-    else if strpos(" fmm irt ", " `cmd' ") {
-        local title "`cmd' — 潜在类别与测量模型"
-        local purpose1 "用于有限混合、潜在类别或项目反应理论分析。"
-        local purpose2 "类别数、题项模型和潜在结构高度依赖具体研究设计，运行前请按 Stata 当前语法确认。"
+    else if "`cmd'" == "fmm" {
+        local title "fmm — 有限混合模型"
+        local purpose1 "把总体表示为若干未观测组分，并允许不同组分拥有不同回归参数或分布。"
+        local purpose2 "第一步先确定潜在组分数量和冒号后的基础估计命令；类别数应结合理论与模型比较判断。"
+    }
+    else if "`cmd'" == "irt" {
+        local title "irt — 项目反应理论"
+        local purpose1 "用 Rasch、1PL/2PL/3PL、GRM 等模型分析潜在能力与题项反应之间的关系。"
+        local purpose2 "先确定题项类型与 IRT 模型，再选择全部题项变量；不同题型不能随意套用同一响应模型。"
     }
     else if strpos(" factor pca canon cca manova discrim cluster ", " `cmd' ") {
         local title "`cmd' — 多元统计分析"

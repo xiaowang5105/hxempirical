@@ -1,4 +1,4 @@
-*! hxregistry 3.1.3  15aug2026
+*! hxregistry 3.1.4  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,7 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit epoisson eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 18 {
         local stats_cmds : subinstr local stats_cmds " bmaregress" "", all
     }
@@ -265,7 +265,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "多层混合效应模型", "mixed_effects") local view "mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm"
     else if inlist(`"`method'"', "生存分析", "survival") local view "stset sts stcox streg stcrreg"
     else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir"
-    else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit epoisson eintreg"
+    else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
     else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") local view "teffects etregress etpoisson didregress xtdidregress"
     else if inlist(`"`method'"', "结构方程模型(SEM)", "sem") local view "sem gsem"

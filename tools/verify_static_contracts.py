@@ -30,6 +30,7 @@ install_doc = read("INSTALL.md")
 launcher = read("hxinstall.do")
 pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
+semantics = read("hxsemantics.ado")
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
 core_match = re.search(r'local core\s+"([^"]+)"', entry)
@@ -174,13 +175,35 @@ for official in ("didregress", "xtdidregress"):
     if official not in stats_cmds:
         fail(f"official DID command missing from Statistics catalog: {official}")
 
+# Catalog correctness: Stata ERM has eregress/eintreg/eprobit/eoprobit; epoisson is not a public command.
+if (
+    "epoisson" in stats_cmds
+    or re.search(r"(?<![A-Za-z0-9_])epoisson(?![A-Za-z0-9_])", registry)
+    or re.search(r"(?<![A-Za-z0-9_])epoisson(?![A-Za-z0-9_])", semantics)
+):
+    fail("nonexistent epoisson leaked into Statistics catalog or semantics")
+for official in ("eregress", "eintreg", "eprobit", "eoprobit"):
+    if official not in stats_cmds:
+        fail(f"official extended-regression command missing: {official}")
+for needle in (
+    'xtgee union age not_smsa, family(binomial) link(probit) corr(exchangeable)',
+    'xtintreg ylower yupper x1 x2 x3',
+    'xtfrontier y x1 x2, tvd',
+    'xtabond y x1 x2, lags(1)',
+    'xtdpdsys y x1 x2, lags(1)',
+    'heckpoisson patents investment i.firmtype, select(applied = investment size i.firmtype)',
+    'eprobit y x1, endogenous(x2 = x3 x4)',
+):
+    if needle not in semantics:
+        fail(f"long-tail command semantic contract missing: {needle}")
+
 print(
     "HX_STATIC_VERIFY_OK "
     f"doctor={expected_total}/{expected_total} "
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.
