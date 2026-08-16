@@ -23,6 +23,18 @@ jobs:
           python-version: '3.12'
       - name: Patch Lasso and LCA catalog semantics
         run: python tools/tmp_patch_lasso_catalog.py
+      - name: Fix generated static-contract quoting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          text = p.read_text(encoding='utf-8')
+          bad = "    '`cmd' y d1, controls(x1-x100)',\n"
+          good = '    "Partialing-out Lasso",\n'
+          if bad not in text:
+              raise SystemExit('generated Stata-macro contract line not found')
+          p.write_text(text.replace(bad, good, 1), encoding='utf-8', newline='\n')
+          PY
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
