@@ -99,6 +99,31 @@ intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
 for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_special_graphics:
     if f'"{graph_cmd}"' not in special_open:
         fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
+for needle in (
+    'private static boolean isStructuredSummaryTestCommand(String command)',
+    '"tabulate", "oneway", "ranksum", "median", "signrank", "signtest"',
+    'private void rebuildStructuredSummaryTestForm()',
+    'private void updateStructuredSummaryTestPreview()',
+    'tabulate · 频数 / 列联表',
+    'oneway · 单因素方差分析',
+    'ranksum · Wilcoxon 秩和检验',
+    'median · 中位数相等检验',
+    'signrank · Wilcoxon 配对符号秩检验',
+    'signtest · 配对符号检验',
+    'opts.add("by(" + second + ")")',
+    'tabulate 至少需要选择第 1 个分类变量',
+    '需要分别选择检验 / 结果变量和分组变量',
+    '需要选择第一个配对变量，并填写等号右侧的第二变量或表达式',
+):
+    if needle not in java:
+        fail(f"structured summary/test UI contract missing: {needle}")
+
+for cmd in ("table", "anova", "dtable"):
+    if f' {cmd} ' not in semantics:
+        fail(f"complex Statistics command must remain represented in hxsemantics: {cmd}")
+if ' table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi ' not in semantics:
+    fail("native-body safety family for complex summary/test commands changed unexpectedly")
+
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
     fail("bar/dot special graph preview builder missing")
 if 'var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);' not in java:
