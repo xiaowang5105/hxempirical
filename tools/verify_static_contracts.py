@@ -264,6 +264,27 @@ for hidden in ("did_builder", "did_trends"):
         fail(f"legacy DID helper leaked into a public command group: {hidden}")
 if "event_plot" not in graph_cmds:
     fail("event_plot must remain public through the Graph catalog")
+java_invalid_tokens = ("epoisson", "cca")
+for invalid in java_invalid_tokens:
+    if re.search(rf"(?<![A-Za-z0-9_]){re.escape(invalid)}(?![A-Za-z0-9_])", java):
+        fail(f"stale/nonexistent Java command token remains: {invalid}")
+if 'Collections.singletonList("bma")' in java:
+    fail("Java BMA fallback still points to retired bma alias")
+for java_stats_contract in (
+    'return Arrays.asList("irt", "irtgraph", "diflogistic", "difmh");',
+    'return Arrays.asList("svyset", "svydescribe", "svy");',
+    'return Arrays.asList("exlogistic", "expoisson", "bitest", "bitesti", "ksmirnov", "symmetry", "tetrachoric", "tabi");',
+    'return Arrays.asList("power", "ciwidth");',
+    'return Arrays.asList("bmaregress", "bmacoefsample", "bmagraph", "bmastats", "bmapredict");',
+    'return Arrays.asList("dsge", "dsgenl");',
+    'case "DSGE模型": return "dsge · dsgenl";',
+    'case "DSGE模型":',
+    'return "dsge";',
+):
+    if java_stats_contract not in java:
+        fail(f"Java Statistics parity contract missing: {java_stats_contract}")
+if '"内生协变量", "样本选择模型"' in java:
+    fail("duplicate sample-selection method remains in Java public Statistics navigation")
 for official in ("didregress", "xtdidregress"):
     if official not in stats_cmds:
         fail(f"official DID command missing from Statistics catalog: {official}")

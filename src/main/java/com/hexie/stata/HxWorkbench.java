@@ -2235,6 +2235,8 @@ public final class HxWorkbench {
                return "fmm";
             case "项目反应理论(IRT)":
                return "irt";
+            case "DSGE模型":
+               return "dsge";
             case "多元分析":
                return "multivariate";
             case "调查数据分析":
@@ -4897,33 +4899,34 @@ public final class HxWorkbench {
             case "分数结果": return "fracreg · betareg";
             case "广义线性模型": return "glm";
             case "选择模型": return "heckman · heckprobit · heckpoisson";
-            case "时间序列": return "arima · newey · prais · dfuller";
-            case "多元时间序列": return "var · svar · vec · irf";
+            case "时间序列": return "arima · arfima · newey · arch · dfuller";
+            case "多元时间序列": return "var · varsoc · vargranger · irf · svar · vec";
             case "空间自回归模型": return "spregress · spivregress · spxtregress";
-            case "纵向/面板数据": return "xtreg · xtlogit · xtprobit · xtpoisson";
-            case "多层混合效应模型": return "mixed · melogit · meprobit · mepoisson";
-            case "生存分析": return "stset · sts · stcox · streg";
-            case "流行病学及相关": return "cc · cs · ir";
-            case "内生协变量": return "eregress · eprobit · eoprobit · epoisson";
+            case "纵向/面板数据": return "xtreg · xtlogit · xtpoisson · xtgee · xtivreg";
+            case "多层混合效应模型": return "mixed · melogit · mepoisson · mestreg";
+            case "生存分析": return "stset · stcox · streg · stintreg · stcrreg";
+            case "流行病学及相关": return "cc · cs · ir · mcc · dstdize";
+            case "内生协变量": return "eregress · eprobit · eoprobit · eintreg";
             case "样本选择模型": return "heckman · heckprobit · heckoprobit";
-            case "因果推断/处理效应": return "teffects · didregress · xtdidregress";
+            case "因果推断/处理效应": return "teffects · eteffects · etregress · stteffects";
             case "结构方程模型(SEM)": return "sem · gsem";
             case "潜在类别分析(LCA)": return "gsem";
             case "有限混合模型(FMM)": return "fmm";
-            case "项目反应理论(IRT)": return "irt";
-            case "多元分析": return "factor · pca · manova · cluster";
-            case "调查数据分析": return "svy";
-            case "Lasso回归": return "lasso · elasticnet · sqrtlasso";
+            case "项目反应理论(IRT)": return "irt · irtgraph · diflogistic · difmh";
+            case "DSGE模型": return "dsge · dsgenl";
+            case "多元分析": return "alpha · factor · pca · canon · ca · manova";
+            case "调查数据分析": return "svyset · svydescribe · svy";
+            case "Lasso回归": return "lasso · elasticnet · sqrtlasso · dsregress · poregress";
             case "Meta分析": return "meta";
             case "多重插补": return "mi";
-            case "非参数分析": return "npregress · kdensity · lowess · lpoly";
-            case "精确统计": return "bitesti · tabi";
+            case "非参数分析": return "npregress · nptrend · kdensity · lowess · lpoly";
+            case "精确统计": return "exlogistic · expoisson · bitest · ksmirnov · tabi";
             case "重抽样": return "bootstrap · jackknife · permute · simulate";
-            case "效能，精度和样品含量": return "power";
-            case "贝叶斯分析": return "bayes · bayesmh · bayespredict";
-            case "贝叶斯模型平均": return "bma";
-            case "工具变量与内生性": return "ivregress · ivreghdfe";
-            case "估计后分析": return "test · lincom · predict · margins";
+            case "效能，精度和样品含量": return "power · ciwidth";
+            case "贝叶斯分析": return "bayes · bayesmh · bayespredict · bayesstats";
+            case "贝叶斯模型平均": return "bmaregress · bmastats · bmagraph · bmapredict";
+            case "工具变量与内生性": return "ivregress · ivprobit · ivtobit · ivpoisson · ivreghdfe";
+            case "估计后分析": return "test · lincom · predict · margins · estat · estimates";
             default: return "查看该分类下的 Stata 命令";
          }
       }
@@ -5245,8 +5248,8 @@ public final class HxWorkbench {
             {"描述与比较", "汇总、表格和假设检验", new Color(54, 114, 236), new String[]{"汇总，表格和假设检验"}},
             {"回归与模型", "常见结果变量、广义模型与选择模型", new Color(35, 169, 105), new String[]{"线性模型及相关", "二元结果", "序数结果", "分类结果", "计数结果", "分数结果", "广义线性模型", "选择模型"}},
             {"时间与面板数据", "时间序列、空间、纵向与多层数据", new Color(128, 92, 220), new String[]{"时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型"}},
-            {"进阶与结构", "生存、流行病学、内生性与样本选择", new Color(235, 151, 39), new String[]{"生存分析", "流行病学及相关", "内生协变量", "样本选择模型"}},
-            {"因果与结构模型", "处理效应、SEM、潜在类别与多元分析", new Color(222, 92, 112), new String[]{"因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析"}},
+            {"进阶与结构", "生存、流行病学与内生协变量", new Color(235, 151, 39), new String[]{"生存分析", "流行病学及相关", "内生协变量"}},
+            {"因果与结构模型", "处理效应、SEM、潜变量、DSGE 与多元分析", new Color(222, 92, 112), new String[]{"因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "DSGE模型", "多元分析", "调查数据分析"}},
             {"扩展方法", "正则化、插补、重抽样、效能与贝叶斯", new Color(57, 145, 183), new String[]{"Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均"}},
             {"扩展与第三方", "工具变量、内生性与估计后分析", new Color(71, 126, 188), new String[]{"工具变量与内生性", "估计后分析"}}
          };
@@ -6380,17 +6383,17 @@ public final class HxWorkbench {
 
       private static List<String> previewCommandsForMethod(String var0) {
          if ("汇总，表格和假设检验".equals(var0)) {
-            return Arrays.asList("summarize", "tabstat", "tabulate", "table", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest");
+            return Arrays.asList("summarize", "ameans", "centile", "ci", "mean", "proportion", "ratio", "total", "tabstat", "tabulate", "table", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest");
          }          else if ("线性模型及相关".equals(var0)) {
-            return Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "qreg", "iqreg", "bsqreg", "vwls", "eivreg", "sureg", "mvreg", "correlate", "pwcorr");
+            return Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "hetregress", "qreg", "iqreg", "bsqreg", "sqreg", "vwls", "eivreg", "intreg", "tobit", "truncreg", "churdle", "boxcox", "fp", "nl", "nlsur", "gmm", "sureg", "reg3", "mvreg", "frontier", "correlate", "pwcorr");
          }          else if ("二元结果".equals(var0)) {
-            return Arrays.asList("logit", "logistic", "probit", "hetprobit", "scobit", "cloglog");
+            return Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog");
          }          else if ("序数结果".equals(var0)) {
-            return Arrays.asList("ologit", "oprobit");
+            return Arrays.asList("ologit", "oprobit", "hetoprobit", "zioprobit");
          }          else if ("分类结果".equals(var0)) {
-            return Arrays.asList("mlogit", "mprobit", "asclogit", "asmprobit");
+            return Arrays.asList("mlogit", "mprobit", "clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit", "cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit", "asclogit", "asmprobit");
          }          else if ("计数结果".equals(var0)) {
-            return Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg");
+            return Arrays.asList("poisson", "nbreg", "gnbreg", "cpoisson", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg");
          }          else if ("分数结果".equals(var0)) {
             return Arrays.asList("fracreg", "betareg");
          }          else if ("广义线性模型".equals(var0)) {
@@ -6398,25 +6401,25 @@ public final class HxWorkbench {
          }          else if ("选择模型".equals(var0)) {
             return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
          }          else if ("时间序列".equals(var0)) {
-            return Arrays.asList("arima", "newey", "prais", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram");
+            return Arrays.asList("arima", "arfima", "newey", "prais", "arch", "ucm", "mswitch", "threshold", "dfgls", "dfuller", "pperron", "corrgram", "cumsp", "pergram", "wntestb", "wntestq", "psdensity", "rolling", "forecast", "tsappend", "tsfill", "tsfilter", "tsreport", "tssmooth");
          }          else if ("多元时间序列".equals(var0)) {
-            return Arrays.asList("var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf");
+            return Arrays.asList("var", "varsoc", "vargranger", "varlmar", "varnorm", "varstable", "irf", "svar", "vec", "vecrank", "veclmar", "vecnorm", "vecstable", "varbasic", "varwle", "mgarch", "dfactor", "sspace", "xcorr");
          }          else if ("空间自回归模型".equals(var0)) {
             return Arrays.asList("spregress", "spivregress", "spxtregress");
          }          else if ("纵向/面板数据".equals(var0)) {
-            return Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys");
+            return Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtfrontier", "xtivreg", "xtpcse", "xtgls", "xtregar", "xtrc", "xtstreg", "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor", "xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata");
          }          else if ("多层混合效应模型".equals(var0)) {
-            return Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm");
+            return Arrays.asList("mixed", "mecloglog", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "meintreg", "menl", "mestreg", "metobit", "meglm");
          }          else if ("生存分析".equals(var0)) {
-            return Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg");
+            return Arrays.asList("stset", "stcox", "streg", "stintreg", "stcrreg", "sts", "stcurve", "stdescribe", "stsum", "stci", "stbase", "stfill", "stgen", "stsplit", "stvary", "sttocc", "sttoct", "stir", "strate", "stptime", "stmh", "stmc", "ctset", "cttost", "ltable", "snapspan");
          }          else if ("流行病学及相关".equals(var0)) {
-            return Arrays.asList("cc", "cs", "ir");
+            return Arrays.asList("cc", "cs", "ir", "mcc", "dstdize", "pkexamine", "pksumm", "pkcross", "pkequiv", "pkcollapse", "pkshape");
          }          else if ("内生协变量".equals(var0)) {
-            return Arrays.asList("eregress", "eprobit", "eoprobit", "epoisson", "eintreg");
+            return Arrays.asList("eregress", "eprobit", "eoprobit", "eintreg");
          }          else if ("样本选择模型".equals(var0)) {
             return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
          }          else if ("因果推断/处理效应".equals(var0)) {
-            return Arrays.asList("teffects", "etregress", "etpoisson", "didregress", "xtdidregress");
+            return Arrays.asList("teffects", "eteffects", "etregress", "etpoisson", "stteffects");
          }          else if ("结构方程模型(SEM)".equals(var0)) {
             return Arrays.asList("sem", "gsem");
          }          else if ("潜在类别分析(LCA)".equals(var0)) {
@@ -6424,33 +6427,35 @@ public final class HxWorkbench {
          }          else if ("有限混合模型(FMM)".equals(var0)) {
             return Collections.singletonList("fmm");
          }          else if ("项目反应理论(IRT)".equals(var0)) {
-            return Collections.singletonList("irt");
+            return Arrays.asList("irt", "irtgraph", "diflogistic", "difmh");
+         }          else if ("DSGE模型".equals(var0)) {
+            return Arrays.asList("dsge", "dsgenl");
          }          else if ("多元分析".equals(var0)) {
-            return Arrays.asList("factor", "pca", "canon", "cca", "manova", "mvreg", "discrim", "cluster");
+            return Arrays.asList("alpha", "factor", "pca", "canon", "ca", "candisc", "hotelling", "manova", "mvreg", "mca", "mds", "mdslong", "mdsmat", "mvtest", "procrustes", "discrim", "cluster");
          }          else if ("调查数据分析".equals(var0)) {
-            return Collections.singletonList("svy");
+            return Arrays.asList("svyset", "svydescribe", "svy");
          }          else if ("Lasso回归".equals(var0)) {
-            return Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress");
+            return Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress");
          }          else if ("Meta分析".equals(var0)) {
             return Collections.singletonList("meta");
          }          else if ("多重插补".equals(var0)) {
             return Collections.singletonList("mi");
          }          else if ("非参数分析".equals(var0)) {
-            return Arrays.asList("ranksum", "median", "signrank", "signtest", "npregress", "kdensity", "lowess", "lpoly");
+            return Arrays.asList("ranksum", "median", "signrank", "signtest", "npregress", "nptrend", "kdensity", "lowess", "lpoly");
          }          else if ("精确统计".equals(var0)) {
-            return Arrays.asList("bitesti", "tabi");
+            return Arrays.asList("exlogistic", "expoisson", "bitest", "bitesti", "ksmirnov", "symmetry", "tetrachoric", "tabi");
          }          else if ("重抽样".equals(var0)) {
             return Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby");
          }          else if ("效能，精度和样品含量".equals(var0)) {
-            return Collections.singletonList("power");
+            return Arrays.asList("power", "ciwidth");
          }          else if ("贝叶斯分析".equals(var0)) {
-            return Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph");
+            return Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesreps", "bayesstats", "bayesgraph", "bayestest");
          }          else if ("贝叶斯模型平均".equals(var0)) {
-            return Collections.singletonList("bma");
+            return Arrays.asList("bmaregress", "bmacoefsample", "bmagraph", "bmastats", "bmapredict");
          }          else if ("工具变量与内生性".equals(var0)) {
-            return Arrays.asList("ivregress", "ivreghdfe");
+            return Arrays.asList("ivregress", "ivprobit", "ivtobit", "ivpoisson", "ivreghdfe");
          }          else if ("估计后分析".equals(var0)) {
-            return Arrays.asList("test", "lincom", "predict", "margins");
+            return Arrays.asList("test", "testparm", "testnl", "lincom", "nlcom", "contrast", "pwcompare", "predict", "predictnl", "margins", "marginsplot", "lrtest", "hausman", "suest", "linktest", "estimates", "estat");
          }          else if ("二维图(散点图，折线图等)".equals(var0)) {
             return Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly");
          }          else if ("条形图".equals(var0)) {
@@ -6560,9 +6565,9 @@ public final class HxWorkbench {
          } else if ("stats".equals(var0)) {
             return Arrays.asList(
                "汇总，表格和假设检验", "线性模型及相关", "二元结果", "序数结果", "分类结果", "计数结果", "分数结果", "广义线性模型", "选择模型",
-               "时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型", "生存分析", "流行病学及相关", "内生协变量", "样本选择模型",
-               "因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析",
-               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均", "工具变量与内生性", "估计后分析"
+               "时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型", "生存分析", "流行病学及相关", "内生协变量",
+               "因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "DSGE模型", "多元分析", "调查数据分析",
+               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "工具变量与内生性", "估计后分析"
             );
          } else if ("reg".equals(var0)) {
             return Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量", "双重差分");
@@ -10681,11 +10686,11 @@ public final class HxWorkbench {
          if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "层级与变量";
          if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "生存数据设定";
          if (Arrays.asList("cc", "cs", "ir").contains(command)) return "效应量设定";
-         if (Arrays.asList("eregress", "eprobit", "eoprobit", "epoisson", "eintreg", "teffects", "etregress", "etpoisson").contains(command)) return "因果模型设定";
-         if (Arrays.asList("sem", "gsem", "fmm", "irt").contains(command)) return "模型结构";
-         if (Arrays.asList("factor", "pca", "canon", "cca", "manova", "discrim", "cluster").contains(command)) return "多元分析设定";
-         if ("svy".equals(command)) return "调查设计与估计";
-         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress").contains(command)) return "高维变量设定";
+         if (Arrays.asList("eregress", "eprobit", "eoprobit", "eintreg", "teffects", "eteffects", "etregress", "etpoisson", "stteffects").contains(command)) return "因果模型设定";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt", "irtgraph", "diflogistic", "difmh", "dsge", "dsgenl").contains(command)) return "模型结构";
+         if (Arrays.asList("alpha", "factor", "pca", "canon", "ca", "candisc", "hotelling", "manova", "mvreg", "mca", "mds", "mdslong", "mdsmat", "mvtest", "procrustes", "discrim", "cluster").contains(command)) return "多元分析设定";
+         if (Arrays.asList("svyset", "svydescribe", "svy").contains(command)) return "调查设计与估计";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress").contains(command)) return "高维变量设定";
          if ("meta".equals(command)) return "Meta 分析设定";
          if ("mi".equals(command)) return "多重插补任务";
          if (Arrays.asList("npregress", "lowess", "lpoly").contains(command)) return "非参数设定";
@@ -10731,8 +10736,8 @@ public final class HxWorkbench {
          if (Arrays.asList("xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys").contains(command)) return "先选择结果变量、解释变量和面板结构，再设置当前模型支持的估计选项。";
          if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "先确定结果变量、解释变量和层级结构；随机效应方程按 Stata 原生语法补充。";
          if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "先确认生存时间、失败事件和解释变量角色；删失与模型细节在最后核对。";
-         if (Arrays.asList("sem", "gsem", "fmm", "irt").contains(command)) return "先明确模型方程或潜变量结构；复杂路径、类别和分布设定保留 Stata 原生表达。";
-         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress").contains(command)) return "先设置结果变量和候选解释变量，再核对惩罚、选择和推断规则。";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt", "irtgraph", "diflogistic", "difmh", "dsge", "dsgenl").contains(command)) return "先明确模型方程或潜变量结构；复杂路径、类别和分布设定保留 Stata 原生表达。";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress").contains(command)) return "先设置结果变量和候选解释变量，再核对惩罚、选择和推断规则。";
          if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "先明确要重复执行的统计量或命令，再设置重复次数、随机种子和保存选项。";
          if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(command)) return "先完成当前图形最关键的变量或结果对象；样本范围和 Stata 图形 options 放在最后。";
          if ("generate".equals(command)) return "填写新变量名和计算公式；需要限定样本时在最后一步补充 if。";
