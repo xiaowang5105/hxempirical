@@ -59,6 +59,21 @@ jobs:
           if s.count(redundant) != 1:
               raise SystemExit('patcher redundant static block mismatch')
           s = s.replace(redundant, '')
+
+          start = s.index('# Strong catalog coverage gate:')
+          end_line = 'static = replace_exact(static, coverage_anchor, coverage_block, label="catalog coverage gate")'
+          end = s.index(end_line, start) + len(end_line)
+          stable = '''# Strong catalog coverage gate: only setting/estimation commands are intentionally non-special in Graphics.
+          coverage_anchor = ''' + '"""' + '''    if graph_cmd not in special_open:
+              fail(f"structured Graphics route contract missing: {graph_cmd}")
+          ''' + '"""' + '''
+          coverage_block = coverage_anchor + ''' + '"""' + '''intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
+          for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_special_graphics:
+              if f'"{graph_cmd}"' not in special_open:
+                  fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
+          ''' + '"""' + '''
+          static = replace_exact(static, coverage_anchor, coverage_block, label="catalog coverage gate")'''
+          s = s[:start] + stable + s[end:]
           p.write_text(s, encoding='utf-8')
           PY
 
