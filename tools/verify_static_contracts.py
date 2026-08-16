@@ -185,6 +185,15 @@ if 'local title "set — 设置默认图形方案"' not in semantics:
     fail("set must have dedicated graphics-scheme semantics")
 if 'local title "graph — 管理、保存与输出图形"' not in semantics:
     fail("graph management must have dedicated semantics")
+if 'local view "use import export save"' not in registry:
+    fail("Data import/convert navigation must surface native Stata I/O commands")
+if 'local data_cmds "hxconvert ' in registry:
+    fail("HX converter must not occupy the public native Data command catalog")
+if 'local workflow_cmds "hxconvert oneclick oneclick_robustness"' not in registry:
+    fail("HX converter must remain available in the Workflow catalog")
+for native_io in ("use", "import", "export", "save"):
+    if f'local title "{native_io} —' not in semantics:
+        fail(f"native Data I/O semantics missing: {native_io}")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 
