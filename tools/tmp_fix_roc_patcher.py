@@ -42,8 +42,7 @@ if '\"rocregplot\"' not in roc_route_scope:
 s = s[:start] + route_replacement + s[end:]
 p.write_text(s, encoding="utf-8", newline="\n")
 
-# The structured-Graphics route contract predates the rocgold dedicated page.
-# Synchronize that exact expected route before the main ROC patch adds its new checks.
+# Synchronize existing Graphics contracts with the expanded ROC menu before the main patch adds new checks.
 vp = Path("tools/verify_static_contracts.py")
 v = vp.read_text(encoding="utf-8")
 old_special = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)\''
@@ -51,6 +50,12 @@ new_special = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter"
 if v.count(old_special) != 1:
     raise SystemExit(f"structured Graphics special_open expected 1 old match, got {v.count(old_special)}")
 v = v.replace(old_special, new_special, 1)
+
+old_preview = 'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg";'
+new_preview = 'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";'
+if v.count(old_preview) != 1:
+    raise SystemExit(f"ROC method-card preview contract expected 1 old match, got {v.count(old_preview)}")
+v = v.replace(old_preview, new_preview, 1)
 vp.write_text(v, encoding="utf-8", newline="\n")
 
 print("HX_ROC_PATCHER_LOCATOR_FIXED")
