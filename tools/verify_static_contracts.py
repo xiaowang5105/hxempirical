@@ -179,6 +179,12 @@ if 'local view "var varsoc vargranger varlmar varnorm varstable irf"' not in reg
     fail("multivariate time-series navigation must start with the routine VAR workflow")
 if 'if c(stata_version) >= 17 local view "didregress xtdidregress"' not in registry:
     fail("Stata 17+ causal navigation must surface DID estimators first")
+if '"更改方案/大小", "graph_scheme") local view "set"' not in registry:
+    fail("Graphics scheme/size navigation must route to the real Stata set command")
+if 'local title "set — 设置默认图形方案"' not in semantics:
+    fail("set must have dedicated graphics-scheme semantics")
+if 'local title "graph — 管理、保存与输出图形"' not in semantics:
+    fail("graph management must have dedicated semantics")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 

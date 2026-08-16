@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.24  16aug2026
+*! hxsemantics 1.4.25  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -1168,7 +1168,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict contrast pwcompare predictnl lrtest hausman suest linktest estimates estat power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmacoefsample bmagraph bmastats bmapredict contrast pwcompare predictnl lrtest hausman suest linktest estimates estat power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph set discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -2807,7 +2807,24 @@ program define hxsemantics, rclass
             local expr_label "irf 子命令与参数（如 create / graph / table）"
         }
         else if "`cmd'" == "graph" {
-            local expr_label "graph 子命令与参数（如 combine / save / export / display）"
+            local title "graph — 管理、保存与输出图形"
+            local purpose1 "管理已经生成的 Stata 图形，包括显示、保存、导出、重命名、关闭和查询图形对象。"
+            local purpose2 "这里填写 graph 后面的原生子命令；绘图本身请从对应图形类型入口进入。"
+            local expr_label "graph 子命令与参数（如 display / save / export / dir / close）"
+            local example1 "graph dir"
+            local explain1 "列出当前内存中的已命名图形。"
+            local example2 "graph export result.png, replace"
+            local explain2 "把当前图形导出为 PNG 文件。"
+        }
+        else if "`cmd'" == "set" {
+            local title "set — 设置默认图形方案"
+            local purpose1 "用 Stata 官方 set scheme 命令修改后续新图形默认使用的 scheme。"
+            local purpose2 "单张图的宽高和整体缩放属于绘图命令 options：在具体图形页使用 xsize()/ysize()/scale()；本页只负责默认 scheme。"
+            local expr_label "set 后面的图形设置（通常填写 scheme 方案名 [, permanently]）"
+            local example1 "set scheme stcolor"
+            local explain1 "把当前会话后续新图形的默认 scheme 设为 Stata 18 默认的 stcolor。"
+            local example2 "set scheme s2color, permanently"
+            local explain2 "把 s2color 保存为以后启动 Stata 时继续使用的默认 scheme。"
         }
         else if inlist("`cmd'", "discrim", "cluster") {
             local expr_label "子命令 + 变量与参数（按当前 Stata help 填写）"

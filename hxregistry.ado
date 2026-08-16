@@ -1,4 +1,4 @@
-*! hxregistry 3.1.28  16aug2026
+*! hxregistry 3.1.29  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -26,7 +26,7 @@ program define hxregistry, rclass
         local reg_cmds : subinstr local reg_cmds " xtdidregress" "", all
     }
     local post_cmds "test testparm testnl lincom nlcom contrast pwcompare predict predictnl margins lrtest hausman suest linktest estimates estat"
-    local graph_cmds "graph twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
+    local graph_cmds "graph set twoway scatter line connected lfit qfit histogram kdensity graph_bar graph_dot graph_pie graph_box twoway_contour graph_matrix graph_combine lowess lpoly rvfplot rvpplot avplot avplots lvr2plot cprplot acprplot tsline xtline roctab rocfit roccomp rocgold rocreg cchart pchart rchart xchart shewhart serrbar symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     local did_cmds "did_builder did_trends event_plot"
     local oneclick_cmds "oneclick oneclick_robustness"
     local workflow_cmds "hxconvert oneclick oneclick_robustness"
@@ -159,6 +159,7 @@ program define hxregistry, rclass
         local key_bmastats "bmastats BMA posterior inclusion probability PIP model size jointness LPS 统计"
         local key_bmapredict "bmapredict BMA prediction posterior predictive mean credible interval 预测"
         local key_tsset "tsset time series 时间序列 时间变量 声明"
+        local key_set "set scheme graphics graph default style 方案 图形 默认 样式"
         local key_ctset "ctset count-time survival 生存 计数时间 声明"
         local key_cttost "cttost count-time to survival 转换 生存数据"
         local key_ltable "ltable life table actuarial 生存表 寿命表"
@@ -588,7 +589,7 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "更多统计图形", "more_stat_graph") local view "symplot quantile qnorm pnorm qchi pchi qqplot gladder qladder dotplot spikeplot sunflower marginsplot coefplot event_plot"
     else if inlist(`"`method'"', "图形组合", "graph_combine") local view "graph_combine"
     else if inlist(`"`method'"', "管理图形", "graph_manage") local view "graph"
-    else if inlist(`"`method'"', "更改方案/大小", "graph_scheme") local view "graph"
+    else if inlist(`"`method'"', "更改方案/大小", "graph_scheme") local view "set"
 
     /* Compatibility aliases used by existing quick-entry cards. */
     else if inlist(`"`method'"', "描述统计", "descriptive") local view "summarize tabstat"
