@@ -15025,7 +15025,7 @@ public final class HxWorkbench {
       private boolean validateFocusedEstimationBeforeRun() {
          List<String> estimators = Arrays.asList(
             "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
-            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
+            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "ologit", "oprobit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
             "didregress", "xtdidregress"
          );
          if (!estimators.contains(this.currentCommand) && !isGenericPanelEstimator(this.currentCommand)) {

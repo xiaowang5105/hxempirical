@@ -61,6 +61,8 @@ if "if c(stata_version) >= 17 local view \"`view' ziologit\"" not in registry:
     fail("ordinal-outcome ziologit Stata 17 gate missing")
 ordinal_structured = {"hetoprobit", "zioprobit", "ziologit"}
 ordinal_guided_safe = {"ologit", "oprobit"}
+if '"logit", "probit", "ologit", "oprobit", "poisson"' not in java:
+    fail("ologit/oprob safe pages must receive focused depvar validation")
 
 # oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
