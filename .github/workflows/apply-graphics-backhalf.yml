@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Fix ambiguous header anchor and apply source patch
+      - name: Fix patch anchor and apply source patch
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -30,6 +30,24 @@ jobs:
           p.write_text(s.replace(old, new, 1), encoding='utf-8')
           PY
           python tools/prepare_graphics_backhalf.py
+
+      - name: Update structured Graphics static contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(var1)\''
+          new = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph", "did_trends", "twoway").contains(var1)\''
+          if s.count(old) != 1:
+              raise SystemExit(f'static route contract anchor count={s.count(old)}')
+          s = s.replace(old, new, 1)
+          old_loop = 'for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp"):'
+          new_loop = 'for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "serrbar", "graph_combine", "graph"):'
+          if s.count(old_loop) != 1:
+              raise SystemExit(f'static route loop anchor count={s.count(old_loop)}')
+          p.write_text(s.replace(old_loop, new_loop, 1), encoding='utf-8')
+          PY
 
       - name: Create Stata SFI compile stubs
         run: |
