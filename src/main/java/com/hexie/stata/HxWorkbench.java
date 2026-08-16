@@ -9799,7 +9799,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9847,6 +9847,21 @@ public final class HxWorkbench {
             this.syntaxArea.setText("twoway " + var1 + " y x [if] [, options]");
             coreTitle = "坐标变量";
             coreSubtitle = "先指定纵轴 Y 和唯一的横轴 X；右侧同步显示关系预览。";
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(var1)) {
+            boolean bar = "graph_bar".equals(var1);
+            this.commandTitle.setText((bar ? "graph bar · 条形图" : "graph dot · 点图"));
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (bar ? "graph bar price, over(foreign)" : "graph dot price, over(foreign)") + "</html>");
+            this.insightArea.setText("主要意图：汇总一个或多个数值变量，并按可选分类变量比较组间水平。\n\n数值变量至少选择 1 个；分组变量可选。默认统计量及 (mean)/(count) 等汇总方式继续使用 Stata 原生图形语法。\n\n复杂的第二层 over()、stack、percentages、标签和样式放在更多图形设置中。");
+            this.syntaxArea.setText((bar ? "graph bar" : "graph dot") + " [stat] varlist [if] [, over(group) options]");
+            coreTitle = "数值变量与分组";
+            coreSubtitle = "选择一个或多个数值变量；需要组间比较时再选择分组变量。";
+         } else if ("graph_pie".equals(var1)) {
+            this.commandTitle.setText("graph pie · 饼图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph pie, over(foreign)</html>");
+            this.insightArea.setText("主要意图：显示分类变量各类别占比，或用一个可选数值变量控制扇区大小。\n\n分类变量必填；最常用写法是 graph pie, over(category)。如果选择数值变量，则生成 graph pie measure, over(category)。\n\n标签、百分比显示、legend 和 by() 等继续放在更多图形设置中。");
+            this.syntaxArea.setText("graph pie [varname] [if], over(category) [options]");
+            coreTitle = "分类与扇区大小";
+            coreSubtitle = "先选分类变量；只有需要用数值决定扇区大小时才选择数值变量。";
          } else if ("graph_box".equals(var1)) {
             this.commandTitle.setText("graph box · 分布与异常值箱线图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph box y, over(group)</html>");
@@ -9896,6 +9911,28 @@ public final class HxWorkbench {
             xy.add(this.fieldBlock("纵轴变量 Y", this.depvar));
             xy.add(this.fieldBlock("横轴变量 X（选择一个）", this.listPane(this.variables)));
             this.addGenericBodyField(coreBody, "Y / X", xy);
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(var1)) {
+            JPanel graphVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            graphVars.setOpaque(false);
+            graphVars.add(this.fieldBlock("数值变量（可多选）", this.listPane(this.variables)));
+            graphVars.add(this.fieldBlock("分组变量 over()（可选）", this.panel));
+            this.addGenericBodyField(coreBody, "变量", graphVars);
+            JLabel graphHint = new JLabel("需要 (mean)/(count) 等统计量或第二层 over() 时，在下一步“更多图形设置”中按 Stata 原生语法补充。");
+            graphHint.setForeground(MUTED);
+            graphHint.setFont(graphHint.getFont().deriveFont(9.8F));
+            graphHint.setAlignmentX(0.0F);
+            coreBody.add(graphHint);
+         } else if ("graph_pie".equals(var1)) {
+            JPanel pieVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            pieVars.setOpaque(false);
+            pieVars.add(this.fieldBlock("分类变量 over()（必填）", this.panel));
+            pieVars.add(this.fieldBlock("数值变量（可选）", this.depvar));
+            this.addGenericBodyField(coreBody, "饼图变量", pieVars);
+            JLabel pieHint = new JLabel("只想显示各类别频数/占比时，数值变量留空即可；例如 graph pie, over(foreign)。");
+            pieHint.setForeground(MUTED);
+            pieHint.setFont(pieHint.getFont().deriveFont(9.8F));
+            pieHint.setAlignmentX(0.0F);
+            coreBody.add(pieHint);
          } else if ("graph_box".equals(var1)) {
             JPanel boxVars = new JPanel(new GridLayout(1, 2, 12, 0));
             boxVars.setOpaque(false);
@@ -12534,7 +12571,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -12592,6 +12629,27 @@ public final class HxWorkbench {
             if (!this.options.getText().trim().isBlank()) {
                var1 = var1 + ", " + this.options.getText().trim();
             }
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(this.currentCommand)) {
+            String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";
+            List<String> measures = this.variables.getSelectedValuesList();
+            var1 = nativeCommand + (measures.isEmpty() ? "" : " " + String.join(" ", measures));
+            if (!this.ifCondition.getText().trim().isBlank()) {
+               var1 = var1 + " if " + this.ifCondition.getText().trim();
+            }
+            ArrayList<String> graphOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) graphOpts.add("over(" + selected(this.panel) + ")");
+            if (!this.options.getText().trim().isBlank()) graphOpts.add(this.options.getText().trim());
+            if (!graphOpts.isEmpty()) var1 = var1 + ", " + String.join(" ", graphOpts);
+         } else if ("graph_pie".equals(this.currentCommand)) {
+            String measure = selected(this.depvar);
+            var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);
+            if (!this.ifCondition.getText().trim().isBlank()) {
+               var1 = var1 + " if " + this.ifCondition.getText().trim();
+            }
+            ArrayList<String> pieOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) pieOpts.add("over(" + selected(this.panel) + ")");
+            if (!this.options.getText().trim().isBlank()) pieOpts.add(this.options.getText().trim());
+            if (!pieOpts.isEmpty()) var1 = var1 + ", " + String.join(" ", pieOpts);
          } else if ("graph_box".equals(this.currentCommand)) {
             String var6 = selected(this.depvar);
             var1 = var6.isBlank() ? "graph box" : "graph box " + var6;
@@ -13119,6 +13177,14 @@ public final class HxWorkbench {
          String command = this.currentCommand;
          if (Arrays.asList("histogram", "kdensity", "graph_box").contains(command) && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择要绘制的变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("graph_bar", "graph_dot").contains(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请选择至少 1 个数值变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("graph_pie".equals(command) && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择饼图的分类变量 over()。", "图形设置尚未完整", 1);
             return false;
          }
          if (Arrays.asList("scatter", "lfit").contains(command)) {

@@ -89,6 +89,16 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
+for graph_cmd in ("graph_bar", "graph_dot", "graph_pie"):
+    special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "did_trends", "twoway").contains(var1)'
+    if special_open not in java:
+        fail("common graph commands are not routed to the special graph page")
+if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
+    fail("bar/dot special graph preview builder missing")
+if 'var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);' not in java:
+    fail("pie special graph preview builder missing")
+if '请选择饼图的分类变量 over()' not in java:
+    fail("pie special graph validation missing")
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 
