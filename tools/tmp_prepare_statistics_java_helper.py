@@ -20,7 +20,8 @@ s = s.replace(old, new, 1)
 old_contract = '''    'case "DSGE模型": return "dsge · dsgenl";',
 ):'''
 new_contract = '''    'case "DSGE模型": return "dsge · dsgenl";',
-    'case "DSGE模型":\\n               return "dsge";',
+    'case "DSGE模型":',
+    'return "dsge";',
 ):'''
 if s.count(old_contract) != 1:
     raise SystemExit(f"DSGE contract anchor expected once, got {s.count(old_contract)}")
