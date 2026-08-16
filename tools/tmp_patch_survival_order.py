@@ -34,7 +34,7 @@ v = vp.read_text(encoding="utf-8")
 anchor = 'if "选择模型" not in stats_methods:\n    fail("public Selection models method missing")\n'
 checks = '''if 'local view "stset stcox streg stintreg"' not in registry:
     fail("survival navigation must start with the common declaration/estimation workflow")
-if 'if c(stata_version) >= 17 local view "`view\' stintcox"' not in registry:
+if "if c(stata_version) >= 17 local view \"`view' stintcox\"" not in registry:
     fail("stintcox must remain gated to Stata 17+")
 '''
 v = once(v, anchor, anchor + checks, "survival-order static contract anchor")
