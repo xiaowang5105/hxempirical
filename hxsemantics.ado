@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.19  16aug2026
+*! hxsemantics 1.4.20  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -943,7 +943,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt irtgraph diflogistic difmh dsge dsgenl svyset svydescribe svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power ciwidth gsbounds gsdesign teffects eteffects stteffects mediate hdidregress xthdidregress sts irf graph discrim cluster table ci ratio dtable prtest sdtest oneway anova ranksum median signrank signtest exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier gnbreg cpoisson binreg biprobit hetoprobit ziologit zioprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg ivprobit ivtobit ivpoisson ivfprobit ivqregress mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress nptrend ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct streg stintreg stintcox stcrreg stir strate stptime stmh stmc arima arfima arimasoc arfimasoc arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -2341,11 +2341,26 @@ program define hxsemantics, rclass
             local explain2 "加 atet 后估计已接受处理者的平均处理效应。"
         }
         else if "`cmd'" == "npregress" {
-            local expr_label "非参数方法 + 因变量 + 协变量（如 kernel y x1 x2 或 series y x1 x2）"
+            local expr_label "非参数方法 + Y + X：kernel 或 series；series 还可用 asis()/nointeract() 施加半参数结构"
             local example1 "npregress kernel y x1 x2"
-            local explain1 "kernel / series 是 npregress 的核心方法词，必须放在因变量之前。"
-            local example2 "npregress series y x1 x2"
-            local explain2 "使用 series 非参数回归。"
+            local explain1 "kernel regression 通过核与带宽平滑估计 E(y|x1,x2)，适合低维连续/离散协变量。"
+            local example2 "npregress series output taxlevel rainfall i.irrigate"
+            local explain2 "series regression 用 spline/polynomial series 逼近未知响应面；asis() 可保留线性项，nointeract() 可限制可加结构。"
+        }
+        else if "`cmd'" == "nptrend" {
+            local expr_label "响应变量 + 有序组变量 + trend-test 类型；Stata 17+ 支持 carmitage/jterpstra/linear/cuzick 与 exact"
+            if c(stata_version) >= 17 {
+                local example1 "nptrend relief, group(dose) carmitage"
+                local explain1 "对二元 relief 检验其阳性比例是否随有序 dose 呈 Cochran–Armitage 线性趋势。"
+                local example2 "nptrend exposure, group(group) jterpstra notable exact"
+                local explain2 "用 Jonckheere–Terpstra 检验任意单调趋势，并通过 permutation 计算 exact p-value。"
+            }
+            else {
+                local example1 "nptrend a, by(y)"
+                local explain1 "Stata 16 及更早语法使用 rank-based trend test；a 为响应排序变量，y 给出有序组。"
+                local example2 "help nptrend"
+                local explain2 "Stata 17 才增加 Cochran–Armitage、Jonckheere–Terpstra、linear-by-linear 与 exact 选项。"
+            }
         }
         else if "`cmd'" == "stset" {
             local expr_label "生存数据声明主体（分析时间、failure()、id()、enter()/exit() 等）"
@@ -2690,9 +2705,9 @@ program define hxsemantics, rclass
         local purpose1 "用于多重插补数据的声明、插补、管理与估计。"
         local purpose2 "mi 是工作流型命令；应先明确当前处于 set、impute、estimate 或数据管理的哪一步。"
     }
-    else if strpos(" npregress lowess lpoly ", " `cmd' ") {
+    else if strpos(" npregress nptrend lowess lpoly ", " `cmd' ") {
         local title "`cmd' — 非参数与平滑分析"
-        local purpose1 "用于非参数回归或局部平滑，减少对函数形式的强假设。"
+        local purpose1 "用于 kernel/series 非参数回归、跨有序组趋势检验或局部平滑，减少对函数形式和分布的强假设。"
         local purpose2 "带宽、核函数和局部多项式阶数会影响结果；建议结合右侧图形或结果诊断。"
     }
     else if strpos(" exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi ", " `cmd' ") {

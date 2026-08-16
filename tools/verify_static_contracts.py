@@ -200,6 +200,20 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+if "nptrend" not in stats_cmds:
+    fail("nptrend missing from nonparametric Statistics coverage")
+for needle in (
+    "npregress kernel y x1 x2",
+    "npregress series output taxlevel rainfall i.irrigate",
+    "nptrend relief, group(dose) carmitage",
+    "nptrend exposure, group(group) jterpstra notable exact",
+    "nptrend a, by(y)",
+):
+    if needle not in semantics:
+        fail(f"nonparametric semantic contract missing: {needle}")
+if 'if c(stata_version) >= 17 {' not in semantics:
+    fail("nptrend version-aware semantic branch missing")
+
 dsge_core = {"dsge", "dsgenl"}
 missing_dsge = sorted(dsge_core - stats_cmds)
 if missing_dsge:
