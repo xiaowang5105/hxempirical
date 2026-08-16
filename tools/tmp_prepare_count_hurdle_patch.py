@@ -34,11 +34,27 @@ if old not in r:
 r = r.replace(old, new, 1)
 ''',
     ),
+    (
+        '''s = once(
+    s,
+    '    if strpos(" hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm reg3 frontier ", " `cmd\\' ") {\\n',
+    '    if strpos(" hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm reg3 frontier ", " `cmd\\' ") {\\n',
+    "linear family hurdle",
+)
+''',
+        '''s = once(
+    s,
+    '    else if strpos(" hetregress sqreg intreg tobit truncreg boxcox fp nl nlsur gmm reg3 frontier ", " `cmd\\' ") {\\n',
+    '    else if strpos(" hetregress sqreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm reg3 frontier ", " `cmd\\' ") {\\n',
+    "linear family hurdle",
+)
+''',
+    ),
 ]
 
 for old, new in replacements:
     if old not in text:
-        raise SystemExit("expected catalog patch block not found")
+        raise SystemExit("expected count-hurdle patch block not found")
     text = text.replace(old, new, 1)
 
 p.write_text(text, encoding="utf-8", newline="\n")
