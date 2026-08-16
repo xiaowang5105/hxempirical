@@ -26,7 +26,12 @@ jobs:
           new = 'var19x.showSpecialGraphPage(System.getProperty("hx.graph", "scatter"));'
           if s.count(old) != 1:
               raise SystemExit(f'render hook anchor count={s.count(old)}')
-          p.write_text(s.replace(old, new), encoding='utf-8')
+          s = s.replace(old, new)
+          old_exit = 'System.out.println("HX_UI_PREVIEW_OK " + var19);'
+          new_exit = old_exit + '\n               System.exit(0);'
+          if s.count(old_exit) != 1:
+              raise SystemExit(f'render exit anchor count={s.count(old_exit)}')
+          p.write_text(s.replace(old_exit, new_exit), encoding='utf-8')
           PY
 
       - name: Create Stata SFI compile stubs
