@@ -17,7 +17,19 @@ jobs:
         with:
           python-version: '3.12'
       - name: Apply source patch
-        run: python tools/_patch_ordinal_outcomes_ui.py
+        run: |
+          python tools/_patch_ordinal_outcomes_ui.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          s = p.read_text(encoding='utf-8')
+          bad = "if 'if c(stata_version) >= 17 local view \"`view' ziologit\"' not in registry:"
+          good = 'if "if c(stata_version) >= 17 local view \\"`view\' ziologit\\"" not in registry:'
+          if bad not in s:
+              raise SystemExit('HX_ORDINAL_STATIC_QUOTE_ANCHOR_MISSING')
+          p.write_text(s.replace(bad, good), encoding='utf-8')
+          print('HX_ORDINAL_STATIC_QUOTE_OK')
+          PY
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
