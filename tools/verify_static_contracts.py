@@ -200,6 +200,34 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+survival_workflow_core = {
+    "ctset", "cttost", "ltable", "snapspan", "stset", "stdescribe", "stsum", "stci", "stcurve", "stbase",
+    "stfill", "stgen", "stsplit", "stvary", "sttocc", "sttoct", "sts", "stcox", "streg", "stintreg", "stintcox",
+    "stcrreg", "stir", "strate", "stptime", "stmh", "stmc",
+}
+missing_survival_workflow = sorted(survival_workflow_core - stats_cmds)
+if missing_survival_workflow:
+    fail("survival workflow commands missing: " + ", ".join(missing_survival_workflow))
+if "stmgintcox" in stats_cmds:
+    fail("Stata 19 stmgintcox must not leak into the Stata 16-18 catalog")
+for needle in (
+    "ctset time failures lost entered, by(group)",
+    "cttost, clear",
+    "ltable studytime died, failure graph",
+    "stdescribe",
+    "stsum, by(group)",
+    "stci, by(group)",
+    "stcurve, survival",
+    "stsplit ageband, at(20(5)80)",
+    "stvary x1 x2",
+    "sttocc, match(sex agegroup) number(4)",
+    "stir exposed",
+    "strate group, per(1000)",
+    "stptime, by(group) per(1000)",
+):
+    if needle not in semantics:
+        fail(f"survival workflow semantic contract missing: {needle}")
+
 time_series_core = {
     "arima", "arfima", "newey", "prais", "arch", "ucm", "mswitch", "threshold", "dfgls", "dfuller", "pperron",
     "corrgram", "cumsp", "pergram", "wntestb", "wntestq", "psdensity", "rolling", "forecast", "tsappend", "tsfill",
