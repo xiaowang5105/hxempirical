@@ -1,4 +1,4 @@
-*! hxregistry 3.1.16  16aug2026
+*! hxregistry 3.1.17  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,14 +8,14 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm stset sts stcox streg stintreg stintcox stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm stset sts stcox streg stintreg stintcox stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
     if c(stata_version) < 18 {
-        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign ivfprobit ivqregress {
+        foreach cmd in mediate hdidregress xthdidregress bmaregress dtable gsbounds gsdesign ivfprobit ivqregress arimasoc arfimasoc lpirf {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -120,6 +120,23 @@ program define hxregistry, rclass
         local key_reshape "reshape 宽表 长表 转换"
         local key_collapse "collapse 汇总 聚合 分组 均值"
         local key_xtset "xtset panel data 面板 设置 个体 时间"
+        local key_arfima "arfima long memory fractional integration 长记忆 分数差分 时间序列"
+        local key_arimasoc "arimasoc ARIMA ARMA lag order selection AIC BIC HQIC 阶数选择"
+        local key_arfimasoc "arfimasoc ARFIMA lag order selection AIC BIC HQIC 阶数选择"
+        local key_mswitch "mswitch Markov switching regime 状态转换 马尔可夫 转换 回归"
+        local key_threshold "threshold regression 门槛 回归 阈值 时间序列"
+        local key_dfgls "dfgls unit root DF GLS 单位根 检验 平稳性"
+        local key_wntestb "wntestb white noise Bartlett 白噪声 周期图 检验"
+        local key_wntestq "wntestq white noise portmanteau Q 白噪声 检验"
+        local key_rolling "rolling recursive window 滚动窗口 递归估计"
+        local key_forecast "forecast model forecasting dynamic static 预测 模型 情景"
+        local key_tsfilter "tsfilter HP BK CF BW filter 滤波 周期 趋势"
+        local key_tssmooth "tssmooth moving average exponential Holt Winters 平滑 预测"
+        local key_lpirf "lpirf local projection impulse response 局部投影 脉冲响应"
+        local key_mgarch "mgarch multivariate GARCH DCC CCC VCC 多元 波动率 相关"
+        local key_dfactor "dfactor dynamic factor latent factor 动态因子 潜在因子"
+        local key_sspace "sspace state space Kalman 状态空间 卡尔曼"
+        local key_vecrank "vecrank Johansen cointegration rank 协整秩 检验"
         local key_tsset "tsset time series 时间序列 时间变量 声明"
         local key_encode "encode 字符串 数值 编码 标签"
         local key_decode "decode 数值 字符串 解码 标签"
@@ -388,8 +405,17 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "分数结果", "fractional_outcomes") local view "fracreg betareg"
     else if inlist(`"`method'"', "广义线性模型", "glm_models") local view "glm"
     else if inlist(`"`method'"', "选择模型", "selection_models") local view "heckman heckprobit heckoprobit heckpoisson"
-    else if inlist(`"`method'"', "时间序列", "time_series") local view "arima newey prais arch ucm dfuller pperron corrgram pergram"
-    else if inlist(`"`method'"', "多元时间序列", "multivariate_ts") local view "var svar vec varsoc vargranger varstable irf"
+    else if inlist(`"`method'"', "时间序列", "time_series") {
+        local view "arima arfima"
+        if c(stata_version) >= 18 local view "`view' arimasoc arfimasoc"
+        local view "`view' newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq"
+        local view "`view' psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth"
+    }
+    else if inlist(`"`method'"', "多元时间序列", "multivariate_ts") {
+        local view "var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf"
+        if c(stata_version) >= 18 local view "`view' lpirf"
+        local view "`view' mgarch dfactor sspace xcorr"
+    }
     else if inlist(`"`method'"', "空间自回归模型", "spatial_ar") local view "spregress spivregress spxtregress"
     else if inlist(`"`method'"', "纵向/面板数据", "panel_longitudinal") {
         local view "xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit"

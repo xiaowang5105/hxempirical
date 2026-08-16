@@ -200,6 +200,47 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+time_series_core = {
+    "arima", "arfima", "newey", "prais", "arch", "ucm", "mswitch", "threshold", "dfgls", "dfuller", "pperron",
+    "corrgram", "cumsp", "pergram", "wntestb", "wntestq", "psdensity", "rolling", "forecast", "tsappend", "tsfill",
+    "tsfilter", "tsreport", "tssmooth",
+}
+missing_ts = sorted(time_series_core - stats_cmds)
+if missing_ts:
+    fail("univariate time-series commands missing: " + ", ".join(missing_ts))
+multivariate_ts_core = {
+    "var", "svar", "vec", "varbasic", "varsoc", "vargranger", "varlmar", "varnorm", "varstable", "varwle",
+    "vecrank", "veclmar", "vecnorm", "vecstable", "irf", "mgarch", "dfactor", "sspace", "xcorr",
+}
+missing_mvts = sorted(multivariate_ts_core - stats_cmds)
+if missing_mvts:
+    fail("multivariate time-series commands missing: " + ", ".join(missing_mvts))
+for stata18_ts in ("arimasoc", "arfimasoc", "lpirf"):
+    if stata18_ts not in stats_cmds:
+        fail(f"Stata 18 time-series command missing: {stata18_ts}")
+if "arimasoc arfimasoc lpirf" not in registry:
+    fail("Stata 18 time-series version gate missing arimasoc/arfimasoc/lpirf")
+for needle in (
+    'arfima y, ar(1) ma(1)',
+    "ogap, maxar(4) maxma(3)",
+    "mswitch dr fedfunds",
+    "threshold pollution, threshvar(hour) regionvars(oldbus newbus car)",
+    "dfgls y",
+    "检验 y 是否可视为白噪声",
+    "rolling _b, window(20) saving(roll, replace): regress y x",
+    "forecast create model",
+    "tsappend, add(12)",
+    "tsfilter hp y_cycle = y, smooth(1600)",
+    "tssmooth ma y_ma = y, window(2 1 2)",
+    "vecrank y1 y2",
+    "lpirf indpro inflation, lags(1/12) exog(L(0/12).money_shock)",
+    "mgarch dcc (toyota honda =), arch(1) garch(1) distribution(t)",
+    "dfactor (D.(ipman income hours unemp) =, noconstant) (f=, ar(1/2)), nolog",
+    "xcorr y x",
+):
+    if needle not in semantics:
+        fail(f"time-series semantic contract missing: {needle}")
+
 panel_round2_core = {
     "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor",
     "xtdpd", "xtgls", "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata",
