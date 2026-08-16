@@ -185,6 +185,26 @@ if (
 for official in ("eregress", "eintreg", "eprobit", "eoprobit"):
     if official not in stats_cmds:
         fail(f"official extended-regression command missing: {official}")
+
+lasso_official = {
+    "lasso", "elasticnet", "sqrtlasso",
+    "poregress", "pologit", "popoisson", "poivregress",
+    "dsregress", "dslogit", "dspoisson",
+    "xporegress", "xpologit", "xpopoisson", "xpoivregress",
+}
+missing_lasso = sorted(lasso_official - stats_cmds)
+if missing_lasso:
+    fail("official Lasso commands missing from Statistics catalog: " + ", ".join(missing_lasso))
+if "telasso" not in stats_cmds:
+    fail("official telasso treatment-effects command missing from Statistics catalog")
+for needle in (
+    'sqrtlasso y x1-x1000',
+    "Partialing-out Lasso",
+    'telasso (y x1-x100) (treat w1-w100)',
+    'gsem (alcohol truant weapon theft vandalism <-), logit lclass(C 3)',
+):
+    if needle not in semantics:
+        fail(f"Lasso/LCA semantic contract missing: {needle}")
 for needle in (
     'xtgee union age not_smsa, family(binomial) link(probit) corr(exchangeable)',
     'xtintreg ylower yupper x1 x2 x3',
@@ -203,7 +223,7 @@ print(
     "oneclick=tuples+oneclick "
     "oneclick_robustness=manual-author-extension "
     "ui_external_manual_only=1 external_user_ado_scan=1 external_scan_fastpath=1 docs_manual_only=1 spreadsheet_editable=1 launcher_quiet=1 "
-    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 docs_source_split=1"
+    "legacy_did_hidden=1 event_plot_graph=1 official_did_stats=1 epoisson_removed=1 longtail_semantics=1 lasso_catalog=1 lca_example=1 docs_source_split=1"
 )
 
 # v1.5.11: Java launcher must prefer the JAR adjacent to the active hxtoolbox ado.

@@ -1,4 +1,4 @@
-*! hxregistry 3.1.4  16aug2026
+*! hxregistry 3.1.5  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,7 +8,10 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize tabstat tabulate table ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg qreg iqreg bsqreg vwls eivreg sureg mvreg correlate pwcorr logit logistic probit hetprobit scobit cloglog ologit oprobit mlogit mprobit asclogit asmprobit poisson nbreg zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir eregress eprobit eoprobit eintreg ivregress ivreghdfe teffects etregress etpoisson didregress xtdidregress sem gsem fmm irt factor pca canon cca manova discrim cluster svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly bitesti tabi bootstrap jackknife permute simulate statsby power bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    if c(stata_version) < 17 {
+        local stats_cmds : subinstr local stats_cmds " telasso" "", all
+    }
     if c(stata_version) < 18 {
         local stats_cmds : subinstr local stats_cmds " bmaregress" "", all
     }
@@ -146,6 +149,15 @@ program define hxregistry, rclass
         local key_ivreghdfe "ivreghdfe high dimensional fixed effects instrument 高维固定效应 工具变量 内生性"
         local key_did_builder "did difference in differences event study treat post event_time 平行趋势 事件研究 双重差分 政策冲击 动态效应"
         local key_ppmlhdfe "ppmlhdfe poisson pseudo maximum likelihood fixed effects 泊松 伪极大似然 高维固定效应"
+        local key_sqrtlasso "sqrtlasso square root lasso 平方根 lasso 高维 变量选择"
+        local key_poregress "poregress partialing out lasso linear 高维 推断 部分化 线性回归"
+        local key_pologit "pologit partialing out lasso logit 高维 推断 二元"
+        local key_popoisson "popoisson partialing out lasso poisson 高维 推断 计数"
+        local key_dslogit "dslogit double selection lasso logit 双重选择 高维 二元"
+        local key_dspoisson "dspoisson double selection lasso poisson 双重选择 高维 计数"
+        local key_xpologit "xpologit cross fit partialing out lasso logit 交叉拟合 高维 二元"
+        local key_xpopoisson "xpopoisson cross fit partialing out lasso poisson 交叉拟合 高维 计数"
+        local key_telasso "telasso treatment effects lasso 处理效应 高维 因果推断"
         local key_test "test 系数检验 联合检验 假设检验"
         local key_lincom "lincom 线性组合 系数"
         local key_bmaregress "bmaregress bma bayesian model averaging 贝叶斯模型平均 模型不确定性 变量选择"
@@ -267,14 +279,17 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir"
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
-    else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") local view "teffects etregress etpoisson didregress xtdidregress"
+    else if inlist(`"`method'"', "因果推断/处理效应", "causal_treatment") {
+        local view "teffects etregress etpoisson didregress xtdidregress"
+        if c(stata_version) >= 17 local view "`view' telasso"
+    }
     else if inlist(`"`method'"', "结构方程模型(SEM)", "sem") local view "sem gsem"
     else if inlist(`"`method'"', "潜在类别分析(LCA)", "lca") local view "gsem"
     else if inlist(`"`method'"', "有限混合模型(FMM)", "fmm") local view "fmm"
     else if inlist(`"`method'"', "项目反应理论(IRT)", "irt") local view "irt"
     else if inlist(`"`method'"', "多元分析", "multivariate") local view "factor pca canon cca manova mvreg discrim cluster"
     else if inlist(`"`method'"', "调查数据分析", "survey") local view "svy"
-    else if inlist(`"`method'"', "Lasso回归", "lasso") local view "lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress"
+    else if inlist(`"`method'"', "Lasso回归", "lasso") local view "lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress"
     else if inlist(`"`method'"', "Meta分析", "meta") local view "meta"
     else if inlist(`"`method'"', "多重插补", "mi") local view "mi"
     else if inlist(`"`method'"', "非参数分析", "nonparametric") local view "ranksum median signrank signtest npregress kdensity lowess lpoly"

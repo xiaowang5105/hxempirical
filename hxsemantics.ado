@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.3  16aug2026
+*! hxsemantics 1.4.4  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -877,7 +877,7 @@ program define hxsemantics, rclass
 
     /* Complex prefixes, workflow commands, and multi-equation grammars are safer
        as one guided native command body than as guessed depvar/varlist roles. */
-    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
+    if strpos(" sem gsem mi meta fmm irt svy bootstrap jackknife permute simulate statsby bayes bayesmh bayespredict bayesstats bayesgraph power teffects sts irf graph discrim cluster table prtest sdtest oneway anova ranksum median signrank signtest bitesti tabi cc cs ir sureg mvreg canon cca manova heckman heckprobit heckoprobit heckpoisson eregress eprobit eoprobit eintreg mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm lasso elasticnet poregress pologit popoisson dslogit dspoisson xpologit xpopoisson telasso npregress stset streg stcrreg arima arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable spregress spivregress spxtregress xtgee xttobit xtintreg xtfrontier xtabond xtdpdsys dsregress poivregress xporegress xpoivregress etregress etpoisson fracreg zip zinb tpoisson tnbreg glm hetprobit asclogit asmprobit ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -914,8 +914,8 @@ program define hxsemantics, rclass
             local expr_label "广义 SEM 方程 + family()/link()/随机效应/潜在类别设定"
             local example1 "gsem (y <- x1 x2, family(bernoulli) link(logit))"
             local explain1 "对二元结果 y 拟合 logit 链接的广义结构方程。"
-            local example2 "help gsem"
-            local explain2 "多层、潜在类别、选择模型等 gsem 结构差异很大，复杂模型继续按当前 help 核对。"
+            local example2 "gsem (alcohol truant weapon theft vandalism <-), logit lclass(C 3)"
+            local explain2 "LCA 使用 gsem 的 lclass()；这里拟合 3 个潜在类别的二元题项模型。"
         }
         else if "`cmd'" == "mi" {
             local expr_label "mi 子命令与完整参数（如 set / impute / estimate）"
@@ -1227,6 +1227,28 @@ program define hxsemantics, rclass
             local example1 "`cmd' linear y x1-x100"
             local explain1 "lasso / elasticnet 在因变量前需要明确 linear、logit、probit、poisson 或 cox 等模型类型。"
         }
+        else if strpos(" poregress pologit popoisson dslogit dspoisson xpologit xpopoisson ", " `cmd' ") {
+            local expr_label "Y + 关注变量 + controls() 高维候选控制"
+            local example1 "`cmd' y d1, controls(x1-x100)"
+            if strpos(" poregress pologit popoisson ", " `cmd' ") {
+                local explain1 "Partialing-out Lasso：d1 是关注变量，controls() 中的高维候选控制由 lasso 选择并部分化。"
+            }
+            else if strpos(" dslogit dspoisson ", " `cmd' ") {
+                local explain1 "Double-selection Lasso：分别围绕结果与关注变量选择 controls()，再对 d1 做有效推断。"
+            }
+            else {
+                local explain1 "Cross-fit partialing-out Lasso：用交叉拟合降低高维 nuisance 模型过拟合对 d1 推断的影响。"
+            }
+            local example2 "help `cmd'"
+            local explain2 "模型分布、选择方法、聚类和交叉拟合设置按当前 Stata 版本继续核对。"
+        }
+        else if "`cmd'" == "telasso" {
+            local expr_label "(结果变量 + 高维结果模型控制) + (处理变量 + 高维处理模型控制)"
+            local example1 "telasso (y x1-x100) (treat w1-w100)"
+            local explain1 "第一组括号是结果模型，第二组是处理分配模型；lasso 在两组高维候选控制中选择变量。"
+            local example2 "telasso (y x1-x100) (treat w1-w100), atet"
+            local explain2 "加 atet 后估计已接受处理者的平均处理效应。"
+        }
         else if "`cmd'" == "npregress" {
             local expr_label "非参数方法 + 因变量 + 协变量（如 kernel y x1 x2 或 series y x1 x2）"
             local example1 "npregress kernel y x1 x2"
@@ -1443,7 +1465,7 @@ program define hxsemantics, rclass
         local purpose1 "用于结果方程中存在内生解释变量时的扩展回归模型。"
         local purpose2 "需要明确主结果方程与内生变量方程；复杂联立结构按 Stata 原生语法填写。"
     }
-    else if strpos(" teffects etregress etpoisson ", " `cmd' ") {
+    else if strpos(" teffects etregress etpoisson telasso ", " `cmd' ") {
         local title "`cmd' — 处理效应与因果推断"
         local purpose1 "用于潜在结果框架下的处理效应估计或内生处理模型。"
         local purpose2 "先明确结果变量、处理变量和协变量；处理模型、倾向得分或结果模型选项在最后核对。"
@@ -1473,10 +1495,23 @@ program define hxsemantics, rclass
         local purpose1 "用于复杂抽样设计下的加权估计和设计型标准误。"
         local purpose2 "应先用 svyset 正确声明抽样设计；本页执行的估计命令需与该设计保持一致。"
     }
-    else if strpos(" lasso elasticnet sqrtlasso dsregress poivregress xporegress xpoivregress ", " `cmd' ") {
+    else if "`cmd'" == "sqrtlasso" {
+        local title "sqrtlasso — Square-root Lasso"
+        local purpose1 "对连续结果进行 Square-root Lasso 预测与变量选择；它只对应线性结果模型。"
+        local purpose2 "直接选择结果变量和候选预测变量，无需像 lasso / elasticnet 那样在因变量前填写 linear。"
+        local has_depvar 1
+        local has_varlist 1
+        local dep_label "连续结果变量 Y"
+        local vars_label "候选预测变量"
+        local example1 "sqrtlasso y x1-x1000"
+        local explain1 "官方基础语法：对连续结果 y 在 x1 到 x1000 中进行 Square-root Lasso 选择。"
+        local example2 "help sqrtlasso"
+        local explain2 "惩罚参数选择、聚类等设置按当前 Stata 版本核对。"
+    }
+    else if strpos(" lasso elasticnet poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress ", " `cmd' ") {
         local title "`cmd' — Lasso 与高维变量选择"
-        local purpose1 "用于高维协变量下的正则化、双重选择或部分线性/工具变量估计。"
-        local purpose2 "结果变量、候选变量和惩罚/选择规则应结合具体方法设置；运行前核对模型目标与推断口径。"
+        local purpose1 "用于高维协变量下的正则化、双重选择、部分化或交叉拟合推断。"
+        local purpose2 "先区分关注变量和 controls() 高维候选控制；预测型 lasso / elasticnet 还需要在因变量前明确模型类型。"
     }
     else if "`cmd'" == "meta" {
         local title "meta — Meta 分析"
