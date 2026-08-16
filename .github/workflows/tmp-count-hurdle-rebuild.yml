@@ -21,6 +21,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Prepare count-hurdle patch targets
+        run: python tools/tmp_prepare_count_hurdle_patch.py
       - name: Patch count and hurdle catalogs
         run: python tools/tmp_patch_count_hurdle_catalog.py
       - name: Rebuild managed release
