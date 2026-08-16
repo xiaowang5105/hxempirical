@@ -89,10 +89,10 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
-for graph_cmd in ("graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph"):
+for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph"):
     if graph_cmd not in special_open:
         fail(f"structured Graphics route contract missing: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
@@ -168,6 +168,41 @@ for needle in (
 ):
     if needle not in java:
         fail(f"quality-control Graphics page contract missing: {needle}")
+
+for needle in (
+    'line · 折线图',
+    'connected · 带点折线图',
+    'qfit · 二次拟合图',
+    'lowess · LOWESS 平滑图',
+    'lpoly · 局部多项式平滑图',
+    'diagnosticName = "残差 vs 拟合值"',
+    'diagnosticName = "残差 vs predictor"',
+    'diagnosticName = "Added-variable plot"',
+    'diagnosticName = "全部 Added-variable plots"',
+    'diagnosticName = "Leverage vs residual-squared"',
+    'diagnosticName = "Component-plus-residual plot"',
+    'diagnosticName = "Augmented component-plus-residual plot"',
+    '纵轴 Y 系列（至少 1 个，可多选）',
+    '诊断变量 / predictor',
+    'var1 = "twoway qfit " + selected(this.depvar) + " " + selected(this.panel)',
+    'Arrays.asList("rvfplot", "avplots", "lvr2plot").contains(this.currentCommand)',
+    'line/connected 至少选择 1 个纵轴 Y 系列并指定横轴 X',
+    'Y 系列不能同时作为横轴 X',
+    'qfit/lowess/lpoly 需要分别选择 Y 和 X',
+    '需要选择 1 个诊断变量 / predictor',
+    '"rchart", "xchart", "shewhart", "line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot"',
+):
+    if needle not in java:
+        fail(f"twoway/regression-diagnostic Graphics contract missing: {needle}")
+diagnostic_route_lists = re.findall(
+    r'Arrays\.asList\((.*?)\)\.contains\(this\.currentCommand\)\)\s*\{\s*this\.selectResultView\("graph", true\);',
+    java,
+    re.DOTALL,
+)
+diagnostic_route_scope = max(diagnostic_route_lists, key=len, default="")
+for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot"):
+    if f'"{graph_cmd}"' not in diagnostic_route_scope:
+        fail(f"twoway/regression-diagnostic graph must route to graph result view: {graph_cmd}")
 
 for needle in (
     'marginsplot · margins 结果图',
@@ -492,6 +527,9 @@ for command, method_label in graph_command_method_contracts.items():
 if 'return "图形|分布图";' in command_method_scope:
     fail("stale broad distribution commandPath label remains after specific Graphics classification")
 graph_method_preview_contracts = (
+    'case "二维图(散点图，折线图等)": return "twoway · scatter · line · connected · lfit · qfit";',
+    'case "平滑和密度": return "kdensity · lowess · lpoly";',
+    'case "回归诊断图": return "rvfplot · rvpplot · avplot · avplots · lvr2plot · cprplot · acprplot";',
     'case "生存分析图": return "sts graph";',
     'case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";',
     'case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";',
