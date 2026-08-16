@@ -82,6 +82,16 @@ The production JAR must be compiled against Stata's real SFI API; CI compile stu
 "@
 }
 
+# If SFI was auto-detected, infer the Stata installation root so the bundled JDK can also be found.
+if (-not $StataRoot) {
+    $jarDirectory = Split-Path -Parent $SfiJar
+    $utilitiesDirectory = Split-Path -Parent $jarDirectory
+    $candidateStataRoot = Split-Path -Parent $utilitiesDirectory
+    if (Test-Path -LiteralPath $candidateStataRoot -PathType Container) {
+        $StataRoot = $candidateStataRoot
+    }
+}
+
 $javac = Resolve-JavaTool 'javac' $JavaHome $StataRoot
 $jarTool = Resolve-JavaTool 'jar' $JavaHome $StataRoot
 if (-not $javac -or -not $jarTool) {
@@ -150,6 +160,7 @@ if (-not $SkipReleaseBundle) {
 }
 
 Write-Host "HX_WORKBENCH_PRODUCTION_BUILD_OK"
+Write-Host "Stata root: $StataRoot"
 Write-Host "JAR: $outputJar"
 Write-Host "Source Git blob: $sourceBlob"
 Write-Host "Next: run the real-Stata smoke test documented in src/main/java/com/hexie/stata/BUILD.md before committing the JAR and release bundle."
