@@ -150,6 +150,14 @@ if "x[0].lower() == \"f\"" not in read("tools/verify_release.py"):
 
 # Parse the registry structure rather than relying on the first foreach in the file.
 stats_cmds = set(local_words(registry, "stats_cmds"))
+stats_methods = local_words(registry, "stats_methods")
+if "样本选择模型" in stats_methods:
+    fail("duplicate sample-selection method leaked into public Statistics navigation")
+if "选择模型" not in stats_methods:
+    fail("public Selection models method missing")
+if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
+    fail("legacy sample-selection navigation alias must remain resolvable")
+
 graph_cmds = set(local_words(registry, "graph_cmds"))
 did_cmds = set(local_words(registry, "did_cmds"))
 
