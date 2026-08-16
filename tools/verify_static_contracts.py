@@ -194,6 +194,13 @@ if 'local workflow_cmds "hxconvert oneclick oneclick_robustness"' not in registr
 for native_io in ("use", "import", "export", "save"):
     if f'local title "{native_io} —' not in semantics:
         fail(f"native Data I/O semantics missing: {native_io}")
+data_validation_reorg = {"assert", "count", "compare", "clonevar", "split", "expand", "cross", "contract", "fillin", "stack", "xpose", "frame", "frames", "frlink", "frget"}
+missing_data_validation_reorg = sorted(data_validation_reorg - data_cmds)
+if missing_data_validation_reorg:
+    fail("data validation/reorganization commands missing: " + ", ".join(missing_data_validation_reorg))
+for data_cmd in sorted(data_validation_reorg):
+    if f'local title "{data_cmd} —' not in semantics:
+        fail(f"data validation/reorganization semantics missing: {data_cmd}")
 if '"样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"' not in registry:
     fail("legacy sample-selection navigation alias must remain resolvable")
 

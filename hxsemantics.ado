@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.26  16aug2026
+*! hxsemantics 1.4.27  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -144,6 +144,231 @@ program define hxsemantics, rclass
         local explain1 "把当前数据保存为 cleaned.dta；若文件已存在，Stata 会阻止覆盖。"
         local example2 "save cleaned.dta, replace"
         local explain2 "确认后覆盖已有 cleaned.dta。"
+    }
+    else if "`cmd'" == "assert" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "assert — 验证数据条件"
+        local purpose1 "检查所有指定观测是否满足逻辑条件；只要有一条不满足，Stata 就会报错。"
+        local purpose2 "适合在清洗流程中锁定取值范围、唯一逻辑和业务规则。"
+        local expr_label "必须成立的条件 + if/in（例如 sales >= 0 if !missing(sales)）"
+        local example1 "assert sales >= 0 if !missing(sales)"
+        local explain1 "确认所有非缺失 sales 都不小于 0。"
+        local example2 "assert inrange(year, 2000, 2026)"
+        local explain2 "确认 year 全部位于指定范围内。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "count" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "count — 统计观测数"
+        local purpose1 "计算当前数据或指定条件下有多少条观测。"
+        local purpose2 "常用于清洗前后核对样本量，或检查某类样本是否存在。"
+        local expr_label "if/in 条件（全部样本可留空）"
+        local example1 "count"
+        local explain1 "统计当前数据中的全部观测数。"
+        local example2 "count if treated == 1"
+        local explain2 "统计 treated=1 的观测数。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "compare" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "compare — 比较两个变量"
+        local purpose1 "逐观测比较两个变量，并汇总相等、大小关系和缺失组合。"
+        local purpose2 "适合核对旧变量与新变量、原始字段与清洗字段是否一致。"
+        local expr_label "两个要比较的变量（例如 sales sales_clean）"
+        local example1 "compare sales sales_clean"
+        local explain1 "汇总 sales 与 sales_clean 的逐观测差异。"
+        local example2 "compare id_old id_new"
+        local explain2 "检查两个 ID 字段的匹配关系。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "clonevar" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "clonevar — 完整复制变量"
+        local purpose1 "复制变量的值及其存储类型、格式、变量标签和值标签。"
+        local purpose2 "适合修改变量前创建可追溯备份。"
+        local expr_label "新变量 = 原变量（例如 sales_backup = sales）"
+        local example1 "clonevar sales_backup = sales"
+        local explain1 "完整复制 sales 为 sales_backup。"
+        local example2 "clonevar industry_raw = industry"
+        local explain2 "在重编码前保留 industry 的原始版本。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "split" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "split — 拆分字符串变量"
+        local purpose1 "按分隔符把一个字符串变量拆成多个新变量。"
+        local purpose2 "先检查分隔符是否稳定；生成变量数量由每条字符串的最大分段数决定。"
+        local expr_label "字符串变量 + parse()/generate() 等（例如 fullname, parse(" " ) gen(namepart)）"
+        local example1 "split fullname, parse(" " ) gen(namepart)"
+        local explain1 "按空格拆分 fullname，并生成 namepart1、namepart2 等变量。"
+        local example2 "split code, parse("-")"
+        local explain2 "按连字符拆分 code。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "expand" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "expand — 复制观测"
+        local purpose1 "按照固定次数或变量给出的次数复制每条观测。"
+        local purpose2 "会直接增加当前数据行数；运行前先核对复制规则和预期样本量。"
+        local expr_label "复制次数/变量 + generate()（例如 2, generate(copy)）"
+        local example1 "expand 2, generate(copy)"
+        local explain1 "每条观测变成两条，并用 copy 标记新增副本。"
+        local example2 "expand n_copies"
+        local explain2 "按每条观测的 n_copies 值决定复制次数。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "cross" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "cross — 两张数据做笛卡尔组合"
+        local purpose1 "把当前数据的每条观测与 using 数据的每条观测两两组合。"
+        local purpose2 "结果行数约等于两表行数乘积，可能迅速膨胀；只有研究设计确实需要全组合时使用。"
+        local expr_label "using 文件（例如 using products.dta）"
+        local example1 "cross using products.dta"
+        local explain1 "把当前每条观测与 products.dta 中每条观测组合。"
+        local example2 "help cross"
+        local explain2 "运行前先核对两张表的行数和预计组合规模。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "contract" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "contract — 把明细数据压缩为频数表"
+        local purpose1 "按一个或多个变量的组合生成唯一行，并记录频数或比例。"
+        local purpose2 "contract 会用汇总后的频数数据替换当前明细数据；正式运行前先保存或 preserve。"
+        local expr_label "分组变量 + freq()/percent() 等（例如 industry year, freq(n)）"
+        local example1 "contract industry year, freq(n)"
+        local explain1 "每个 industry-year 组合保留一行，并生成频数 n。"
+        local example2 "contract group, percent(pct)"
+        local explain2 "按 group 汇总并生成百分比变量 pct。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "fillin" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "fillin — 补齐变量组合"
+        local purpose1 "为指定变量实际出现过的取值补齐缺少的组合，并生成 _fillin 标记。"
+        local purpose2 "常用于把非平衡组合补成矩形结构；新增行中的其他变量通常为缺失值。"
+        local expr_label "要补齐组合的变量（例如 firm year）"
+        local example1 "fillin firm year"
+        local explain1 "补齐 firm 与 year 的取值组合，并用 _fillin 标记新增行。"
+        local example2 "fillin region product year"
+        local explain2 "补齐 region-product-year 组合。"
+        local show_advanced 0
+    }
+    else if "`cmd'" == "stack" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "stack — 把变量组纵向堆叠"
+        local purpose1 "把多组变量纵向堆成统一列，用于把重复结构整理成长格式。"
+        local purpose2 "stack 的变量组和 into() 必须一一对应；复杂结构运行前先查看 Stata Help 示例。"
+        local expr_label "变量组 + into()/clear 等原生 stack 主体"
+        local example1 "help stack"
+        local explain1 "先按当前 Stata 版本确认变量组与 into() 的对应写法。"
+        local example2 "reshape long"
+        local explain2 "若变量名具有规则 stub-year 结构，通常优先考虑 reshape long。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "xpose" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "xpose — 转置观测与变量"
+        local purpose1 "把数据的行和列互换，适合矩阵型小数据或特殊整理任务。"
+        local purpose2 "xpose 会重构整个数据集，变量名和类型可能发生变化；运行前先保存原数据。"
+        local expr_label "xpose 选项（通常使用 , clear；可加 varname）"
+        local example1 "xpose, clear"
+        local explain1 "把当前数据行列互换，并替换内存数据。"
+        local example2 "xpose, clear varname"
+        local explain2 "转置时同时保留原变量名信息。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "frame" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "frame — 管理内存中的多个数据集"
+        local purpose1 "创建、切换、复制、删除或在指定 frame 中运行命令。"
+        local purpose2 "frame 让多个 .dta 同时留在内存中，适合主表、映射表和临时结果并行工作。"
+        local expr_label "frame 子命令与参数（如 create lookup / change lookup / drop lookup）"
+        local example1 "frame create lookup"
+        local explain1 "创建名为 lookup 的空 frame。"
+        local example2 "frame change lookup"
+        local explain2 "切换到 lookup frame。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "frames" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "frames — 查看和管理 Frames 集合"
+        local purpose1 "列出当前 frames，并在支持的版本中保存、载入或描述 frameset。"
+        local purpose2 "基础 frame 操作用 frame；frames 更适合查看集合和管理多个 frame。"
+        local expr_label "frames 子命令与参数（如 dir / describe / save / use）"
+        local example1 "frames dir"
+        local explain1 "列出当前内存中的所有 frame。"
+        local example2 "frames describe"
+        local explain2 "查看当前 frames 的结构信息。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "frlink" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "frlink — 按键连接两个 Frame"
+        local purpose1 "在当前 frame 与另一个 frame 之间建立 1:1、m:1 等链接关系。"
+        local purpose2 "链接前先用 isid 检查目标 frame 的键唯一性；frlink 不会像 merge 那样复制全部变量。"
+        local expr_label "关系 + 键变量 + frame()（例如 m:1 countyid, frame(counties)）"
+        local example1 "frlink m:1 countyid, frame(counties)"
+        local explain1 "把当前数据按 countyid 链接到 counties frame。"
+        local example2 "frlink 1:1 state, frame(census)"
+        local explain2 "按 state 建立一对一 frame 链接。"
+        local show_advanced 1
+    }
+    else if "`cmd'" == "frget" {
+        local template "command_body"
+        local has_depvar 0
+        local has_varlist 0
+        local has_expression 1
+        local title "frget — 从已链接 Frame 复制变量"
+        local purpose1 "在 frlink 建立链接后，把另一个 frame 的指定变量复制到当前 frame。"
+        local purpose2 "变量会真正复制到当前数据；若只需要动态引用且版本支持，可另考虑 frame alias。"
+        local expr_label "变量列表 + from()（例如 med_income, from(counties)）"
+        local example1 "frget med_income, from(counties)"
+        local explain1 "从已链接的 counties frame 复制 med_income。"
+        local example2 "frget x1 x2, from(lookup)"
+        local explain2 "从 lookup frame 一次复制两个变量。"
+        local show_advanced 1
     }
     else if "`cmd'" == "generate" {
         local template "generate"

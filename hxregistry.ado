@@ -1,4 +1,4 @@
-*! hxregistry 3.1.30  16aug2026
+*! hxregistry 3.1.31  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -7,7 +7,7 @@ program define hxregistry, rclass
 
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
-    local data_cmds "use import export save describe codebook isid duplicates misstable generate egen replace recode rename order label format compress encode decode destring tostring winsor2 keep drop merge append joinby reshape collapse sort gsort xtset tsset"
+    local data_cmds "use import export save describe codebook isid assert count compare duplicates misstable generate egen replace recode clonevar split rename order label format compress encode decode destring tostring winsor2 keep drop expand merge append joinby cross reshape collapse contract fillin stack xpose sort gsort xtset tsset frame frames frlink frget"
     local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test testparm testnl lincom nlcom contrast pwcompare predictnl lrtest hausman suest linktest estimates estat regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh dsge dsgenl alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress nptrend kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmaregress bmacoefsample bmagraph bmastats bmapredict predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox bayesvarstable bayesirf bayesfcast {
@@ -184,6 +184,21 @@ program define hxregistry, rclass
         local key_import "import excel delimited sas spss data 导入 Excel CSV SAS SPSS 数据"
         local key_export "export excel delimited data 导出 Excel CSV 数据"
         local key_save "save dta dataset replace 数据 保存 覆盖"
+        local key_assert "assert validate condition 数据 验证 条件 断言"
+        local key_count "count observations sample 样本 观测数 计数"
+        local key_compare "compare variables values 变量 比较 差异"
+        local key_clonevar "clonevar copy variable 克隆 复制 变量"
+        local key_split "split string parse 字符串 拆分 分列"
+        local key_expand "expand duplicate observations 扩展 复制 样本 观测"
+        local key_cross "cross Cartesian datasets 笛卡尔积 数据 组合"
+        local key_contract "contract frequency dataset 频数 汇总 数据重组"
+        local key_fillin "fillin rectangularize combinations 补齐 组合 面板"
+        local key_stack "stack variables reshape 堆叠 变量 数据重组"
+        local key_xpose "xpose transpose rows columns 转置 行列"
+        local key_frame "frame multiple datasets 多数据集 内存 frame"
+        local key_frames "frames dir save use 多数据集 frameset"
+        local key_frlink "frlink link frames 连接 frame 多数据集"
+        local key_frget "frget copy linked frame variables 复制 frame 变量"
         local key_describe "describe data variables 数据 描述 变量 类型"
         local key_codebook "codebook data variables 数据 字典 取值 缺失 标签"
         local key_isid "isid unique identifier key 唯一键 主键 合并 检查"
@@ -475,11 +490,11 @@ program define hxregistry, rclass
 
     /* Stata Data menu paths. HX-only conversion stays in Workflow. */
     if inlist(`"`method'"', "导入与转换", "import_convert") local view "use import export save"
-    else if inlist(`"`method'"', "数据检查", "data_check") local view "describe codebook isid duplicates misstable"
-    else if inlist(`"`method'"', "变量处理", "variable_processing") local view "generate egen replace recode rename order label format compress encode decode destring tostring winsor2"
-    else if inlist(`"`method'"', "样本处理", "sample_processing") local view "keep drop"
-    else if inlist(`"`method'"', "合并与追加", "merge_append") local view "merge append joinby"
-    else if inlist(`"`method'"', "数据结构", "data_structure") local view "reshape collapse sort gsort xtset tsset"
+    else if inlist(`"`method'"', "数据检查", "data_check") local view "describe codebook isid assert count compare duplicates misstable"
+    else if inlist(`"`method'"', "变量处理", "variable_processing") local view "generate egen replace recode clonevar split rename order label format compress encode decode destring tostring winsor2"
+    else if inlist(`"`method'"', "样本处理", "sample_processing") local view "keep drop expand"
+    else if inlist(`"`method'"', "合并与追加", "merge_append") local view "merge append joinby cross frlink frget"
+    else if inlist(`"`method'"', "数据结构", "data_structure") local view "reshape collapse contract fillin stack xpose sort gsort xtset tsset frame frames"
 
     /* Stata Statistics menu. */
     else if inlist(`"`method'"', "汇总，表格和假设检验", "summary_tests") {
