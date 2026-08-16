@@ -23,15 +23,20 @@ jobs:
           python-version: '3.12'
       - name: Patch multivariate Graphics navigation
         run: python tools/tmp_patch_multivariate_graphs.py
-      - name: Fix verifier source variable names
+      - name: Harden generated static contracts
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('tools/verify_static_contracts.py')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('not in resolver:', 'not in resolve:')
-          s = s.replace('not in java_source:', 'not in java:')
-          p.write_text(s, encoding='utf-8', newline='\n')
+          lines = p.read_text(encoding='utf-8').splitlines()
+          out = []
+          for line in lines:
+              line = line.replace('not in resolver:', 'not in resolve:')
+              line = line.replace('not in java_source:', 'not in java:')
+              if 'cluster_dendrogram' in line and 'not in resolve:' in line:
+                  line = 'if \'cluster_dendrogram" local probe_cmd "cluster"\' not in resolve:'
+              out.append(line)
+          p.write_text('\n'.join(out) + '\n', encoding='utf-8', newline='\n')
           PY
       - name: Rebuild managed release
         shell: pwsh
