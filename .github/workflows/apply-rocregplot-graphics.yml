@@ -17,12 +17,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Align patcher anchor
+      - name: Align patcher anchors
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('tools/prepare_rocregplot_graphics.py')
           s = p.read_text(encoding='utf-8')
+
           old = '''    'Arrays.asList("event_plot", "marginsplot", "coefplot").contains(command)',
               'Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)',
               label="result graph task hint",
@@ -34,7 +35,31 @@ jobs:
           )'''
           if s.count(old) != 1:
               raise SystemExit('patcher task-hint anchor mismatch')
-          p.write_text(s.replace(old, new), encoding='utf-8')
+          s = s.replace(old, new)
+
+          old = '''    expected=1,
+              label="static special_open",
+          )'''
+          new = '''    expected=2,
+              label="static special_open",
+          )'''
+          if s.count(old) != 1:
+              raise SystemExit('patcher static special_open anchor mismatch')
+          s = s.replace(old, new)
+
+          redundant = '''static = replace_exact(
+              static,
+              '\"sts_graph\", \"roctab\", \"roccomp\", \"rocgold\", \"screeplot\"',
+              '\"sts_graph\", \"roctab\", \"roccomp\", \"rocgold\", \"rocregplot\", \"screeplot\"',
+              expected=1,
+              label="structured route loop",
+          )
+
+          '''
+          if s.count(redundant) != 1:
+              raise SystemExit('patcher redundant static block mismatch')
+          s = s.replace(redundant, '')
+          p.write_text(s, encoding='utf-8')
           PY
 
       - name: Apply rocregplot source patch
