@@ -314,6 +314,52 @@ for official in ("didregress", "xtdidregress"):
     if official not in stats_cmds:
         fail(f"official DID command missing from Statistics catalog: {official}")
 
+statistics_command_method_contracts = {
+    "summarize": "统计|汇总，表格和假设检验",
+    "regress": "统计|线性模型及相关",
+    "logit": "统计|二元结果",
+    "ologit": "统计|序数结果",
+    "mlogit": "统计|分类结果",
+    "poisson": "统计|计数结果",
+    "fracreg": "统计|分数结果",
+    "glm": "统计|广义线性模型",
+    "heckman": "统计|选择模型",
+    "arima": "统计|时间序列",
+    "var": "统计|多元时间序列",
+    "spregress": "统计|空间自回归模型",
+    "xtreg": "统计|纵向/面板数据",
+    "mixed": "统计|多层混合效应模型",
+    "stcox": "统计|生存分析",
+    "cc": "统计|流行病学及相关",
+    "eregress": "统计|内生协变量",
+    "teffects": "统计|因果推断/处理效应",
+    "sem": "统计|结构方程模型(SEM)",
+    "irt": "统计|项目反应理论(IRT)",
+    "dsge": "统计|DSGE模型",
+    "pca": "统计|多元分析",
+    "svy": "统计|调查数据分析",
+    "lasso": "统计|Lasso回归",
+    "meta": "统计|Meta分析",
+    "mi": "统计|多重插补",
+    "npregress": "统计|非参数分析",
+    "exlogistic": "统计|精确统计",
+    "bootstrap": "统计|重抽样",
+    "power": "统计|效能，精度和样品含量",
+    "bayes": "统计|贝叶斯分析",
+    "bmaregress": "统计|贝叶斯模型平均",
+    "ivregress": "统计|工具变量与内生性",
+    "margins": "统计|估计后分析",
+}
+command_method_scope = java[java.find('private static String commandMethod(String var0)'):java.find('private static String commandPath(String var0)')]
+for command, method_label in statistics_command_method_contracts.items():
+    if command not in command_method_scope or f'return "{method_label}";' not in command_method_scope:
+        fail(f"Statistics commandMethod canonical classification missing: {command} -> {method_label}")
+if 'return "回归模型|工具变量";' in command_method_scope:
+    fail("native IV commands still use the legacy regression commandPath classification")
+if 'return "后估计|系数检验";' in command_method_scope or 'return "后估计|预测边际";' in command_method_scope:
+    fail("native postestimation commands still use legacy post commandPath labels")
+
+
 # Catalog correctness: Stata ERM has eregress/eintreg/eprobit/eoprobit; epoisson is not a public command.
 if (
     "epoisson" in stats_cmds
