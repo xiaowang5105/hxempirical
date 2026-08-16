@@ -200,6 +200,42 @@ if "telasso" not in stats_cmds:
 for survey_cmd in ("svyset", "svydescribe", "svy"):
     if survey_cmd not in stats_cmds:
         fail(f"survey workflow command missing: {survey_cmd}")
+panel_extension_core = {"xtologit", "xtivreg", "xtpcse", "xtregar", "xtrc", "xtstreg"}
+missing_panel_extensions = sorted(panel_extension_core - stats_cmds)
+if missing_panel_extensions:
+    fail("panel-data main commands missing: " + ", ".join(missing_panel_extensions))
+mixed_extension_core = {"mecloglog", "meintreg", "menl"}
+missing_mixed_extensions = sorted(mixed_extension_core - stats_cmds)
+if missing_mixed_extensions:
+    fail("mixed-effects main commands missing: " + ", ".join(missing_mixed_extensions))
+for survival_cmd in ("stintreg", "stintcox"):
+    if survival_cmd not in stats_cmds:
+        fail(f"interval-censored survival command missing: {survival_cmd}")
+if "foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox" not in registry:
+    fail("Stata 17 version gate must include xtmlogit and stintcox")
+for needle in (
+    'xtivreg y x1 (x2 = z1 z2), fe',
+    'xtpcse y x1 x2, correlation(ar1) pairwise',
+    'xtregar y x1 x2, fe',
+    'xtrc y x1 x2',
+    'xtstreg age female, distribution(weibull)',
+    'mecloglog y x1 x2 || school:',
+    'meintreg ylower yupper x1 x2 x3 || id:',
+    'menl weight = ({b1}+{U[id]})/(1+exp(-(time-{b2})/{b3}))',
+    'stintreg i.stage, interval(ltime rtime) distribution(weibull)',
+    'stintcox age_mean i.male i.needle i.inject i.jail, interval(ltime rtime)',
+):
+    if needle not in semantics:
+        fail(f"panel/mixed/survival semantic contract missing: {needle}")
+panel_method_start = java.find("private static boolean isGenericPanelEstimator")
+panel_method_end = java.find("private static boolean isGenericPanelTimeRequired", panel_method_start)
+if panel_method_start < 0 or panel_method_end < 0:
+    fail("Java generic panel estimator method missing")
+panel_method_block = java[panel_method_start:panel_method_end]
+for panel_cmd in panel_extension_core:
+    if f'"{panel_cmd}"' not in panel_method_block:
+        fail(f"Java panel auto-xtset routing missing: {panel_cmd}")
+
 iv_core = {"ivregress", "ivprobit", "ivtobit", "ivpoisson"}
 missing_iv = sorted(iv_core - stats_cmds)
 if missing_iv:

@@ -10793,8 +10793,9 @@ public final class HxWorkbench {
 
       private static boolean isGenericPanelEstimator(String command) {
          return Arrays.asList(
-            "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
-            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys", "xthdidregress"
+            "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
+            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtivreg", "xtpcse", "xtregar", "xtrc", "xtstreg",
+            "xtabond", "xtdpdsys", "xthdidregress"
          ).contains(command);
       }
 

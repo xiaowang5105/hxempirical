@@ -1,4 +1,4 @@
-*! hxregistry 3.1.14  16aug2026
+*! hxregistry 3.1.15  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -8,9 +8,9 @@ program define hxregistry, rclass
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
     local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
-    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm stset sts stcox streg stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
+    local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test lincom regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima newey prais arch ucm dfuller pperron corrgram pergram var svar vec varsoc vargranger varstable irf spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtregar xtrc xtstreg xtabond xtdpdsys mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm stset sts stcox streg stintreg stintcox stcrreg cc cs ir mcc dstdize eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesstats bayesgraph bmaregress predict margins"
     if c(stata_version) < 17 {
-        foreach cmd in didregress xtdidregress telasso ziologit {
+        foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox {
             local stats_cmds : subinstr local stats_cmds " `cmd'" "", all
         }
     }
@@ -166,6 +166,17 @@ program define hxregistry, rclass
         local key_xtreg "xtreg panel regression fixed effects random effects 面板回归 固定效应 随机效应 纵向"
         local key_xtlogit "xtlogit panel binary 面板 二元 逻辑回归"
         local key_xtprobit "xtprobit panel binary 面板 二元 概率回归"
+        local key_xtologit "xtologit panel ordered logit 面板 有序 逻辑回归 随机效应"
+        local key_xtivreg "xtivreg panel instrumental variables 面板 工具变量 内生性 固定效应 随机效应"
+        local key_xtpcse "xtpcse panel corrected standard errors 面板校正标准误 截面相关 AR1"
+        local key_xtregar "xtregar panel AR1 serial correlation 面板 自相关 固定效应 随机效应"
+        local key_xtrc "xtrc random coefficients panel 随机系数 面板回归"
+        local key_xtstreg "xtstreg panel survival random effects 生存分析 面板 随机效应"
+        local key_mecloglog "mecloglog mixed effects complementary loglog 多层 混合效应 二元"
+        local key_meintreg "meintreg multilevel interval regression 多层 区间回归 随机系数"
+        local key_menl "menl mixed effects nonlinear regression 多层 非线性 混合效应"
+        local key_stintreg "stintreg interval censored survival 区间删失 生存 参数模型"
+        local key_stintcox "stintcox interval censored Cox 区间删失 生存 Cox 比例风险"
         local key_reghdfe "reghdfe high dimensional fixed effects absorb 高维固定效应 吸收 固定效应 企业固定效应 年份固定效应"
         local key_logit "logit 二元 逻辑回归"
         local key_binreg "binreg binomial glm risk ratio risk difference odds ratio 二项 风险比 风险差"
@@ -366,9 +377,17 @@ program define hxregistry, rclass
     else if inlist(`"`method'"', "时间序列", "time_series") local view "arima newey prais arch ucm dfuller pperron corrgram pergram"
     else if inlist(`"`method'"', "多元时间序列", "multivariate_ts") local view "var svar vec varsoc vargranger varstable irf"
     else if inlist(`"`method'"', "空间自回归模型", "spatial_ar") local view "spregress spivregress spxtregress"
-    else if inlist(`"`method'"', "纵向/面板数据", "panel_longitudinal") local view "xtreg xtlogit xtprobit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtabond xtdpdsys"
-    else if inlist(`"`method'"', "多层混合效应模型", "mixed_effects") local view "mixed melogit meprobit mepoisson menbreg meologit meoprobit mestreg metobit meglm"
-    else if inlist(`"`method'"', "生存分析", "survival") local view "stset sts stcox streg stcrreg"
+    else if inlist(`"`method'"', "纵向/面板数据", "panel_longitudinal") {
+        local view "xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit"
+        if c(stata_version) >= 17 local view "`view' xtmlogit"
+        local view "`view' xtfrontier xtivreg xtpcse xtregar xtrc xtstreg xtabond xtdpdsys"
+    }
+    else if inlist(`"`method'"', "多层混合效应模型", "mixed_effects") local view "mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm"
+    else if inlist(`"`method'"', "生存分析", "survival") {
+        local view "stset sts stcox streg stintreg"
+        if c(stata_version) >= 17 local view "`view' stintcox"
+        local view "`view' stcrreg"
+    }
     else if inlist(`"`method'"', "流行病学及相关", "epidemiology") local view "cc cs ir mcc dstdize"
     else if inlist(`"`method'"', "内生协变量", "endogenous_covariates") local view "eregress eprobit eoprobit eintreg"
     else if inlist(`"`method'"', "样本选择模型", "sample_selection") local view "heckman heckprobit heckoprobit heckpoisson"
