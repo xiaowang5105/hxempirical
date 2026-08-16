@@ -9907,7 +9907,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9961,7 +9961,7 @@ public final class HxWorkbench {
          String coreSubtitle;
          String optionLabel = "其他图形选项";
          boolean includeIf = !"twoway".equals(var1)
-            && !Arrays.asList("screeplot", "scoreplot", "loadingplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "cchart", "pchart", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph").contains(var1);
+            && !Arrays.asList("screeplot", "scoreplot", "loadingplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "cchart", "pchart", "rocregplot", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph").contains(var1);
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
             this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " · 直方图" : " · 核密度图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y</html>");
@@ -10083,6 +10083,13 @@ public final class HxWorkbench {
             this.syntaxArea.setText(compareRoc ? "roccomp refvar classvars [if] [, graph options]" : "roctab refvar classvar [if] [, graph options]");
             coreTitle = "真实结局与预测评分";
             coreSubtitle = compareRoc ? "选择一个真实二元结局，再选择至少两个要比较的评分。" : "选择一个真实二元结局和且仅一个预测评分。";
+         } else if ("rocregplot".equals(var1)) {
+            this.commandTitle.setText("rocregplot · ROC regression 结果图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> rocregplot, at1(currage=40) at2(currage=50)</html>");
+            this.insightArea.setText("这是 rocreg 的后估计图。先成功运行 rocreg，本页直接使用当前 ROC regression 结果绘制 marginal 或 covariate-specific ROC curves。\n\nat1()/at2()/... 用于比较协变量取值下的 ROC 曲线；多个 classifier、置信区间、plot#opts()、legend、标题和尺寸继续使用 rocregplot 原生 options。\n\n这里不重新选择 refvar/classvar，也不把当前数据变量误当成新的 ROC 输入。");
+            this.syntaxArea.setText("rocregplot [, options]");
+            coreTitle = "上一条 rocreg 结果";
+            coreSubtitle = "直接复用当前 rocreg estimation result；需要比较协变量情景时在图形设置中填写 at#() 等原生 options。";
          } else if ("biplot".equals(var1)) {
             this.commandTitle.setText("biplot · 多元双标图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> biplot x1 x2 x3 x4</html>");
@@ -10406,6 +10413,12 @@ public final class HxWorkbench {
             rocHint.setFont(rocHint.getFont().deriveFont(9.8F));
             rocHint.setAlignmentX(0.0F);
             coreBody.add(rocHint);
+         } else if ("rocregplot".equals(var1)) {
+            JLabel rocRegPlotHint = new JLabel("<html>使用最近一次成功的 <b>rocreg</b> 结果。常见比较可在下一步直接写 <b>at1(currage=40) at2(currage=50)</b>；无需重新选择 ROC 原始变量。</html>");
+            rocRegPlotHint.setForeground(MUTED);
+            rocRegPlotHint.setFont(rocRegPlotHint.getFont().deriveFont(10.0F));
+            rocRegPlotHint.setAlignmentX(0.0F);
+            coreBody.add(rocRegPlotHint);
          } else if ("biplot".equals(var1)) {
             this.addGenericBodyField(coreBody, "参与分析的变量（至少 2 个，可多选）", this.listPane(this.variables));
             JLabel biplotHint = new JLabel("biplot 会直接对所选变量执行多元双标图分析；这里选择原始分析变量，而不是上一模型的 components。");
@@ -10592,7 +10605,7 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.rebuilding = false;
          this.updateSpecialGraphPreview();
-         this.statusLabel.setText(Arrays.asList("marginsplot", "coefplot", "event_plot").contains(var1) ? "结果图页面按结果对象 → 图形设置组织；不会要求重新选择原始数据变量。" : "图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
+         this.statusLabel.setText(Arrays.asList("rocregplot", "marginsplot", "coefplot", "event_plot").contains(var1) ? "结果图页面按结果对象 → 图形设置组织；不会要求重新选择原始数据变量。" : "图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
          if (!this.previewMode && Arrays.asList("coefplot", "event_plot").contains(var1)) this.offerOptionalDependency(var1);
       }
 
@@ -11402,7 +11415,7 @@ public final class HxWorkbench {
          if ("predict".equals(command)) return "生成设置";
          if (Arrays.asList("histogram", "kdensity").contains(command)) return "分布设置";
          if (Arrays.asList("scatter", "lfit").contains(command)) return "坐标变量";
-         if (Arrays.asList("event_plot", "marginsplot", "coefplot").contains(command)) return "图形设置";
+         if (Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)) return "图形设置";
          if (isGenericPanelEstimator(command)) return "变量与面板";
          if (Arrays.asList(
             "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
@@ -11440,7 +11453,7 @@ public final class HxWorkbench {
          if ("predict".equals(command)) return "先选择生成预测值、残差或标准化残差，再填写新变量名。";
          if (Arrays.asList("histogram", "kdensity").contains(command)) return "选择要查看分布的变量；样本筛选、权重和图形 options 放在最后一步。";
          if (Arrays.asList("scatter", "lfit").contains(command)) return "指定纵轴 Y 和横轴 X；图形细节与样本筛选放在最后一步。";
-         if (Arrays.asList("event_plot", "marginsplot", "coefplot").contains(command)) return "指定结果对象或命令主体，再在最后一步补充图形 options。";
+         if (Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)) return "指定结果对象或命令主体，再在最后一步补充图形 options。";
          if (isGenericPanelEstimator(command)) return "先选择因变量、解释变量以及面板结构，再设置模型和推断选项。";
          return "先完成当前任务最关键的变量、文件或表达式；变量可从右侧变量窗口或数据表表头直接拖入。";
       }
@@ -13215,7 +13228,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -13365,6 +13378,9 @@ public final class HxWorkbench {
             rocOpts.add("graph");
             if (!this.options.getText().trim().isBlank()) rocOpts.add(this.options.getText().trim());
             var1 += ", " + String.join(" ", rocOpts);
+         } else if ("rocregplot".equals(this.currentCommand)) {
+            var1 = "rocregplot";
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
          } else if ("biplot".equals(this.currentCommand)) {
             List<String> biplotVars = this.variables.getSelectedValuesList();
             var1 = "biplot" + (biplotVars.isEmpty() ? "" : " " + String.join(" ", biplotVars));

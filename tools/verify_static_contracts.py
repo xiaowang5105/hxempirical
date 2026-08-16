@@ -89,12 +89,16 @@ if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in 
     fail("empty-data conversion action must route to the safe hxconvert workflow")
 if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
     fail("empty-data conversion action still routes to generic import instead of hxconvert")
-special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
+special_open = 'Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)'
 if special_open not in java:
     fail("structured Graphics commands are not routed to the special graph page")
-for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph"):
+for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph"):
     if graph_cmd not in special_open:
         fail(f"structured Graphics route contract missing: {graph_cmd}")
+intentional_non_special_graphics = {"set", "rocfit", "rocreg"}
+for graph_cmd in set(local_words(registry, "graph_cmds")) - intentional_non_special_graphics:
+    if f'"{graph_cmd}"' not in special_open:
+        fail(f"Graphics catalog command unexpectedly falls back to generic page: {graph_cmd}")
 if 'String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";' not in java:
     fail("bar/dot special graph preview builder missing")
 if 'var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);' not in java:
@@ -126,6 +130,15 @@ if '"rocfit"' in roc_route_scope or '"rocreg"' in roc_route_scope:
     fail("rocfit/rocreg are still routed as direct graph-producing commands")
 if '"rocregplot"' not in roc_route_scope:
     fail("rocregplot must route to the graph result view")
+for needle in (
+    'rocregplot · ROC regression 结果图',
+    'coreTitle = "上一条 rocreg 结果";',
+    'var1 = "rocregplot";',
+    '使用最近一次成功的 <b>rocreg</b> 结果',
+    'Arrays.asList("rocregplot", "marginsplot", "coefplot", "event_plot").contains(var1)',
+):
+    if needle not in java:
+        fail(f"rocregplot structured page contract missing: {needle}")
 for needle in (
     'rocregplot — 绘制 ROC regression 结果',
     'rocregplot, at1(currage=40) at2(currage=50)',
