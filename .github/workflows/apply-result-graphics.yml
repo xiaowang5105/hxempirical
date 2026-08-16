@@ -1,0 +1,100 @@
+name: Apply result Graphics workspace patch
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Apply result Graphics source patch
+        run: python tools/prepare_result_graphics.py
+
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi;
+          public class SFIToolkit {
+            public static int executeCommand(String s, boolean b){return 0;}
+            public static void displayln(String s){}
+            public static void errorln(String s){}
+            public static String stackTraceToString(Throwable t){return t==null?"":t.toString();}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi;
+          public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi;
+          public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi;
+          public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi;
+          public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi;
+          public class Data {
+            public static long getObsTotal(){return 0L;}
+            public static int getVarCount(){return 0;}
+            public static int getVarIndex(String s){return 0;}
+            public static String getVarName(int i){return "";}
+            public static String getVarLabel(int i){return "";}
+            public static String getVarFormat(int i){return "";}
+            public static boolean isVarTypeString(int i){return false;}
+            public static double getNum(int i,long j){return Double.NaN;}
+            public static String getStr(int i,long j){return "";}
+            public static String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi;
+          public class Frame {
+            public static Frame connect(String s){return new Frame();}
+            public static Frame create(String s){return new Frame();}
+            public void drop(){}
+            public long getObsTotal(){return 0L;}
+            public int getVarCount(){return 0;}
+            public int getVarIndex(String s){return 0;}
+            public String getVarName(int i){return "";}
+            public boolean isVarTypeString(int i){return false;}
+            public double getNum(int i,long j){return Double.NaN;}
+            public String getStr(int i,long j){return "";}
+            public String getFormattedValue(int i,long j,boolean b){return "";}
+          }
+          EOF
+
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+
+      - name: Verify static and managed release contracts
+        run: |
+          python tools/verify_static_contracts.py
+          python tools/verify_release.py
+
+      - name: Remove one-shot files
+        run: rm -f tools/prepare_result_graphics.py .github/workflows/apply-result-graphics.yml
+
+      - name: Commit result Graphics source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refine result-based Graphics pages"
+          git push origin HEAD:ui-consistency-audit-20260815
