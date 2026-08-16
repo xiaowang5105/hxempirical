@@ -36,6 +36,21 @@ jobs:
               if s.count(old) != 1:
                   raise SystemExit(f'temporary assertion anchor mismatch: {old}')
               s = s.replace(old, new)
+          old_route_check = '''for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot"):
+              if graph_cmd not in roc_route_scope:
+                  fail(f"twoway/regression-diagnostic graph must route to graph result view: {graph_cmd}")'''
+          new_route_check = '''diagnostic_route_lists = re.findall(
+              r'Arrays\\.asList\\((.*?)\\)\\.contains\\(this\\.currentCommand\\)\\)\\s*\\{\\s*this\\.selectResultView\\("graph", true\\);',
+              java,
+              re.DOTALL,
+          )
+          diagnostic_route_scope = max(diagnostic_route_lists, key=len, default="")
+          for graph_cmd in ("line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot"):
+              if f'"{graph_cmd}"' not in diagnostic_route_scope:
+                  fail(f"twoway/regression-diagnostic graph must route to graph result view: {graph_cmd}")'''
+          if s.count(old_route_check) != 1:
+              raise SystemExit('temporary route-check anchor mismatch')
+          s = s.replace(old_route_check, new_route_check)
           p.write_text(s, encoding='utf-8')
           PY
 
