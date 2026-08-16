@@ -149,6 +149,24 @@ if "x[0].lower() == \"f\"" not in read("tools/verify_release.py"):
     fail("release verifier does not include uppercase F package entries")
 
 # Parse the registry structure rather than relying on the first foreach in the file.
+data_cmds = set(local_words(registry, "data_cmds"))
+core_data_management = {"describe", "codebook", "isid", "egen", "recode", "rename", "order", "label", "format", "compress", "sort", "gsort", "joinby"}
+missing_core_data = sorted(core_data_management - data_cmds)
+if missing_core_data:
+    fail("core data-management commands missing: " + ", ".join(missing_core_data))
+for needle in (
+    'isid firm year',
+    'egen firm_id = group(firm)',
+    'recode age (0/17=1) (18/64=2) (65/max=3), gen(agegrp)',
+    'rename oldname newname',
+    'order firm year, first',
+    'compress — 无损缩小数据存储',
+    'gsort firm -sales',
+    'joinby industry year using policy.dta',
+):
+    if needle not in semantics:
+        fail(f"core data-management semantic contract missing: {needle}")
+
 stats_cmds = set(local_words(registry, "stats_cmds"))
 stats_methods = local_words(registry, "stats_methods")
 if "样本选择模型" in stats_methods:

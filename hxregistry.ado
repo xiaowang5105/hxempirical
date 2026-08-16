@@ -1,4 +1,4 @@
-*! hxregistry 3.1.27  16aug2026
+*! hxregistry 3.1.28  16aug2026
 *! Stata-native catalog hierarchy plus HX workflow navigation, search, favorites, and recent-command state
 program define hxregistry, rclass
     version 16.0
@@ -7,7 +7,7 @@ program define hxregistry, rclass
 
     /* Ordinary commands follow Stata's own Statistics/Graphics hierarchy.
        HX-only workflows stay separate. */
-    local data_cmds "hxconvert generate replace keep drop merge append reshape collapse xtset tsset encode decode destring tostring winsor2 duplicates misstable"
+    local data_cmds "hxconvert describe codebook isid duplicates misstable generate egen replace recode rename order label format compress encode decode destring tostring winsor2 keep drop merge append joinby reshape collapse sort gsort xtset tsset"
     local stats_cmds "summarize ameans centile ci mean proportion ratio total tabstat tabulate table dtable ttest prtest sdtest oneway anova ranksum median signrank signtest test testparm testnl lincom nlcom contrast pwcompare predictnl lrtest hausman suest linktest estimates estat regress areg reghdfe cnsreg rreg hetregress qreg iqreg bsqreg sqreg vwls eivreg intreg tobit truncreg churdle boxcox fp nl nlsur gmm sureg reg3 mvreg frontier correlate pwcorr logit logistic binreg probit biprobit hetprobit scobit cloglog ologit oprobit hetoprobit ziologit zioprobit mlogit mprobit clogit slogit cmset cmsummarize cmchoiceset cmtab cmsample cmclogit cmmixlogit cmxtmixlogit cmmprobit cmroprobit cmrologit nlogit asclogit asmprobit poisson nbreg gnbreg cpoisson zip zinb tpoisson tnbreg ppmlhdfe fracreg betareg glm heckman heckprobit heckoprobit heckpoisson arima arfima arimasoc arfimasoc newey prais arch ucm mswitch threshold dfgls dfuller pperron corrgram cumsp pergram wntestb wntestq psdensity rolling forecast tsappend tsfill tsfilter tsreport tssmooth var svar vec varbasic varsoc vargranger varlmar varnorm varstable varwle vecrank veclmar vecnorm vecstable irf lpirf mgarch dfactor sspace xcorr spregress spivregress spxtregress xtreg xtlogit xtprobit xtologit xtpoisson xtnbreg xtgee xttobit xtcloglog xtintreg xtoprobit xtmlogit xtfrontier xtivreg xtpcse xtgls xtregar xtrc xtstreg xteregress xteprobit xteoprobit xteintreg xtheckman xthtaylor xtabond xtdpdsys xtdpd xtunitroot xtcointtest xtdescribe xtsum xttab xtdata mixed mecloglog melogit meprobit mepoisson menbreg meologit meoprobit meintreg menl mestreg metobit meglm ctset cttost ltable snapspan stset stdescribe stsum stci stcurve stbase stfill stgen stsplit stvary sttocc sttoct sts stcox streg stintreg stintcox stcrreg stir strate stptime stmh stmc cc cs ir mcc dstdize pkexamine pksumm pkcross pkequiv pkcollapse pkshape eregress eprobit eoprobit eintreg ivregress ivprobit ivtobit ivpoisson ivfprobit ivqregress ivreghdfe teffects eteffects etregress etpoisson stteffects didregress xtdidregress mediate hdidregress xthdidregress sem gsem fmm irt irtgraph diflogistic difmh dsge dsgenl alpha factor pca canon ca candisc hotelling manova mca mds mdslong mdsmat mvtest procrustes discrim cluster svyset svydescribe svy lasso elasticnet sqrtlasso poregress pologit popoisson dsregress dslogit dspoisson poivregress xporegress xpologit xpopoisson xpoivregress telasso meta mi npregress nptrend kdensity lowess lpoly exlogistic expoisson bitest bitesti ksmirnov symmetry tetrachoric tabi bootstrap jackknife permute simulate statsby power ciwidth gsbounds gsdesign bayes bayesmh bayespredict bayesreps bayesstats bayesgraph bayestest bayesvarstable bayesirf bayesfcast bmaregress bmacoefsample bmagraph bmastats bmapredict predict margins"
     if c(stata_version) < 17 {
         foreach cmd in didregress xtdidregress telasso ziologit xtmlogit stintcox bayesvarstable bayesirf bayesfcast {
@@ -179,6 +179,19 @@ program define hxregistry, rclass
         local key_stmc "stmc Mantel Cox rate ratio 生存 分层 率比"
         local key_encode "encode 字符串 数值 编码 标签"
         local key_decode "decode 数值 字符串 解码 标签"
+        local key_describe "describe data variables 数据 描述 变量 类型"
+        local key_codebook "codebook data variables 数据 字典 取值 缺失 标签"
+        local key_isid "isid unique identifier key 唯一键 主键 合并 检查"
+        local key_egen "egen extended generate group rowmean total 扩展生成 分组 行均值"
+        local key_recode "recode category bins 分类 重编码 分箱"
+        local key_rename "rename variable 变量 重命名"
+        local key_order "order variables columns 变量 列 顺序"
+        local key_label "label variable value labels 标签 变量标签 值标签"
+        local key_format "format display numeric date 显示格式 数值 日期"
+        local key_compress "compress storage memory 压缩 存储 内存"
+        local key_sort "sort ascending 排序 升序"
+        local key_gsort "gsort descending ascending 排序 降序 升序"
+        local key_joinby "joinby merge pairwise groups 连接 多对多 组合"
         local key_destring "destring 字符串 转 数值"
         local key_tostring "tostring 数值 转 字符串"
         local key_winsor2 "winsor2 缩尾 极端值"
@@ -457,11 +470,11 @@ program define hxregistry, rclass
 
     /* Data/HX compatibility paths. */
     if inlist(`"`method'"', "导入与转换", "import_convert") local view "hxconvert"
-    else if inlist(`"`method'"', "数据检查", "data_check") local view "misstable duplicates"
-    else if inlist(`"`method'"', "变量处理", "variable_processing") local view "generate replace encode decode destring tostring winsor2"
+    else if inlist(`"`method'"', "数据检查", "data_check") local view "describe codebook isid duplicates misstable"
+    else if inlist(`"`method'"', "变量处理", "variable_processing") local view "generate egen replace recode rename order label format compress encode decode destring tostring winsor2"
     else if inlist(`"`method'"', "样本处理", "sample_processing") local view "keep drop"
-    else if inlist(`"`method'"', "合并与追加", "merge_append") local view "merge append"
-    else if inlist(`"`method'"', "数据结构", "data_structure") local view "reshape collapse xtset tsset"
+    else if inlist(`"`method'"', "合并与追加", "merge_append") local view "merge append joinby"
+    else if inlist(`"`method'"', "数据结构", "data_structure") local view "reshape collapse sort gsort xtset tsset"
 
     /* Stata Statistics menu. */
     else if inlist(`"`method'"', "汇总，表格和假设检验", "summary_tests") {
