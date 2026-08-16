@@ -22,7 +22,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Patch ROC roles and pages
-        run: python tools/tmp_patch_roc_roles.py
+        run: |
+          python tools/tmp_fix_roc_patcher.py
+          python tools/tmp_patch_roc_roles.py
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
