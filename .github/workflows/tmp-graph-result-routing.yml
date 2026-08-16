@@ -1,0 +1,40 @@
+name: Temporary Graphics result-routing rebuild
+
+on:
+  push:
+    branches:
+      - ui-consistency-audit-20260815
+    paths:
+      - .hx-graph-result-routing-trigger
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui-consistency-audit-20260815
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Patch Graphics result routing
+        run: python tools/tmp_patch_graph_result_routing.py
+      - name: Rebuild managed release
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+      - name: Verify managed release and static contracts
+        run: |
+          python tools/verify_release.py
+          python tools/verify_static_contracts.py
+      - name: Commit production changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/main/java/com/hexie/stata/HxWorkbench.java tools/verify_static_contracts.py hxempirical-release.zip hxempirical-release.index release
+          git diff --cached --quiet && exit 0
+          git commit -m "Route all graph-producing commands to the graph result view"
+          git push origin HEAD:ui-consistency-audit-20260815
