@@ -7516,7 +7516,7 @@ public final class HxWorkbench {
 
          var6.addActionListener(var1x -> this.runUtility("sysuse auto, clear", true));
          var7.addActionListener(var1x -> this.chooseAndLoadDta());
-         var8.addActionListener(var1x -> this.openCommandPage("import"));
+         var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));
          var5.add(var6);
          var5.add(var7);
          var5.add(var8);

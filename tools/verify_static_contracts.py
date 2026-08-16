@@ -83,6 +83,12 @@ for needle in (
         fail(f"Java manual-install/spreadsheet contract missing: {needle}")
 if "工作台只检测是否已安装，不再自动安装" not in readme:
     fail("README current external-command policy is not manual-only")
+if 'JButton var8 = new JButton("Excel / CSV 转换为 DTA")' not in java:
+    fail("empty-data conversion action is missing")
+if 'var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));' not in java:
+    fail("empty-data conversion action must route to the safe hxconvert workflow")
+if 'var8.addActionListener(var1x -> this.openCommandPage("import"));' in java:
+    fail("empty-data conversion action still routes to generic import instead of hxconvert")
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 
