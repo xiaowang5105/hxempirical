@@ -35,6 +35,17 @@ if '\"rocregplot\"' not in route_scope:
     fail("rocregplot must route to the graph result view")
 '''
 s = s[:start] + route_replacement + s[end:]
-
 p.write_text(s, encoding="utf-8", newline="\n")
+
+# The structured-Graphics route contract predates the rocgold dedicated page.
+# Synchronize that exact expected route before the main ROC patch adds its new checks.
+vp = Path("tools/verify_static_contracts.py")
+v = vp.read_text(encoding="utf-8")
+old_special = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "did_trends", "twoway").contains(var1)\''
+new_special = 'special_open = \'Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "did_trends", "twoway").contains(var1)\''
+if v.count(old_special) != 1:
+    raise SystemExit(f"structured Graphics special_open expected 1 old match, got {v.count(old_special)}")
+v = v.replace(old_special, new_special, 1)
+vp.write_text(v, encoding="utf-8", newline="\n")
+
 print("HX_ROC_PATCHER_LOCATOR_FIXED")
