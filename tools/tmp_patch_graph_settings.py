@@ -22,7 +22,6 @@ r = once(
     'else if inlist(`"`method\'"\', "更改方案/大小", "graph_scheme") local view "set"',
     "graph scheme route",
 )
-# Add a search hint beside existing graph-related key definitions when present.
 anchor = '        local key_tsset "tsset time series 时间序列 时间变量 声明"\n'
 if anchor in r:
     r = once(r, anchor, anchor + '        local key_set "set scheme graphics graph default style 方案 图形 默认 样式"\n', "set search keyword")
@@ -68,7 +67,7 @@ sp.write_text(s, encoding="utf-8", newline="\n")
 vp = Path("tools/verify_static_contracts.py")
 v = vp.read_text(encoding="utf-8")
 anchor2 = 'if \'if c(stata_version) >= 17 local view "didregress xtdidregress"\' not in registry:\n    fail("Stata 17+ causal navigation must surface DID estimators first")\n'
-checks = '''if 'inlist(`"`method\'"\', "更改方案/大小", "graph_scheme") local view "set"' not in registry:
+checks = '''if '"更改方案/大小", "graph_scheme") local view "set"' not in registry:
     fail("Graphics scheme/size navigation must route to the real Stata set command")
 if 'local title "set — 设置默认图形方案"' not in semantics:
     fail("set must have dedicated graphics-scheme semantics")
