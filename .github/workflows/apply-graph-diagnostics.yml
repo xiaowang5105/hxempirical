@@ -17,6 +17,28 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Align temporary static assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/prepare_graph_diagnostics.py')
+          s = p.read_text(encoding='utf-8')
+          replacements = {
+              "'rvfplot · 残差 vs 拟合值',": "'diagnosticName = \"残差 vs 拟合值\"',",
+              "'rvpplot · 残差 vs predictor',": "'diagnosticName = \"残差 vs predictor\"',",
+              "'avplot · Added-variable plot',": "'diagnosticName = \"Added-variable plot\"',",
+              "'avplots · 全部 Added-variable plots',": "'diagnosticName = \"全部 Added-variable plots\"',",
+              "'lvr2plot · Leverage vs residual-squared',": "'diagnosticName = \"Leverage vs residual-squared\"',",
+              "'cprplot · Component-plus-residual plot',": "'diagnosticName = \"Component-plus-residual plot\"',",
+              "'acprplot · Augmented component-plus-residual plot',": "'diagnosticName = \"Augmented component-plus-residual plot\"',",
+          }
+          for old, new in replacements.items():
+              if s.count(old) != 1:
+                  raise SystemExit(f'temporary assertion anchor mismatch: {old}')
+              s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
+          PY
+
       - name: Apply Graphics source patch
         run: python tools/prepare_graph_diagnostics.py
 
