@@ -24,6 +24,22 @@ jobs:
       - name: Verify Stata static contracts
         run: python tools/verify_static_contracts.py
 
+      - name: Parse production JAR build script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/build_hxworkbench_jar.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'HX_JAR_BUILD_SCRIPT_PARSE_OK'
+
       - name: Verify shipped JAR matches Java source
         run: python tools/verify_hxworkbench_jar_sync.py
 
