@@ -23,6 +23,8 @@ jobs:
           python-version: '3.12'
       - name: Patch Graphics aliases and catalog
         run: python tools/tmp_patch_graphics_aliases.py
+      - name: Repair generated Graphics contract quoting
+        run: python tools/tmp_fix_graphics_contract_quotes.py
       - name: Rebuild managed release
         shell: pwsh
         run: ./tools/build_release_bundle.ps1
