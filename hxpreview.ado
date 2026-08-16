@@ -1,4 +1,4 @@
-*! hxpreview 1.3.3  16aug2026
+*! hxpreview 1.3.4  16aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -37,6 +37,7 @@ program define hxpreview, rclass
     if "`command'" == "graph_bar" local preview "graph bar"
     if "`command'" == "graph_dot" local preview "graph dot"
     if "`command'" == "graph_pie" local preview "graph pie"
+    if "`command'" == "graph_box" local preview "graph box"
     if "`command'" == "graph_matrix" local preview "graph matrix"
     if "`command'" == "twoway_contour" local preview "twoway contour"
     if "`command'" == "graph_combine" local preview "graph combine"

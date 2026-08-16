@@ -403,6 +403,17 @@ if 'case "更多统计图形": return "marginsplot · 更多统计图形";' in j
     fail("placeholder Graphics method preview remains")
 if 'case "更改方案/大小": return "set scheme · graph set";' in java:
     fail("Graphics settings card advertises a route not present in its current command list")
+graph_result_route_required = ("graph_bar", "graph_box", "twoway_contour", "sts_graph", "roctab", "screeplot", "cchart", "graph_combine")
+route_start = java.find('"graph_bar", "graph_dot", "graph_pie", "graph_box", "twoway_contour", "graph_matrix"')
+route_end = java.find('this.selectResultView("graph", true);', route_start)
+if route_start < 0 or route_end < 0:
+    fail("expanded Graphics result-routing block missing")
+route_scope = java[route_start:route_end]
+for graph_cmd in graph_result_route_required:
+    if f'"{graph_cmd}"' not in route_scope:
+        fail(f"Graphics command does not route to graph result view: {graph_cmd}")
+if '"graph_box".equals(this.currentCommand) ? "graph box"' not in java:
+    fail("graph_box Java help/native alias mapping missing")
 
 
 # Catalog correctness: Stata ERM has eregress/eintreg/eprobit/eoprobit; epoisson is not a public command.
@@ -444,7 +455,7 @@ for needle in (
 if 'if c(stata_version) >= 17 {' not in semantics:
     fail("nptrend version-aware semantic branch missing")
 
-graph_aliases = {"graph_bar", "graph_dot", "graph_pie", "graph_matrix", "twoway_contour", "graph_combine"}
+graph_aliases = {"graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "graph_combine"}
 missing_graph_aliases = sorted(graph_aliases - graph_cmds)
 if missing_graph_aliases:
     fail("Graphics multiword aliases missing: " + ", ".join(missing_graph_aliases))
@@ -470,6 +481,7 @@ preview_contracts = {
     "if \"`command'\" == \"graph_bar\" local preview \"graph bar\"",
     "if \"`command'\" == \"graph_dot\" local preview \"graph dot\"",
     "if \"`command'\" == \"graph_pie\" local preview \"graph pie\"",
+    "if \"`command'\" == \"graph_box\" local preview \"graph box\"",
     "if \"`command'\" == \"graph_matrix\" local preview \"graph matrix\"",
     "if \"`command'\" == \"twoway_contour\" local preview \"twoway contour\"",
     "if \"`command'\" == \"graph_combine\" local preview \"graph combine\"",
@@ -478,7 +490,7 @@ for needle in preview_contracts:
     if needle not in preview:
         fail(f"native Graphics preview mapping missing: {needle}")
 for needle in (
-    "if strpos(\" graph_bar graph_dot graph_pie graph_matrix graph_combine \", \" `cmd' \") local probe_cmd \"graph\"",
+    "if strpos(\" graph_bar graph_dot graph_pie graph_box graph_matrix graph_combine \", \" `cmd' \") local probe_cmd \"graph\"",
     "else if \"`cmd'\" == \"twoway_contour\" local probe_cmd \"twoway\"",
 ):
     if needle not in resolve:
@@ -493,6 +505,7 @@ for needle in (
     "graph bar heatdd cooldd, over(region) blabel(total)",
     "graph dot wage, over(occ)",
     "graph pie pop, over(region)",
+    "graph box y, over(group)",
     "graph matrix mpg weight length",
     "twoway contour z y x",
     "graph combine gr1 gr2, cols(2)",

@@ -1,4 +1,4 @@
-*! hxresolve 3.1.6  16aug2026
+*! hxresolve 3.1.7  16aug2026
 *! Resolver -> Parser -> semantic interpretation -> Schema pipeline
 program define hxresolve, rclass
     version 16.0
@@ -15,7 +15,7 @@ program define hxresolve, rclass
        Probe the real Stata parent command for installation/help/parser metadata,
        while keeping the alias for semantic roles and native preview generation. */
     local probe_cmd "`cmd'"
-    if strpos(" graph_bar graph_dot graph_pie graph_matrix graph_combine ", " `cmd' ") local probe_cmd "graph"
+    if strpos(" graph_bar graph_dot graph_pie graph_box graph_matrix graph_combine ", " `cmd' ") local probe_cmd "graph"
     else if "`cmd'" == "twoway_contour" local probe_cmd "twoway"
     else if "`cmd'" == "cluster_dendrogram" local probe_cmd "cluster"
     else if "`cmd'" == "sts_graph" local probe_cmd "sts"

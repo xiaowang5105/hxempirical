@@ -13810,8 +13810,16 @@ public final class HxWorkbench {
             this.selectResultView("missing", true);
          } else if (this.currentCommand.startsWith("oneclick")) {
             this.selectResultView("oneclick", true);
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway", "marginsplot", "coefplot", "event_plot")
-            .contains(this.currentCommand)) {
+         } else if (Arrays.asList(
+               "twoway", "scatter", "line", "connected", "lfit", "qfit", "histogram", "kdensity",
+               "graph_bar", "graph_dot", "graph_pie", "graph_box", "twoway_contour", "graph_matrix", "lowess", "lpoly",
+               "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "sts_graph",
+               "roctab", "rocfit", "roccomp", "rocgold", "rocreg",
+               "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay",
+               "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar",
+               "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower",
+               "marginsplot", "coefplot", "graph_combine", "did_trends", "event_plot"
+            ).contains(this.currentCommand)) {
             this.selectResultView("graph", true);
          } else if ("data".equals(this.activeCategoryCode)) {
             this.selectResultView("changes", true);

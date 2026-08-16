@@ -1,4 +1,4 @@
-*! hxsemantics 1.4.29  16aug2026
+*! hxsemantics 1.4.30  16aug2026
 *! Interpret parsed Stata syntax as beginner-facing parameter roles.
 program define hxsemantics, rclass
     version 16.0
@@ -3279,7 +3279,7 @@ program define hxsemantics, rclass
     }
 
     /* Graphics aliases preserve native multiword Stata syntax while offering one navigable UI token. */
-    if strpos(" graph_bar graph_dot graph_pie graph_matrix twoway_contour graph_combine ", " `cmd' ") {
+    if strpos(" graph_bar graph_dot graph_pie graph_box graph_matrix twoway_contour graph_combine ", " `cmd' ") {
         local template "command_body"
         local has_depvar 0
         local has_varlist 0
@@ -3325,6 +3325,16 @@ program define hxsemantics, rclass
             local explain1 "按 region 划分 pop 的饼图。"
             local example2 "graph pie pop, over(region) plabel(_all name)"
             local explain2 "在每个 slice 上显示类别名称。"
+        }
+        else if "`cmd'" == "graph_box" {
+            local title "graph box — 箱线图"
+            local purpose1 "展示连续变量的中位数、四分位距、须线和潜在异常值，并可用 over() 比较组间分布。"
+            local purpose2 "Java 专页会直接提供结果变量和可选分组变量；这里保留同一真实 Stata 语义，确保搜索/解析链一致。"
+            local expr_label "数值变量 + over() 等（graph box 后面的内容）"
+            local example1 "graph box y"
+            local explain1 "查看 y 的整体箱线分布。"
+            local example2 "graph box y, over(group)"
+            local explain2 "按 group 比较 y 的中位数、四分位距和潜在异常值。"
         }
         else if "`cmd'" == "graph_matrix" {
             local title "graph matrix — 散点图矩阵"
