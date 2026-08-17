@@ -55,7 +55,7 @@ jobs:
       - name: Verify contracts
         run: |
           python tools/verify_static_contracts.py
-          python tools/verify_managed_release.py
+          python tools/verify_release.py
       - name: Remove temporary patch files
         run: rm -f tools/_patch_fractional_outcomes_ui.py tools/_fix_fractional_ui_compile.py .github/workflows/run-fractional-outcomes-patcher.yml
       - name: Commit source changes
