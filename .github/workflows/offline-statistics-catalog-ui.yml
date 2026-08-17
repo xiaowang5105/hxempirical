@@ -1,0 +1,122 @@
+name: Offline Statistics catalog UI smoke
+
+on:
+  push:
+    branches: [ui-consistency-audit-20260815]
+    paths:
+      - .github/workflows/offline-statistics-catalog-ui.yml
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify complete Statistics catalog
+        run: python tools/verify_statistics_catalog.py
+
+      - name: Build audited command list
+        run: |
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          source = Path('tools/verify_statistics_catalog.py').read_text(encoding='utf-8')
+          tree = ast.parse(source)
+          expected = None
+          for node in tree.body:
+              if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == 'EXPECTED':
+                  expected = ast.literal_eval(node.value)
+                  break
+          if expected is None:
+              raise SystemExit('EXPECTED map not found')
+          commands = sorted(set().union(*expected.values()))
+          Path('/tmp/statistics_commands.txt').write_text('\n'.join(commands) + '\n', encoding='utf-8')
+          print('HX_STATS_COMMAND_LIST_OK', len(expected), len(commands))
+          PY
+
+      - name: Install Xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      - name: Add temporary all-command smoke hook
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/main/java/com/hexie/stata/HxWorkbench.java')
+          s = p.read_text(encoding='utf-8')
+          anchor = 'var19x.showRegressPage();'
+          if s.count(anchor) != 1:
+              raise SystemExit(f'smoke hook anchor mismatch: {s.count(anchor)}')
+          hook = '''var19x.showRegressPage();
+               String statsCommandsFile = System.getProperty("hx.statsCommandsFile", "").trim();
+               if (!statsCommandsFile.isEmpty()) {
+                  java.util.List<String> statsCommands = java.nio.file.Files.readAllLines(java.nio.file.Paths.get(statsCommandsFile));
+                  int statsOk = 0;
+                  for (String rawStatsCommand : statsCommands) {
+                     String statsCommand = rawStatsCommand.trim();
+                     if (statsCommand.isEmpty()) continue;
+                     try {
+                        var19x.showCommand(statsCommand);
+                        var19x.updatePreview();
+                        int componentCount = var19x.formPanel.getComponentCount();
+                        if (componentCount <= 0) throw new IllegalStateException("empty formPanel");
+                        String preview = var19x.previewArea.getText();
+                        if (preview == null) throw new IllegalStateException("null preview");
+                        System.out.println("HX_STATS_UI_OK " + statsCommand + " components=" + componentCount + " previewChars=" + preview.length());
+                        statsOk++;
+                     } catch (Throwable statsFailure) {
+                        System.err.println("HX_STATS_UI_FAIL " + statsCommand + " :: " + statsFailure);
+                        statsFailure.printStackTrace();
+                        System.exit(31);
+                     }
+                  }
+                  System.out.println("HX_STATS_UI_ALL_OK count=" + statsOk);
+                  System.exit(0);
+               }'''
+          p.write_text(s.replace(anchor, hook), encoding='utf-8')
+          PY
+
+      - name: Create Stata SFI compile stubs
+        run: |
+          mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
+          cat >/tmp/sfi/com/stata/sfi/SFIToolkit.java <<'EOF'
+          package com.stata.sfi; public class SFIToolkit { public static int executeCommand(String s, boolean b){return 0;} public static void displayln(String s){} public static void errorln(String s){} public static String stackTraceToString(Throwable t){return t==null?"":t.toString();} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Characteristic.java <<'EOF'
+          package com.stata.sfi; public class Characteristic { public static String getDtaChar(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Macro.java <<'EOF'
+          package com.stata.sfi; public class Macro { public static String getGlobal(String s){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Missing.java <<'EOF'
+          package com.stata.sfi; public class Missing { public static boolean isMissing(double v){return Double.isNaN(v);} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Scalar.java <<'EOF'
+          package com.stata.sfi; public class Scalar { public static double getValue(String s){return Double.NaN;} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Data.java <<'EOF'
+          package com.stata.sfi; public class Data { public static long getObsTotal(){return 0L;} public static int getVarCount(){return 0;} public static int getVarIndex(String s){return 0;} public static String getVarName(int i){return "";} public static String getVarLabel(int i){return "";} public static String getVarFormat(int i){return "";} public static boolean isVarTypeString(int i){return false;} public static double getNum(int i,long j){return Double.NaN;} public static String getStr(int i,long j){return "";} public static String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+          cat >/tmp/sfi/com/stata/sfi/Frame.java <<'EOF'
+          package com.stata.sfi; public class Frame { public static Frame connect(String s){return new Frame();} public static Frame create(String s){return new Frame();} public void drop(){} public long getObsTotal(){return 0L;} public int getVarCount(){return 0;} public int getVarIndex(String s){return 0;} public String getVarName(int i){return "";} public boolean isVarTypeString(int i){return false;} public double getNum(int i,long j){return Double.NaN;} public String getStr(int i,long j){return "";} public String getFormattedValue(int i,long j,boolean b){return "";} }
+          EOF
+
+      - name: Compile Java 11
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+
+      - name: Open every audited Statistics command page
+        shell: bash
+        run: |
+          set -euo pipefail
+          xvfb-run -a java \
+            -Dhx.statsCommandsFile=/tmp/statistics_commands.txt \
+            -cp /tmp/hxclasses com.hexie.stata.HxWorkbench \
+            --render-regress-command-preview /tmp/statistics-catalog.png \
+            | tee /tmp/statistics-catalog.log
+          expected=$(wc -l </tmp/statistics_commands.txt)
+          actual=$(grep -c '^HX_STATS_UI_OK ' /tmp/statistics-catalog.log)
+          test "$actual" -eq "$expected"
+          grep -F "HX_STATS_UI_ALL_OK count=$expected" /tmp/statistics-catalog.log
+          echo "HX_STATS_CATALOG_SMOKE_OK expected=$expected actual=$actual"
