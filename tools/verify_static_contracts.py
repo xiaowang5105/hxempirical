@@ -61,8 +61,19 @@ if "if c(stata_version) >= 17 local view \"`view' ziologit\"" not in registry:
     fail("ordinal-outcome ziologit Stata 17 gate missing")
 ordinal_structured = {"hetoprobit", "zioprobit", "ziologit"}
 ordinal_guided_safe = {"ologit", "oprobit"}
-if '"logit", "probit", "ologit", "oprobit", "poisson"' not in java:
+if '"logit", "probit", "ologit", "oprobit", "mlogit", "mprobit", "poisson"' not in java:
     fail("ologit/oprob safe pages must receive focused depvar validation")
+
+# Categorical-outcome Statistics method must remain fully classified.
+categorical_method_match = re.search(r'"分类结果"[^\n]*local view "([^"]+)"', registry)
+if not categorical_method_match:
+    fail("categorical-outcome Statistics method catalog not found")
+categorical_catalog = set(categorical_method_match.group(1).split())
+categorical_structured = {"clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit"}
+categorical_guided_safe = {"mlogit", "mprobit"}
+categorical_native_body = {"cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit", "asclogit", "asmprobit"}
+if categorical_catalog != categorical_structured | categorical_guided_safe | categorical_native_body:
+    fail(f"categorical-outcome catalog classification drift: {sorted(categorical_catalog - (categorical_structured | categorical_guided_safe | categorical_native_body))}")
 
 # oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
@@ -174,7 +185,7 @@ for needle in (
     '的 inflate() 是必填项',
     'inflate(_cons)',
     'structuredOrdinalOffset(this.expression.getText())',
-    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit")',
+    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit", "mlogit", "mprobit", "clogit", "slogit", "cmclogit", "cmsample")',
     'return Arrays.asList("ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit")',
 ):
     if needle not in java:
@@ -182,6 +193,43 @@ for needle in (
 for cmd in ordinal_structured:
     if f' {cmd} ' not in semantics:
         fail(f"ordinal structured command lost native-body safety fallback: {cmd}")
+
+for needle in (
+    'private static boolean isStructuredCategoricalOutcomeCommand(String command)',
+    '"clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit"',
+    'private void rebuildStructuredCategoricalOutcomeForm()',
+    'private void updateStructuredCategoricalOutcomePreview()',
+    'private boolean validateStructuredCategoricalOutcomeBeforeRun()',
+    'clogit · 条件 / 固定效应 Logit',
+    'slogit · Stereotype Logit',
+    'cmset · 声明 Choice Model 数据结构',
+    'cmsummarize · 按已选备选项汇总变量',
+    'cmchoiceset · 检查 Choice Sets',
+    'cmtab · 已选备选项列联表',
+    'cmsample · Choice Model 样本诊断',
+    'cmclogit · McFadden 条件选择 Logit',
+    'clogit 的 group() 是官方必填项',
+    'cmsummarize 的 choice() 是必填项',
+    'cmtab 的 choice() 是必填项',
+    '截面：Case ID + 备选项',
+    '面板：Panel ID + Time + 备选项',
+    'opts.add("noalternatives")',
+    'opts.add("clear")',
+    'opts.add("casevars(" + String.join(" ", caseVars) + ")")',
+    'opts.add("ranks")',
+    'structuredCategoricalOption("dimension", this.expression.getText())',
+    '"mlogit", "mprobit", "poisson"',
+    '"cmsummarize".equals(this.currentCommand)',
+    '"cmtab".equals(this.currentCommand)',
+):
+    if needle not in java:
+        fail(f"structured categorical-outcome UI contract missing: {needle}")
+for cmd in categorical_structured | categorical_native_body:
+    if f' {cmd} ' not in semantics:
+        fail(f"categorical complex/native-body safety command missing from semantics: {cmd}")
+preview_categorical = 'return Arrays.asList("mlogit", "mprobit", "clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit", "cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit", "asclogit", "asmprobit");'
+if preview_categorical not in java:
+    fail("Java categorical method preview catalog is incomplete")
 
 for needle in (
     'private static boolean isStructuredBinaryOutcomeCommand(String command)',
@@ -201,7 +249,7 @@ for needle in (
     'hetprobit 的 het() 方差方程是必填项',
     'biprobit 的 Y1 与 Y2 必须是两个不同的结果变量',
     'binreg 的 n() 若填写常数，必须是正整数',
-    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog")',
+    'Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit", "mlogit", "mprobit", "clogit", "slogit", "cmclogit", "cmsample")',
     'Arrays.asList("无", "fweight", "iweight", "pweight")',
 ):
     if needle not in java:
