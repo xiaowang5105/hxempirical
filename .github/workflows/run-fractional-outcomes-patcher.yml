@@ -5,6 +5,7 @@ on:
     branches: [ui-consistency-audit-20260815]
     paths:
       - tools/_patch_fractional_outcomes_ui.py
+      - tools/_fix_fractional_ui_compile.py
       - .github/workflows/run-fractional-outcomes-patcher.yml
 
 permissions:
@@ -22,7 +23,9 @@ jobs:
         with:
           python-version: '3.x'
       - name: Apply source patch
-        run: python tools/_patch_fractional_outcomes_ui.py
+        run: |
+          python tools/_patch_fractional_outcomes_ui.py
+          python tools/_fix_fractional_ui_compile.py
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
@@ -54,7 +57,7 @@ jobs:
           python tools/verify_static_contracts.py
           python tools/verify_managed_release.py
       - name: Remove temporary patch files
-        run: rm -f tools/_patch_fractional_outcomes_ui.py .github/workflows/run-fractional-outcomes-patcher.yml
+        run: rm -f tools/_patch_fractional_outcomes_ui.py tools/_fix_fractional_ui_compile.py .github/workflows/run-fractional-outcomes-patcher.yml
       - name: Commit source changes
         run: |
           git config user.name "github-actions[bot]"
