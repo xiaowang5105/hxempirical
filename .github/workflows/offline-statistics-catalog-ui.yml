@@ -1,3 +1,4 @@
+# Temporary one-shot audit workflow; delete after the full catalog smoke passes.
 name: Offline Statistics catalog UI smoke
 
 on:
