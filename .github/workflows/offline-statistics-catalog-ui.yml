@@ -6,6 +6,7 @@ on:
     branches: [ui-consistency-audit-20260815]
     paths:
       - .github/workflows/offline-statistics-catalog-ui.yml
+      - tools/verify_statistics_catalog.py
 
 permissions:
   contents: read
