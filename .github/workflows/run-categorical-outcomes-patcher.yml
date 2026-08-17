@@ -18,6 +18,18 @@ jobs:
           python-version: '3.12'
       - name: Apply source patch
         run: python tools/_patch_categorical_outcomes_ui.py
+      - name: Align previous ordinal validation gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/verify_static_contracts.py')
+          s = p.read_text(encoding='utf-8')
+          old = 'if \'"logit", "probit", "ologit", "oprobit", "poisson"\' not in java:'
+          new = 'if \'"logit", "probit", "ologit", "oprobit", "mlogit", "mprobit", "poisson"\' not in java:'
+          if s.count(old) != 1:
+              raise SystemExit(f'ordinal gate anchor mismatch: {s.count(old)}')
+          p.write_text(s.replace(old, new), encoding='utf-8')
+          PY
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
