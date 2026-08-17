@@ -75,6 +75,41 @@ categorical_native_body = {"cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobi
 if categorical_catalog != categorical_structured | categorical_guided_safe | categorical_native_body:
     fail(f"categorical-outcome catalog classification drift: {sorted(categorical_catalog - (categorical_structured | categorical_guided_safe | categorical_native_body))}")
 
+# Count-outcome Statistics method must remain fully classified.
+count_method_match = re.search(r'"计数结果"[^\n]*local view "([^"]+)"', registry)
+if not count_method_match:
+    fail("count-outcome Statistics method catalog not found")
+count_catalog = set(count_method_match.group(1).split())
+count_structured = {"gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"}
+count_guided_safe = {"poisson", "nbreg", "ppmlhdfe"}
+if count_catalog != count_structured | count_guided_safe:
+    fail(f"count-outcome catalog classification drift: {sorted(count_catalog - (count_structured | count_guided_safe))}")
+for needle in (
+    'private static boolean isStructuredCountOutcomeCommand(String command)',
+    '"gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"',
+    'private void rebuildStructuredCountOutcomeForm()',
+    'private void updateStructuredCountOutcomePreview()',
+    'private boolean validateStructuredCountOutcomeBeforeRun()',
+    'gnbreg · 广义负二项回归',
+    'cpoisson · 删失 Poisson 回归',
+    'zip · 零膨胀 Poisson 回归',
+    'zinb · 零膨胀负二项回归',
+    'tpoisson · 截断 Poisson 回归',
+    'tnbreg · 截断负二项回归',
+    'opts.add("lnalpha(" + String.join(" ", alphaVars) + ")")',
+    'opts.add("inflate(_cons)")',
+    'inflate() 是官方必填项',
+    'dispersion(constant)',
+    '非负整数；也可以填写变量名',
+    'Arrays.asList("poisson", "nbreg", "gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg")',
+    'var2 = Arrays.asList("无", "fweight", "pweight")',
+):
+    if needle not in java:
+        fail(f"structured count-outcome UI contract missing: {needle}")
+for cmd in count_structured:
+    if f' {cmd} ' not in semantics:
+        fail(f"count structured command lost native-body safety fallback: {cmd}")
+
 # oneclick package knowledge remains correct for compatibility checks.
 oneclick_packages = re.search(r'if\s+.+target.+==\s+"oneclick"\s+local packages\s+"([^"]+)"', dependency)
 if not oneclick_packages or oneclick_packages.group(1).split() != ["tuples", "oneclick"]:
