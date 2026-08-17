@@ -116,6 +116,46 @@ for needle in (
         fail(f"structured fractional-outcome UI contract missing: {needle}")
 if 'this.model.addItem("cloglog")' in java and 'boolean fracreg = "fracreg".equals(command);' not in java:
     fail("fracreg must not expose betareg-only cloglog/loglog links")
+# Generalized-linear-model Statistics method is a single, fully structured glm page.
+glm_method_match = re.search(r'"广义线性模型"[^\n]*local view "([^"]+)"', registry)
+if not glm_method_match:
+    fail("GLM Statistics method catalog not found")
+glm_catalog = set(glm_method_match.group(1).split())
+if glm_catalog != {"glm"}:
+    fail(f"GLM catalog classification drift: {sorted(glm_catalog)}")
+for needle in (
+    'private static boolean isStructuredGlmCommand(String command)',
+    'private void rebuildStructuredGlmForm()',
+    'private void updateStructuredGlmPreview()',
+    'private boolean validateStructuredGlmBeforeRun()',
+    'glm · 广义线性模型',
+    'Gaussian / normal',
+    'Inverse Gaussian',
+    'Binomial / Bernoulli',
+    'Negative binomial',
+    '自定义 family()',
+    'if ("igaussian".equals(family)) return "power -2";',
+    'if ("gamma".equals(family)) return "power -1";',
+    'this.time.addItem("默认（" + canonical + "）")',
+    'this.time.addItem("opower #")',
+    'this.time.addItem("nbinomial")',
+    'this.time.addItem("loglog")',
+    'this.time.addItem("logc")',
+    'family(" + family + (parameter.isBlank() ? "" : " " + parameter) + ")',
+    'link(power " + parameter + ")',
+    'link(opower " + parameter + ")',
+    'new String[]{"无", "offset()", "exposure()"}',
+    'new String[]{"ML（默认）", "IRLS"}',
+    'opts.add("irls")',
+    'opts.add("noconstant")',
+    'opts.add("eform")',
+    'this.genericWeightType.addItem("aweight")',
+    'disp(#) 只允许与 irls 一起使用',
+    'scale(dev) 只允许与 irls 一起使用',
+):
+    if needle not in java:
+        fail(f"structured GLM UI contract missing: {needle}")
+
 for needle in (
     'private static boolean isStructuredCountOutcomeCommand(String command)',
     '"gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"',
