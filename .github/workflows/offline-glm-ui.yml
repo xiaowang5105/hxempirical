@@ -109,4 +109,4 @@ jobs:
           render nbinomial-canonical 4 4 '1.5' '' 'family(nbinomial 1.5) link(nbinomial)'
           render gamma-default 5 0 '' '' 'glm y, family(gamma)'
           render gamma-log 5 2 '' '' 'family(gamma) link(log)'
-          render custom 6 10 'myfamily' 'mylink' 'family(myfamily) link(mylink)'
+          render custom 6 11 'myfamily' 'mylink' 'family(myfamily) link(mylink)'
