@@ -24,6 +24,9 @@ jobs:
       - name: Verify Stata static contracts
         run: python tools/verify_static_contracts.py
 
+      - name: Verify complete Statistics catalog
+        run: python tools/verify_statistics_catalog.py
+
       - name: Parse production JAR build script
         shell: pwsh
         run: |
