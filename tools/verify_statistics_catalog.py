@@ -100,9 +100,13 @@ def method_block(method: str) -> str:
 def routed_commands(block: str) -> set[str]:
     commands: set[str] = set()
     for line in block.splitlines():
-        if "local view" not in line:
+        view_pos = line.find("local view")
+        if view_pos < 0:
             continue
-        for quoted in re.findall(r'"([^"]*)"', line):
+        # Only parse the assignment after `local view`; the same line may also
+        # contain the visible method name and compatibility alias in inlist().
+        rhs = line[view_pos + len("local view"):]
+        for quoted in re.findall(r'"([^"]*)"', rhs):
             for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", quoted):
                 if token != "view":
                     commands.add(token.lower())
