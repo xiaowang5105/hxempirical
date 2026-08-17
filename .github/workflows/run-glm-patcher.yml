@@ -5,6 +5,7 @@ on:
     branches: [ui-consistency-audit-20260815]
     paths:
       - tools/_patch_glm_ui.py
+      - tools/_fix_glm_static_gate.py
       - .github/workflows/run-glm-patcher.yml
 
 permissions:
@@ -22,7 +23,9 @@ jobs:
         with:
           python-version: '3.x'
       - name: Apply GLM source patch
-        run: python tools/_patch_glm_ui.py
+        run: |
+          python tools/_patch_glm_ui.py
+          python tools/_fix_glm_static_gate.py
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
@@ -54,7 +57,7 @@ jobs:
           python tools/verify_static_contracts.py
           python tools/verify_release.py
       - name: Remove temporary GLM patch files
-        run: rm -f tools/_patch_glm_ui.py .github/workflows/run-glm-patcher.yml
+        run: rm -f tools/_patch_glm_ui.py tools/_fix_glm_static_gate.py .github/workflows/run-glm-patcher.yml
       - name: Commit formal GLM changes
         run: |
           git config user.name "github-actions[bot]"
