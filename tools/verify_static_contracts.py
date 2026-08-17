@@ -84,6 +84,38 @@ count_structured = {"gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"}
 count_guided_safe = {"poisson", "nbreg", "ppmlhdfe"}
 if count_catalog != count_structured | count_guided_safe:
     fail(f"count-outcome catalog classification drift: {sorted(count_catalog - (count_structured | count_guided_safe))}")
+
+# Fractional-outcome Statistics method must remain fully classified.
+fractional_method_match = re.search(r'"分数结果"[^\n]*local view "([^"]+)"', registry)
+if not fractional_method_match:
+    fail("fractional-outcome Statistics method catalog not found")
+fractional_catalog = set(fractional_method_match.group(1).split())
+fractional_structured = {"fracreg", "betareg"}
+if fractional_catalog != fractional_structured:
+    fail(f"fractional-outcome catalog classification drift: {sorted(fractional_catalog - fractional_structured)}")
+for needle in (
+    'private static boolean isStructuredFractionalOutcomeCommand(String command)',
+    '"fracreg", "betareg"',
+    'private void rebuildStructuredFractionalOutcomeForm()',
+    'private void updateStructuredFractionalOutcomePreview()',
+    'private boolean validateStructuredFractionalOutcomeBeforeRun()',
+    'fracreg · 分数响应回归',
+    'betareg · Beta 回归',
+    '异方差 Probit + het()',
+    '均值链接 link()',
+    '尺度链接 slink()',
+    '尺度方程 scale() 协变量（可选）',
+    'scale.append(", noconstant")',
+    'String[] links = {"logit", "probit", "cloglog", "loglog"}',
+    'String[] slinks = {"log", "root", "identity"}',
+    'fracreg 的 or 仅适用于 fractional logit',
+    'Beta 分布要求 0<Y<1',
+    'var2 = Arrays.asList("无", "fweight", "iweight", "pweight")',
+):
+    if needle not in java:
+        fail(f"structured fractional-outcome UI contract missing: {needle}")
+if 'this.model.addItem("cloglog")' in java and 'boolean fracreg = "fracreg".equals(command);' not in java:
+    fail("fracreg must not expose betareg-only cloglog/loglog links")
 for needle in (
     'private static boolean isStructuredCountOutcomeCommand(String command)',
     '"gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg"',
