@@ -1,0 +1,3 @@
+# Git blob SHA-1 of src/main/java/com/hexie/stata/HxDirectImportHook.java used to build the shipped hxworkbench.jar.
+# This marker is updated after the Java-11 hook class is compiled and packaged; the hook has no compile-time Stata SFI dependency.
+15b2e89b2a34bf90bc6a6db30b1e756bc9c17761

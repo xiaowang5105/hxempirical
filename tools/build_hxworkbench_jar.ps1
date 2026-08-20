@@ -9,7 +9,9 @@ param(
 $ErrorActionPreference = 'Stop'
 $repository = [System.IO.Path]::GetFullPath($RepositoryRoot)
 $source = Join-Path $repository 'src/main/java/com/hexie/stata/HxWorkbench.java'
+$helperSource = Join-Path $repository 'src/main/java/com/hexie/stata/HxDirectImportHook.java'
 $marker = Join-Path $repository 'src/main/java/com/hexie/stata/HxWorkbench.jar-source'
+$helperMarker = Join-Path $repository 'src/main/java/com/hexie/stata/HxDirectImportHook.jar-source'
 $outputJar = Join-Path $repository 'hxworkbench.jar'
 $buildRoot = Join-Path $repository '.build/hxworkbench'
 $classes = Join-Path $buildRoot 'classes'
@@ -48,6 +50,9 @@ function Resolve-JavaTool([string]$Name, [string]$ConfiguredJavaHome, [string]$C
 
 if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
     throw "Missing Java source: $source"
+}
+if (-not (Test-Path -LiteralPath $helperSource -PathType Leaf)) {
+    throw "Missing Java source: $helperSource"
 }
 
 if (-not $SfiJar) {
@@ -110,7 +115,7 @@ if (Test-Path -LiteralPath $buildRoot) {
 New-Item -ItemType Directory -Path $classes -Force | Out-Null
 
 Write-Host "Compiling HxWorkbench.java with real Stata SFI: $SfiJar"
-& $javac --release 11 -Xmaxerrs 200 -classpath $SfiJar -d $classes $source
+& $javac --release 11 -Xmaxerrs 200 -classpath $SfiJar -d $classes $source $helperSource
 if ($LASTEXITCODE -ne 0) {
     throw "javac failed with exit code $LASTEXITCODE"
 }
@@ -148,6 +153,28 @@ $markerText = @(
 ) -join [Environment]::NewLine
 [System.IO.File]::WriteAllText($marker, $markerText + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
 
+$helperText = [System.IO.File]::ReadAllText($helperSource, [System.Text.Encoding]::UTF8)
+$helperText = $helperText.Replace("`r`n", "`n").Replace("`r", "`n")
+$helperBytes = [System.Text.Encoding]::UTF8.GetBytes($helperText)
+$helperPrefix = [System.Text.Encoding]::ASCII.GetBytes("blob $($helperBytes.Length)`0")
+$helperBlobBytes = New-Object byte[] ($helperPrefix.Length + $helperBytes.Length)
+[System.Buffer]::BlockCopy($helperPrefix, 0, $helperBlobBytes, 0, $helperPrefix.Length)
+[System.Buffer]::BlockCopy($helperBytes, 0, $helperBlobBytes, $helperPrefix.Length, $helperBytes.Length)
+$helperSha1 = [System.Security.Cryptography.SHA1]::Create()
+try {
+    $helperBlob = ([System.BitConverter]::ToString($helperSha1.ComputeHash($helperBlobBytes))).Replace('-', '').ToLowerInvariant()
+}
+finally {
+    $helperSha1.Dispose()
+}
+$helperMarkerText = @(
+    '# Git blob SHA-1 of src/main/java/com/hexie/stata/HxDirectImportHook.java used to build the shipped hxworkbench.jar.'
+    '# This file is updated only after HxDirectImportHook.class is compiled for Java 11 and packaged into hxworkbench.jar.'
+    $helperBlob
+) -join [Environment]::NewLine
+[System.IO.File]::WriteAllText($helperMarker, $helperMarkerText + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+
+
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
 if (-not $python) {
@@ -168,4 +195,5 @@ Write-Host "HX_WORKBENCH_PRODUCTION_BUILD_OK"
 Write-Host "Stata root: $StataRoot"
 Write-Host "JAR: $outputJar"
 Write-Host "Source Git blob: $sourceBlob"
+Write-Host "Direct-import hook Git blob: $helperBlob"
 Write-Host "Next: run the real-Stata smoke test documented in src/main/java/com/hexie/stata/BUILD.md before committing the JAR and release bundle."

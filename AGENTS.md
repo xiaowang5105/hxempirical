@@ -48,3 +48,10 @@ These rules apply to every AI agent and maintainer working in this repository.
     - displayed package version.
 
 11. Keep README.md, INSTALL.md, help files, and installer messages synchronized.
+
+12. The empty/current-data Excel/CSV entry is a direct import workflow. It must:
+    - accept `.xlsx`, `.xls`, and `.csv`;
+    - derive a sibling `.dta` output automatically;
+    - reuse the managed conversion engine instead of duplicating import logic;
+    - keep overwrite protection and leading-zero protection;
+    - load the generated DTA and refresh the workbench after success.

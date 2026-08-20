@@ -9,6 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src/main/java/com/hexie/stata/HxWorkbench.java"
 MARKER = ROOT / "src/main/java/com/hexie/stata/HxWorkbench.jar-source"
+HELPER_SOURCE = ROOT / "src/main/java/com/hexie/stata/HxDirectImportHook.java"
+HELPER_MARKER = ROOT / "src/main/java/com/hexie/stata/HxDirectImportHook.jar-source"
 JAR = ROOT / "hxworkbench.jar"
 
 
@@ -39,6 +41,19 @@ def expected_source_sha() -> str:
     return values[0].lower()
 
 
+
+def marker_sha(path: Path, label: str) -> str:
+    if not path.is_file():
+        fail(f"missing {label} provenance marker: {path.relative_to(ROOT)}")
+    values = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    if len(values) != 1 or len(values[0]) != 40 or any(c not in "0123456789abcdef" for c in values[0].lower()):
+        fail(f"{label} provenance marker must contain exactly one 40-character Git blob SHA-1")
+    return values[0].lower()
+
 def verify_jar() -> set[int]:
     if not JAR.is_file():
         fail("hxworkbench.jar is missing")
@@ -52,6 +67,8 @@ def verify_jar() -> set[int]:
             fail("hxworkbench.jar must not bundle Stata SFI classes")
         if not any(name == "com/hexie/stata/HxWorkbench.class" for name in names):
             fail("HxWorkbench.class is missing from hxworkbench.jar")
+        if "com/hexie/stata/HxDirectImportHook.class" not in names:
+            fail("HxDirectImportHook.class is missing from hxworkbench.jar")
         for name in classes:
             header = archive.read(name)[:8]
             if len(header) != 8:
@@ -74,8 +91,15 @@ def main() -> None:
             f"(jar source={expected}, current source={actual}). "
             "Rebuild with tools/build_hxworkbench_jar.ps1 using Stata's real sfi-api.jar."
         )
+    helper_expected = marker_sha(HELPER_MARKER, 'direct-import hook')
+    helper_actual = git_blob_sha1(HELPER_SOURCE)
+    if helper_actual != helper_expected:
+        fail(
+            'shipped HxDirectImportHook.class is stale relative to HxDirectImportHook.java '
+            f'(jar source={helper_expected}, current source={helper_actual}).'
+        )
     majors = verify_jar()
-    print(f"HX_JAR_SYNC_OK source={actual} java_major={','.join(map(str, sorted(majors)))}")
+    print(f"HX_JAR_SYNC_OK source={actual} helper={helper_actual} java_major={','.join(map(str, sorted(majors)))}")
 
 
 if __name__ == "__main__":

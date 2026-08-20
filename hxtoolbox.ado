@@ -1,4 +1,4 @@
-*! hxtoolbox 4.7.1  15aug2026
+*! hxtoolbox 4.7.2  20aug2026
 *! Open the Java single-window workbench; keep the native dialog as fallback.
 program define hxtoolbox
     version 17.0
@@ -49,5 +49,14 @@ program define hxtoolbox
         display as error "Java 工作台启动失败，返回码 `rc'。"
         display as text "请运行 hxempirical doctor 检查安装；基础兼容界面可用 hxtoolbox, classic 手动打开。"
         exit `rc'
+    }
+
+    /* The direct-import hook rewires only the Excel/CSV entry buttons and then
+       delegates to WorkbenchFrame's existing conversion engine.  Failure here
+       must not prevent the main workbench from opening. */
+    capture quietly javacall com.hexie.stata.HxDirectImportHook install, ///
+        classpath(`"`jarfile'"')
+    if _rc {
+        display as text "Excel / CSV 直接导入入口未增强；高级导入仍可从 数据处理 > 导入与转换 使用。"
     }
 end
