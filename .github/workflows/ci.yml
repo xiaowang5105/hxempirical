@@ -24,6 +24,28 @@ jobs:
       - name: Verify Stata static contracts
         run: python tools/verify_static_contracts.py
 
+      - name: Verify installer security contracts
+        run: python tools/verify_installer_contracts.py
+
+      - name: Verify complete Statistics catalog
+        run: python tools/verify_statistics_catalog.py
+
+      - name: Parse production JAR build script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/build_hxworkbench_jar.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'HX_JAR_BUILD_SCRIPT_PARSE_OK'
+
       - name: Create Stata SFI compile stubs
         run: |
           mkdir -p /tmp/sfi/com/stata/sfi /tmp/hxclasses
@@ -102,3 +124,6 @@ jobs:
               assert max(majors) <= 55, f'Java class level too new: {sorted(majors)}'
               print('HX_JAR_LEVEL_OK', sorted(majors))
           PY
+
+      - name: Verify shipped JAR matches Java source
+        run: python tools/verify_hxworkbench_jar_sync.py

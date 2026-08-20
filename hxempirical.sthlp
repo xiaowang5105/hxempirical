@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.11  15aug2026}{...}
+{* *! version 1.5.12  20aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -283,4 +283,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.11.
+HX empirical workbench, package version 1.5.12.

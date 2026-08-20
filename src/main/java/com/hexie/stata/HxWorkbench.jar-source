@@ -1,0 +1,3 @@
+# Git blob SHA-1 of src/main/java/com/hexie/stata/HxWorkbench.java used to build the shipped hxworkbench.jar.
+# This file is updated only by tools/build_hxworkbench_jar.ps1 after a successful build against Stata's real sfi-api.jar.
+71ad9e3b62d7b9dc68f6f57c9bc641b06101bdbe

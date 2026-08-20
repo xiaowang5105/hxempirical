@@ -1,4 +1,4 @@
-*! hxinstall_offline 1.0.0  14aug2026
+*! hxinstall_offline 1.1.0  20aug2026
 *! Browser-download/offline launcher for hxempirical
 version 17.0
 set more off
@@ -43,6 +43,18 @@ capture quietly confirm file `"`installer'"'
 if _rc {
     display as error "离线包中缺少 hxinstall.do。请重新下载并完整解压。"
     exit 601
+}
+
+/* The browser ZIP includes a non-self-referential per-file integrity index.
+   The installer validates the extracted managed files directly, without
+   requiring the GitHub-only Base64 distribution index and chunks. */
+foreach required in hxinstaller.ado hxempirical.pkg hxempirical-offline.index {
+    capture quietly confirm file `"`source'/`required'"'
+    if _rc {
+        display as error "离线包不完整：缺少 `required'。"
+        display as text "请重新下载最新 hxempirical-release.zip，并完整解压后再运行。"
+        exit 601
+    }
 }
 
 display as text "正在从本地离线包安装：`source'"

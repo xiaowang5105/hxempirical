@@ -90,6 +90,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -127,7 +128,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.11";
+   public static final String VERSION = "1.5.12";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -142,7 +143,8 @@ public final class HxWorkbench {
          for (String var22 : var20.warnings) {
             System.out.println("HX_CONVERT_WARNING " + var22);
          }
-      } else if (var0.length != 2
+      } else if (!(var0.length == 3 && "--render-small-preview".equals(var0[0]))
+         && (var0.length != 2
          || !"--render-preview".equals(var0[0])
             && !"--render-missing-preview".equals(var0[0])
             && !"--render-missing-results-preview".equals(var0[0])
@@ -156,16 +158,22 @@ public final class HxWorkbench {
             && !"--render-monitor-preview".equals(var0[0])
             && !"--render-monitor-details-preview".equals(var0[0])
             && !"--render-graph-preview".equals(var0[0])
+            && !"--render-test-preview".equals(var0[0])
+            && !"--render-performance-preview".equals(var0[0])
             && !"--render-did-preview".equals(var0[0])
             && !"--render-did-encode-preview".equals(var0[0])
             && !"--render-did-event-preview".equals(var0[0])
             && !"--render-did-pretrend-preview".equals(var0[0])
             && !"--render-oneclick-preview".equals(var0[0])
             && !"--render-oneclick-results-preview".equals(var0[0])
-            && !"--render-regress-preview".equals(var0[0])) {
+            && !"--render-stats-category-preview".equals(var0[0])
+            && !"--render-regress-preview".equals(var0[0])
+            && !"--render-regress-command-preview".equals(var0[0])
+            && !"--render-special-graph-preview".equals(var0[0])
+            && !"--render-did-trends-graph-preview".equals(var0[0]))) {
          System.out
             .println(
-               "Usage: HxWorkbench --inspect-convert-file input.csv | --render-preview|--render-home-preview|--render-graph-preview|--render-did-preview|--render-oneclick-preview|--render-oneclick-results-preview output.png"
+               "Usage: HxWorkbench --inspect-convert-file input.csv | --render-preview|--render-home-preview|--render-graph-preview|--render-did-preview|--render-oneclick-preview|--render-oneclick-results-preview|--render-stats-category-preview output.png | --render-small-preview WIDTHxHEIGHT output.png"
             );
       } else {
          boolean var1 = var0[0].startsWith("--render-missing");
@@ -187,11 +195,33 @@ public final class HxWorkbench {
          boolean var16 = "--render-oneclick-preview".equals(var0[0]);
          boolean var17 = "--render-oneclick-results-preview".equals(var0[0]);
          boolean var18 = "--render-regress-preview".equals(var0[0]);
-         String var19 = var0[1];
+         boolean var18b = "--render-stats-category-preview".equals(var0[0]);
+         boolean var18c = "--render-small-preview".equals(var0[0]);
+         int previewWidth = 1672;
+         int previewHeight = 901;
+         String var19;
+         if (var18c) {
+            Matcher viewport = Pattern.compile("^(\\d{3,4})x(\\d{3,4})$").matcher(var0[1]);
+            if (!viewport.matches()) {
+               throw new IllegalArgumentException("Small preview viewport must use WIDTHxHEIGHT, for example 1024x700");
+            }
+            previewWidth = Integer.parseInt(viewport.group(1));
+            previewHeight = Integer.parseInt(viewport.group(2));
+            if (previewWidth < 800 || previewHeight < 600 || previewWidth > 3840 || previewHeight > 2160) {
+               throw new IllegalArgumentException("Small preview viewport must be between 800x600 and 3840x2160");
+            }
+            var19 = var0[2];
+         } else {
+            var19 = var0[1];
+         }
+         final int renderWidth = previewWidth;
+         final int renderHeight = previewHeight;
          SwingUtilities.invokeAndWait(() -> {
+            HxWorkbench.WorkbenchFrame previewFrame = null;
             try {
                setNativeLookAndFeel();
                HxWorkbench.WorkbenchFrame var19x = new HxWorkbench.WorkbenchFrame(true);
+               previewFrame = var19x;
                if (var1) {
                   var19x.populateMissingPreviewState();
                }
@@ -240,6 +270,14 @@ public final class HxWorkbench {
                   var19x.populateGraphPreviewState();
                }
 
+               if ("--render-test-preview".equals(var0[0])) {
+                  var19x.showSpecialPage("test");
+               }
+
+               if ("--render-performance-preview".equals(var0[0])) {
+                  var19x.showSpecialPage("performance");
+               }
+
                if (var12) {
                   var19x.populateDidPreviewState();
                }
@@ -268,23 +306,58 @@ public final class HxWorkbench {
                   var19x.openBaselineRegressionWorkspace();
                }
 
-               var19x.setSize(1672, 901);
+               if ("--render-regress-command-preview".equals(var0[0])) {
+                  var19x.showRegressPage();
+               }
+
+               if ("--render-special-graph-preview".equals(var0[0])) {
+                  var19x.showSpecialGraphPage("scatter");
+               }
+
+               if ("--render-did-trends-graph-preview".equals(var0[0])) {
+                  var19x.showSpecialGraphPage("did_trends");
+               }
+
+               if (var18b) {
+                  var19x.populateStatsCategoryRegressionState();
+               }
+
+               if (var18c) {
+                  var19x.populateResponsivePreviewState();
+                  var19x.setMinimumSize(new Dimension(Math.min(1180, renderWidth), Math.min(680, renderHeight)));
+                  var19x.applyResponsiveSidebarForWidth(renderWidth);
+               }
+
+               var19x.setSize(renderWidth, renderHeight);
                var19x.addNotify();
                Container var20x = var19x.getContentPane();
-               var20x.setSize(1672, 901);
+               var20x.setSize(renderWidth, renderHeight);
                var19x.validate();
                layoutTree(var20x);
                var19x.applyDividerRatios();
                layoutTree(var20x);
+               if (var18c) {
+                  var19x.assertResponsiveViewport(renderWidth, renderHeight);
+                  layoutTree(var20x);
+               }
                BufferedImage var21 = new BufferedImage(var20x.getWidth(), var20x.getHeight(), 1);
                Graphics2D var22x = var21.createGraphics();
                var20x.printAll(var22x);
                var22x.dispose();
                ImageIO.write(var21, "png", new File(var19));
-               var19x.dispose();
+               if (var18b) {
+                  System.out.println("HX_NAVIGATION_SELFTEST_OK stats_category_and_icons");
+               }
+               if (var18c) {
+                  System.out.println("HX_RESPONSIVE_SELFTEST_OK " + renderWidth + "x" + renderHeight);
+               }
                System.out.println("HX_UI_PREVIEW_OK " + var19);
             } catch (Exception var23) {
                throw new RuntimeException(var23);
+            } finally {
+               if (previewFrame != null) {
+                  previewFrame.dispose();
+               }
             }
          });
       }
@@ -323,6 +396,56 @@ public final class HxWorkbench {
          }
       });
       return 0;
+   }
+
+   public static int close(String[] var0) {
+      try {
+         SwingUtilities.invokeAndWait(() -> {
+            if (frame != null) {
+               frame.dispose();
+               frame = null;
+            }
+         });
+         SFIToolkit.displayln("HX_JAVA_CLOSE_OK");
+         return 0;
+      } catch (Throwable var1) {
+         SFIToolkit.errorln("HX_JAVA_CLOSE_EXCEPTION " + var1.getMessage());
+         return 459;
+      }
+   }
+
+   public static int workbenchSmokeTest(String[] var0) {
+      try {
+         SwingUtilities.invokeAndWait(() -> {
+            HxWorkbench.WorkbenchFrame smokeFrame = new HxWorkbench.WorkbenchFrame(true);
+            try {
+               String[] commands = new String[]{
+                  "regress", "reghdfe", "xtreg", "xtabond", "ivregress", "didregress",
+                  "arima", "stcox", "merge", "reshape", "collapse", "margins", "estat",
+                  "estimates", "sem"
+               };
+               for (String command : commands) {
+                  smokeFrame.openCommandPage(command);
+                  if (!command.equals(smokeFrame.currentCommand)) {
+                     throw new IllegalStateException("command page mismatch: " + command + " -> " + smokeFrame.currentCommand);
+                  }
+               }
+               smokeFrame.showSpecialGraphPage("scatter");
+               smokeFrame.showDidBuilderPage();
+               smokeFrame.showConvertDtaPage();
+               smokeFrame.showMissingAnalysisPage();
+               smokeFrame.openBaselineRegressionWorkspace();
+            } finally {
+               smokeFrame.dispose();
+            }
+         });
+         SFIToolkit.displayln("HX_WORKBENCH_REAL_STATA_SMOKE_OK commands=15 graphics=1 workflows=4");
+         return 0;
+      } catch (Throwable var1) {
+         SFIToolkit.errorln("HX_WORKBENCH_REAL_STATA_SMOKE_EXCEPTION " + var1.getMessage());
+         SFIToolkit.errorln(SFIToolkit.stackTraceToString(var1));
+         return 459;
+      }
    }
 
    public static int selfTest(String[] var0) {
@@ -2210,6 +2333,8 @@ public final class HxWorkbench {
                return "fmm";
             case "项目反应理论(IRT)":
                return "irt";
+            case "DSGE模型":
+               return "dsge";
             case "多元分析":
                return "multivariate";
             case "调查数据分析":
@@ -2420,6 +2545,12 @@ public final class HxWorkbench {
    }
 
    private static final class WorkbenchFrame extends JFrame {
+      private enum WorkspaceReturnTarget {
+         HOME,
+         CHOOSER,
+         LINEAR_EXACT
+      }
+
       private static final Color APP_BG = new Color(248, 250, 253);
       private static final Color SURFACE = new Color(255, 255, 255);
       private static final Color SIDEBAR = new Color(247, 249, 251);
@@ -2494,7 +2625,7 @@ public final class HxWorkbench {
       private final JButton runButton = new JButton("运行命令");
       private final JButton copyCommandButton = new JButton("复制命令");
       private final JLabel commandDockTitle = new JLabel("即将执行的 Stata 命令");
-      private final JLabel commandDockHint = new JLabel("可修改，完整命令写入 History");
+      private final JLabel commandDockHint = new JLabel("可修改；运行后写入历史窗口");
       private final JLabel commandDockStatus = new JLabel("等待执行");
       private final JProgressBar commandDockProgress = new JProgressBar();
       private final JButton refreshButton = new JButton("刷新");
@@ -2533,6 +2664,10 @@ public final class HxWorkbench {
       private String activeMethodName = "";
       private boolean chooserReady;
       private boolean chooserAtCategoryLevel;
+      private JScrollPane chooserCatalogScroll;
+      private JScrollPane exactLinearScroll;
+      private WorkspaceReturnTarget workspaceReturnTarget = WorkspaceReturnTarget.HOME;
+      private Rectangle initialWorkArea = new Rectangle(0, 0, 1366, 768);
       private final HxWorkbench.DataTableModel dataModel = new HxWorkbench.DataTableModel();
       private final JTable dataTable = new JTable(this.dataModel);
       private final JLabel dataCellRefLabel = new JLabel("未选择", SwingConstants.CENTER);
@@ -2610,6 +2745,20 @@ public final class HxWorkbench {
       private final JTextField options = new JTextField();
       private final JComboBox<String> genericWeightType = new JComboBox<>(new String[]{"无", "fweight", "aweight", "pweight", "iweight"});
       private final JComboBox<String> genericWeightVar = variableCombo();
+      private final JCheckBox fractionalNoConstant = new JCheckBox("均值方程不含常数 noconstant", false);
+      private final JCheckBox fractionalScaleNoConstant = new JCheckBox("scale() 不含常数 noconstant", false);
+      private final JComboBox<String> glmRateMode = new JComboBox<>(new String[]{"无", "offset()", "exposure()"});
+      private final JComboBox<String> glmEstimationMode = new JComboBox<>(new String[]{"ML（默认）", "IRLS"});
+      private final JCheckBox glmNoConstant = new JCheckBox("不估计常数项 noconstant", false);
+      private final JCheckBox glmEform = new JCheckBox("报告指数化系数 eform", false);
+      private final JCheckBox specialGraphRiskTable = new JCheckBox("显示风险人数表 risktable", false);
+      private final JCheckBox specialGraphQcStabilized = new JCheckBox("样本量不等时稳定化 stabilized", false);
+      private final JTextField specialGraphQcStd = new JTextField();
+      private final JTextField specialGraphQcMean = new JTextField();
+      private final JTextField specialGraphQcLower = new JTextField();
+      private final JTextField specialGraphQcUpper = new JTextField();
+      private final JTextField specialGraphEventStubLag = new JTextField();
+      private final JTextField specialGraphEventStubLead = new JTextField();
       private final JComboBox<String> regressX = variableCombo();
       private final JList<String> regressControls = variableList();
       private final JComboBox<String> regressFactor = variableCombo();
@@ -2874,6 +3023,18 @@ public final class HxWorkbench {
          addGuide(var0, "scatter", "散点图", "展示两个数值变量的原始关系和离群点。", "回归前检查线性关系、异方差和异常观测。", "scatter y x", "显示原始点；需要拟合方向可叠加 lfit。");
          addGuide(var0, "lfit", "线性拟合图", "显示 Y 对 X 的线性拟合关系。", "快速查看相关方向和近似线性趋势。", "twoway lfit y x", "只显示拟合线，通常与 scatter 叠加使用。");
          addGuide(var0, "twoway", "二维叠加图", "自由组合散点、线、置信区间等多个图层。", "需要制作结构较复杂的论文二维图形。", "twoway (scatter y x) (lfit y x)", "表达能力强，图层语法也更灵活。");
+         addGuide(var0, "line", "折线图", "按一个横轴连接一个或多个 Y 系列。", "时间、排序指标或其他连续横轴上的趋势比较。", "line y1 y2 x", "Y 可多选；X 只指定一次，连接顺序由横轴取值决定。");
+         addGuide(var0, "connected", "带点折线图", "同时显示观测点并按横轴连接。", "既要看到趋势线，也要保留每个观测点的位置。", "connected y x", "与 line 一样需要明确 Y 和 X；点与连接线样式放在图形 options 中。");
+         addGuide(var0, "qfit", "二次拟合图", "绘制 Y 对 X 的 quadratic fit。", "散点关系存在明显弯曲、需要快速查看二次趋势。", "twoway qfit y x", "这是二次函数拟合的图形展示，正式函数形式仍应由研究设定决定。");
+         addGuide(var0, "lowess", "LOWESS 平滑图", "用局部加权平滑展示 Y 与 X 的非参数趋势。", "探索非线性关系或检查线性设定是否过强。", "lowess y x", "平滑程度受 bandwidth 等设置影响。");
+         addGuide(var0, "lpoly", "局部多项式平滑图", "用局部多项式回归展示 Y 与 X 的平滑关系。", "需要比简单局部均值更灵活的非参数趋势。", "lpoly y x", "degree、kernel、bandwidth 等保留为 Stata 原生 options。");
+         addGuide(var0, "rvfplot", "残差 vs 拟合值", "基于当前兼容回归结果绘制 residual-versus-fitted plot。", "检查非线性、异方差和系统性残差模式。", "rvfplot, yline(0)", "典型用法在 regress 后；无需重新选择原始 Y/X。");
+         addGuide(var0, "rvpplot", "残差 vs predictor", "把当前回归残差与指定 predictor 作图。", "检查残差是否随某个解释变量呈系统模式。", "rvpplot mpg", "页面只选择一个诊断变量；回归结果来自当前 estimation result。");
+         addGuide(var0, "avplot", "Added-variable plot", "针对一个 predictor 绘制 added-variable / partial-regression plot。", "查看控制其他协变量后某个变量与结果的部分关系。", "avplot mpg", "典型用法在 regress 后；指定的是诊断变量，不是新的因变量。");
+         addGuide(var0, "avplots", "全部 Added-variable plots", "为当前模型中的变量生成一组 added-variable plots。", "一次检查完整线性回归中的部分关系与潜在影响点。", "avplots", "直接复用当前兼容回归结果，不需要选择原始变量。");
+         addGuide(var0, "lvr2plot", "Leverage vs residual-squared", "绘制 leverage 对 normalized residual squared。", "联合识别高杠杆和大残差观测。", "lvr2plot", "直接复用当前兼容回归结果。");
+         addGuide(var0, "cprplot", "Component-plus-residual plot", "针对一个 predictor 绘制 component-plus-residual plot。", "检查该 predictor 的函数形式和部分残差模式。", "cprplot mpg", "典型用法在 regress 后；指定一个 predictor。");
+         addGuide(var0, "acprplot", "Augmented component-plus-residual plot", "针对一个 predictor 绘制 augmented component-plus-residual plot。", "进一步检查 predictor 的函数形式与非线性。", "acprplot mpg", "典型用法在 regress 后；指定一个 predictor。");
          addGuide(var0, "coefplot", "回归系数图", "把一个或多个已存模型的系数和置信区间画成图。", "展示基准、稳健性、异质性或动态效应结果。", "coefplot model1 model2, drop(_cons)", "依赖已存估计结果，需要安装第三方命令。");
          addGuide(var0, "marginsplot", "边际效应图", "把 margins 结果转换为预测值或边际效应图。", "展示交互项、非线性效应和情景比较。", "marginsplot", "必须先成功运行 margins。");
          addGuide(
@@ -2918,8 +3079,7 @@ public final class HxWorkbench {
          super("我的实证工具箱");
          this.previewMode = var1;
          this.setDefaultCloseOperation(1);
-         this.setMinimumSize(new Dimension(1280, 720));
-         this.setSize(new Dimension(1672, 941));
+         this.applyAdaptiveWindowBounds();
          this.setLocationRelativeTo(null);
          this.setLayout(new BorderLayout());
          this.getContentPane().setBackground(APP_BG);
@@ -3349,6 +3509,162 @@ public final class HxWorkbench {
          this.missingResultTabs.setSelectedIndex(3);
       }
 
+      private void populateStatsCategoryRegressionState() {
+         this.browseCategoryOverview("stats");
+         if (!this.chooserAtCategoryLevel || !"统计".equals(this.chooserTitle.getText())
+            || this.chooserResultsHost.getComponentCount() == 0 || !this.chooserAvailableCommands.isEmpty()) {
+            throw new IllegalStateException("statistics category retained stale command state");
+         }
+
+         this.browseMethod("stats", "纵向/面板数据");
+         if (this.chooserAtCategoryLevel || !this.chooserAvailableCommands.contains("xtreg")
+            || this.chooserAvailableCommands.contains("hxconvert")) {
+            throw new IllegalStateException("statistics method catalog contains the wrong commands or hierarchy state");
+         }
+         this.handleChooserBack();
+         if (!this.chooserAtCategoryLevel || !"统计".equals(this.chooserTitle.getText())) {
+            throw new IllegalStateException("chooser back navigation did not return to the statistics category");
+         }
+
+         this.chooserCatalogScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.browseCategoryOverview("data");
+         if (this.chooserCatalogScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("category overview scroll was not reset on navigation");
+         }
+
+         this.showHomePage();
+         this.openCommandPage("summarize");
+         if (this.workspaceReturnTarget != WorkspaceReturnTarget.HOME) {
+            throw new IllegalStateException("home shortcut inherited a stale chooser return target");
+         }
+         this.handleWorkspaceBack();
+         if (!"home".equals(this.activeSidebarKey) || this.homeButton.isVisible()) {
+            throw new IllegalStateException("home shortcut back navigation did not return home");
+         }
+
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.chooserCatalogScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.openCommandPageFromChooser("summarize");
+         if (this.workspaceReturnTarget != WorkspaceReturnTarget.CHOOSER) {
+            throw new IllegalStateException("catalog command lost its chooser return target");
+         }
+         this.handleWorkspaceBack();
+         if (!"汇总，表格和假设检验".equals(this.activeMethodName)
+            || this.chooserCatalogScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("catalog back navigation did not restore the matching directory at the top");
+         }
+
+         Dimension minimum = this.getMinimumSize();
+         if (minimum.width > this.initialWorkArea.width || minimum.height > this.initialWorkArea.height
+            || this.getWidth() > this.initialWorkArea.width || this.getHeight() > this.initialWorkArea.height) {
+            throw new IllegalStateException("adaptive window bounds exceed the available work area");
+         }
+         this.browseCategoryOverview("stats");
+
+         for (String kind : Arrays.asList("menu", "home", "data", "stats", "graph", "oneclick", "external", "settings", "import", "regression", "fixed", "did", "check", "variable", "sample", "merge", "structure", "correlation", "test", "table", "search")) {
+            Icon icon = uiIcon(kind, 20, ACCENT);
+            BufferedImage image = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D graphics = image.createGraphics();
+            icon.paintIcon(null, graphics, 2, 2);
+            graphics.dispose();
+            int painted = 0;
+            for (int y = 0; y < image.getHeight(); y++) {
+               for (int x = 0; x < image.getWidth(); x++) {
+                  if ((image.getRGB(x, y) >>> 24) != 0) painted++;
+               }
+            }
+            if (painted < 8) throw new IllegalStateException("icon did not render: " + kind);
+         }
+      }
+
+      private void applyAdaptiveWindowBounds() {
+         Rectangle workArea;
+         try {
+            workArea = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+         } catch (RuntimeException ex) {
+            workArea = new Rectangle(0, 0, 1366, 768);
+         }
+         if (workArea.width <= 0 || workArea.height <= 0) workArea = new Rectangle(0, 0, 1366, 768);
+         this.initialWorkArea = new Rectangle(workArea);
+         int availableWidth = Math.max(640, workArea.width - 24);
+         int availableHeight = Math.max(480, workArea.height - 24);
+         int minimumWidth = Math.min(1180, availableWidth);
+         int minimumHeight = Math.min(680, availableHeight);
+         int initialWidth = Math.min(1672, availableWidth);
+         int initialHeight = Math.min(941, availableHeight);
+         if (availableWidth < 1120) this.sidebarCollapsed = true;
+         this.setMinimumSize(new Dimension(minimumWidth, minimumHeight));
+         this.setSize(new Dimension(Math.max(minimumWidth, initialWidth), Math.max(minimumHeight, initialHeight)));
+      }
+
+      private void applyResponsiveSidebarForWidth(int width) {
+         if (width < 1120 && !this.sidebarCollapsed) {
+            this.sidebarCollapsed = true;
+            this.applySidebarCollapsedState();
+         }
+      }
+
+      private void populateResponsivePreviewState() {
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.openCommandPageFromChooser("summarize");
+      }
+
+      private void layoutResponsivePreview() {
+         this.validate();
+         HxWorkbench.layoutTree(this.getContentPane());
+      }
+
+      private void assertViewportComponent(Component component, Container viewport, String label) {
+         if (component == null || !component.isVisible() || component.getParent() == null) {
+            throw new IllegalStateException(label + " is not visible in the responsive viewport");
+         }
+         Rectangle bounds = SwingUtilities.convertRectangle(component.getParent(), component.getBounds(), viewport);
+         if (bounds.width <= 0 || bounds.height <= 0 || bounds.x < 0 || bounds.x + bounds.width > viewport.getWidth()) {
+            throw new IllegalStateException(label + " exceeds the responsive viewport: " + bounds + " in " + viewport.getSize());
+         }
+      }
+
+      private void assertResponsiveViewport(int width, int height) {
+         Container viewport = this.getContentPane();
+         if (viewport.getWidth() <= 0 || viewport.getHeight() <= 0 || viewport.getWidth() > width || viewport.getHeight() > height) {
+            throw new IllegalStateException("responsive content exceeds its frame viewport: " + viewport.getSize() + " in " + width + "x" + height);
+         }
+
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.sidebarToggleButton, viewport, "sidebar toggle");
+         this.assertViewportComponent(this.stageCards, viewport, "main stage");
+         this.assertViewportComponent(this.changeMethodButton, viewport, "workspace back button");
+         this.assertViewportComponent(this.commandDock, viewport, "command dock");
+         this.assertViewportComponent(this.runButton, viewport, "run button");
+
+         this.handleWorkspaceBack();
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.chooserBackButton, viewport, "chooser back button");
+         this.assertViewportComponent(this.chooserResultsHost, viewport, "command chooser");
+
+         this.browseMethod("reg", "线性模型");
+         this.layoutResponsivePreview();
+         if (!"stats".equals(this.activeSidebarKey)) {
+            throw new IllegalStateException("linear catalog did not map its sidebar state to statistics");
+         }
+         this.exactLinearScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.openCommandPageFromLinearCatalog("qreg");
+         this.layoutResponsivePreview();
+         this.handleWorkspaceBack();
+         this.layoutResponsivePreview();
+         if (!this.exactLinearScroll.isVisible() || this.exactLinearScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("linear catalog back navigation did not return to the top");
+         }
+
+         this.showHomePage();
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.searchField, viewport, "home search");
+
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.openCommandPageFromChooser("summarize");
+         this.layoutResponsivePreview();
+      }
+
       private void populateHomePreviewState() {
          this.rebuilding = true;
          this.categoryModel.clear();
@@ -3597,7 +3913,8 @@ public final class HxWorkbench {
          bar.setMinimumSize(new Dimension(0, 36));
          JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
          left.setOpaque(false);
-         this.sidebarToggleButton = new JButton("☰");
+         this.sidebarToggleButton = new JButton();
+         this.sidebarToggleButton.setIcon(uiIcon("menu", 18, TEXT));
          this.sidebarToggleButton.setToolTipText("隐藏左侧导航");
          this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, new Color(226, 232, 240)));
          this.sidebarToggleButton.setBorder(new EmptyBorder(5, 9, 5, 9));
@@ -3699,7 +4016,8 @@ public final class HxWorkbench {
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
          if (this.sidebarToggleButton != null) {
-            this.sidebarToggleButton.setText("☰");
+            this.sidebarToggleButton.setText("");
+            this.sidebarToggleButton.setIcon(uiIcon("menu", 18, TEXT));
             this.sidebarToggleButton.setToolTipText(this.sidebarCollapsed ? "打开左侧导航" : "隐藏左侧导航");
          }
          for (JButton button : this.sidebarButtons.values()) {
@@ -3721,6 +4039,8 @@ public final class HxWorkbench {
          button.putClientProperty("hx.sidebar.label", label);
          button.putClientProperty("hx.sidebar.glyph", glyph);
          button.setHorizontalAlignment(SwingConstants.LEFT);
+         button.setIcon(uiIcon(key, 18, new Color(72, 92, 125)));
+         button.setIconTextGap(10);
          button.setBorder(new EmptyBorder(7, 12, 7, 12));
          button.setPreferredSize(new Dimension(156, 36));
          button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
@@ -3744,6 +4064,8 @@ public final class HxWorkbench {
          Color pressed = active ? new Color(216, 232, 253) : new Color(238, 243, 249);
          Color fg = active ? new Color(18, 91, 196) : new Color(36, 48, 66);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(bg, hover, pressed, fg, active ? new Color(201, 221, 249) : SURFACE));
+         String key = Objects.toString(button.getClientProperty("hx.sidebar.key"), "data");
+         button.setIcon(uiIcon(key, 18, active ? ACCENT : new Color(72, 92, 125)));
       }
 
       private void setSidebarActive(String key) {
@@ -3766,7 +4088,10 @@ public final class HxWorkbench {
       }
 
       private JButton homeQuickButton(String title, String glyph, Runnable action) {
-         JButton button = new JButton("<html><div style='text-align:center'><span style='font-size:18px;color:#2563d9'>" + html(glyph) + "</span><br><b>" + html(title) + "</b></div></html>");
+         JButton button = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b></div></html>");
+         button.setIcon(uiIcon(iconKindForTitle(title), 22, ACCENT));
+         button.setHorizontalTextPosition(SwingConstants.CENTER);
+         button.setVerticalTextPosition(SwingConstants.BOTTOM);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 255), new Color(236, 244, 255), TEXT, new Color(216, 225, 238)));
          button.setBorder(new EmptyBorder(10, 8, 10, 8));
          button.setFocusPainted(false);
@@ -3777,7 +4102,10 @@ public final class HxWorkbench {
       }
 
       private JButton homeFeatureButton(String title, String subtitle, String glyph, Runnable action) {
-         JButton button = new JButton("<html><div style='text-align:center'><span style='font-size:16px;color:#2a66be'>" + html(glyph) + "</span><br><b>" + html(title) + "</b><br><span style='font-size:8px;color:#637083'>" + html(subtitle) + "</span></div></html>");
+         JButton button = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b><br><span style='font-size:8px;color:#637083'>" + html(subtitle) + "</span></div></html>");
+         button.setIcon(uiIcon(iconKindForTitle(title), 21, ACCENT));
+         button.setHorizontalTextPosition(SwingConstants.CENTER);
+         button.setVerticalTextPosition(SwingConstants.BOTTOM);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 250, 253), new Color(239, 244, 250), TEXT, new Color(222, 228, 237)));
          button.setBorder(new EmptyBorder(10, 8, 10, 8));
          button.setFocusPainted(false);
@@ -3820,8 +4148,10 @@ public final class HxWorkbench {
          return b;
       }
 
-      private JButton refTask(String glyph, String title, String subtitle, Color accent, Runnable action) {
+      private JButton refTask(String title, String subtitle, Color accent, Runnable action) {
          JButton b = new JButton("<html><div style='text-align:left'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#6b7890'>" + html(subtitle) + "</span></div></html>");
+         b.setIcon(uiIcon(iconKindForTitle(title), 20, accent));
+         b.setIconTextGap(12);
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(249, 251, 254), new Color(240, 245, 252), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(11, 14, 11, 14));
          b.setHorizontalAlignment(SwingConstants.LEFT);
@@ -3832,7 +4162,7 @@ public final class HxWorkbench {
          return b;
       }
 
-      private JButton refQuick(String glyph, String title, Runnable action) {
+      private JButton refQuick(String title, Runnable action) {
          JButton b = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b></div></html>");
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 251, 255), new Color(239, 245, 253), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(8, 6, 8, 6));
@@ -3861,7 +4191,7 @@ public final class HxWorkbench {
          JPanel right = this.refCard();
          right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
          right.setPreferredSize(new Dimension(240, 0));
-         JLabel t = new JLabel("▥  推荐路径");
+         JLabel t = new JLabel("推荐路径", uiIcon("stats", 18, ACCENT), SwingConstants.LEFT);
          t.setForeground(TEXT);
          t.setFont(t.getFont().deriveFont(Font.BOLD, 15.0F));
          t.setAlignmentX(0.0F);
@@ -3893,7 +4223,7 @@ public final class HxWorkbench {
          JPanel tip = new JPanel(new BorderLayout(8,8));
          tip.setBackground(new Color(255,250,241));
          tip.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(255,219,166), 9), new EmptyBorder(13,13,13,13)));
-         JLabel tipText = new JLabel("<html><b><span style='color:#f59e0b'>☼ 小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法！</span></html>");
+         JLabel tipText = new JLabel("<html><b><span style='color:#f59e0b'>小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法。</span></html>");
          tip.add(tipText, BorderLayout.CENTER);
          tip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 145));
          right.add(tip);
@@ -3908,7 +4238,7 @@ public final class HxWorkbench {
          b.setVerticalAlignment(SwingConstants.TOP);
          b.setFocusPainted(false); b.setContentAreaFilled(false);
          b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-         b.addActionListener(e -> this.openCommandPage(cmd));
+         b.addActionListener(e -> this.openCommandPageFromChooser(cmd));
          return b;
       }
 
@@ -3921,7 +4251,7 @@ public final class HxWorkbench {
             JButton b = new JButton("<html><div style='text-align:left'><b>"+html(row[0])+"</b>&nbsp;&nbsp;<span style='color:#68758b'>"+html(row[1])+"</span><span style='float:right'> ›</span></div></html>");
             b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(249,251,254), new Color(242,246,251), TEXT, SURFACE));
             b.setBorder(new EmptyBorder(5, 2, 5, 2)); b.setHorizontalAlignment(SwingConstants.LEFT); b.setFocusPainted(false); b.setContentAreaFilled(false);
-            String cmd = row[0]; b.addActionListener(e -> this.openCommandPage(cmd));
+            String cmd = row[0]; b.addActionListener(e -> this.openCommandPageFromChooser(cmd));
             g.add(b);
          }
          return g;
@@ -3944,9 +4274,11 @@ public final class HxWorkbench {
 
       private JButton homeQuickTileV130(String title, String detail, String glyph, Runnable action) {
          JButton b = new JButton(
-            "<html><div style='text-align:center'><span style='font-size:22px;color:#2f6fe4'>" + html(glyph) + "</span><br>"
-               + "<b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></div></html>"
+            "<html><div style='text-align:center'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></div></html>"
          );
+         b.setIcon(uiIcon(iconKindForTitle(title), 25, ACCENT));
+         b.setHorizontalTextPosition(SwingConstants.CENTER);
+         b.setVerticalTextPosition(SwingConstants.BOTTOM);
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 255), new Color(240, 246, 255), TEXT, SURFACE));
          b.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(220, 227, 238), 10));
          b.setFocusPainted(false);
@@ -3959,11 +4291,12 @@ public final class HxWorkbench {
       private JButton homeListRowV130(String title, String detail, String glyph, Runnable action) {
          JButton row = new JButton(
             "<html><table width='360' cellpadding='0' cellspacing='0'><tr>"
-               + "<td width='42'><span style='font-size:17px;color:#2f6fe4'>" + html(glyph) + "</span></td>"
                + "<td><b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></td>"
                + "<td width='18' align='right'><span style='color:#607089'>›</span></td>"
                + "</tr></table></html>"
          );
+         row.setIcon(uiIcon(iconKindForTitle(title), 20, ACCENT));
+         row.setIconTextGap(12);
          row.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 251, 255), new Color(241, 246, 253), TEXT, SURFACE));
          row.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(234, 238, 244)),
@@ -4005,7 +4338,7 @@ public final class HxWorkbench {
          JPanel root = new JPanel(new BorderLayout());
          root.setBackground(APP_BG);
 
-         JPanel body = new JPanel();
+         JPanel body = new WidthTrackingPanel();
          body.setBackground(APP_BG);
          body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
          body.setBorder(new EmptyBorder(20, 24, 16, 24));
@@ -4044,7 +4377,7 @@ public final class HxWorkbench {
             new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(213, 222, 236), 11),
             new EmptyBorder(6, 12, 6, 12)
          ));
-         JLabel searchIcon = new JLabel("⌕");
+         JLabel searchIcon = new JLabel(uiIcon("search", 18, new Color(72, 92, 125)));
          searchIcon.setForeground(new Color(72, 92, 125));
          searchIcon.setFont(searchIcon.getFont().deriveFont(Font.BOLD, 18.0F));
          searchWrap.add(searchIcon, BorderLayout.WEST);
@@ -4076,7 +4409,7 @@ public final class HxWorkbench {
          quick.add(quickTitle, BorderLayout.NORTH);
          JPanel quickGrid = new JPanel(new GridLayout(1, 6, 10, 0));
          quickGrid.setOpaque(false);
-         quickGrid.add(this.homeQuickTileV130("导入数据", "Excel / CSV / DTA", "▣", () -> this.navigateTo("data", "导入与转换", "hxconvert")));
+         quickGrid.add(this.homeQuickTileV130("导入数据", "Excel / CSV / DTA", "▣", () -> this.browseMethod("data", "导入与转换")));
          quickGrid.add(this.homeQuickTileV130("描述统计", "summarize / tabstat", "▥", () -> this.openCommandPage("summarize")));
          quickGrid.add(this.homeQuickTileV130("基准回归", "xtreg / reghdfe", "↗", () -> this.openBaselineRegressionWorkspace()));
          quickGrid.add(this.homeQuickTileV130("固定效应", "areg / reghdfe", "▦", () -> this.openCommandPage("reghdfe")));
@@ -4114,7 +4447,7 @@ public final class HxWorkbench {
          JButton dta = this.refButton("打开 DTA", true);
          dta.addActionListener(e -> this.chooseAndLoadDta());
          JButton excel = this.refButton("导入 Excel/CSV", false);
-         excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         excel.addActionListener(e -> this.openCommandPage("import"));
          JButton auto = this.refButton("auto 示例", false);
          auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true));
          dataButtons.add(dta); dataButtons.add(excel); dataButtons.add(auto);
@@ -4126,7 +4459,7 @@ public final class HxWorkbench {
          body.add(Box.createVerticalStrut(14));
 
          Object[][] commonRows = new Object[][]{
-            {"导入数据", "Excel / CSV / DTA", "▣", (Runnable)() -> this.navigateTo("data", "导入与转换", "hxconvert")},
+            {"导入数据", "Excel / CSV / DTA", "▣", (Runnable)() -> this.browseMethod("data", "导入与转换")},
             {"描述统计", "summarize / tabstat", "▥", (Runnable)() -> this.openCommandPage("summarize")},
             {"基准回归", "xtreg / reghdfe / regress", "↗", (Runnable)() -> this.openBaselineRegressionWorkspace()},
             {"固定效应", "areg / reghdfe / xtreg", "▦", (Runnable)() -> this.openCommandPage("reghdfe")},
@@ -4148,7 +4481,7 @@ public final class HxWorkbench {
          recent.add(history, BorderLayout.SOUTH);
 
          Object[][] moreRows = new Object[][]{
-            {"导入与转换", "Excel / CSV / DTA", "⇄", (Runnable)() -> this.navigateTo("data", "导入与转换", "hxconvert")},
+            {"导入与转换", "Excel / CSV / DTA", "⇄", (Runnable)() -> this.browseMethod("data", "导入与转换")},
             {"数据检查", "缺失 / 重复 / 唯一键", "◎", (Runnable)() -> this.browseMethod("data", "数据检查")},
             {"变量处理", "generate / replace", "✣", (Runnable)() -> this.browseMethod("data", "变量处理")},
             {"样本处理", "keep / drop", "⌑", (Runnable)() -> this.browseMethod("data", "样本处理")},
@@ -4252,11 +4585,11 @@ public final class HxWorkbench {
          quick.add(quickTitle, BorderLayout.NORTH);
          JPanel quickGrid = new JPanel(new GridLayout(1,5,8,0));
          quickGrid.setOpaque(false);
-         quickGrid.add(this.refQuick("", "基准回归", this::openBaselineRegressionWorkspace));
-         quickGrid.add(this.refQuick("", "固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
-         quickGrid.add(this.refQuick("", "双重差分", () -> this.browseMethod("reg", "双重差分")));
-         quickGrid.add(this.refQuick("", "描述统计", () -> this.browseMethod("stats", "描述统计")));
-         quickGrid.add(this.refQuick("", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         quickGrid.add(this.refQuick("基准回归", this::openBaselineRegressionWorkspace));
+         quickGrid.add(this.refQuick("固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
+         quickGrid.add(this.refQuick("双重差分", () -> this.browseMethod("reg", "双重差分")));
+         quickGrid.add(this.refQuick("描述统计", () -> this.browseMethod("stats", "描述统计")));
+         quickGrid.add(this.refQuick("OneClick", () -> this.browseMethodCategory("oneclick")));
          quick.add(quickGrid, BorderLayout.CENTER);
          hero.add(quick);
 
@@ -4293,7 +4626,7 @@ public final class HxWorkbench {
          JButton dta = this.refButton("打开 DTA", true);
          dta.addActionListener(e -> this.chooseAndLoadDta());
          JButton excel = this.refButton("导入 Excel/CSV", false);
-         excel.addActionListener(e -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         excel.addActionListener(e -> this.openCommandPage("import"));
          JButton auto = this.refButton("auto 示例", false);
          auto.addActionListener(e -> this.runUtility("sysuse auto, clear", true));
          dataButtons.add(dta); dataButtons.add(excel); dataButtons.add(auto);
@@ -4319,12 +4652,12 @@ public final class HxWorkbench {
          common.add(commonTitle, BorderLayout.NORTH);
          JPanel taskGrid = new JPanel(new GridLayout(2,3,12,12));
          taskGrid.setOpaque(false);
-         taskGrid.add(this.refTask("", "导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
-         taskGrid.add(this.refTask("", "描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
-         taskGrid.add(this.refTask("", "基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
-         taskGrid.add(this.refTask("", "固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
-         taskGrid.add(this.refTask("", "双重差分", "didregress / xtdidregress", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
-         taskGrid.add(this.refTask("", "OneClick", "控制变量组合", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
+         taskGrid.add(this.refTask("导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.browseMethod("data", "导入与转换")));
+         taskGrid.add(this.refTask("描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
+         taskGrid.add(this.refTask("基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
+         taskGrid.add(this.refTask("固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
+         taskGrid.add(this.refTask("双重差分", "didregress / xtdidregress", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
+         taskGrid.add(this.refTask("OneClick", "控制变量组合", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
          common.add(taskGrid, BorderLayout.CENTER);
          gm.gridx = 0; gm.weightx = 0.72; gm.insets = new Insets(0,0,0,12);
          middleRow.add(common, gm);
@@ -4356,15 +4689,15 @@ public final class HxWorkbench {
          more.add(moreTitle, BorderLayout.NORTH);
          JPanel moreGrid = new JPanel(new GridLayout(3,3,10,10));
          moreGrid.setOpaque(false);
-         moreGrid.add(this.refTask("", "导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.navigateTo("data", "导入与转换", "hxconvert")));
-         moreGrid.add(this.refTask("", "数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
-         moreGrid.add(this.refTask("", "变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
-         moreGrid.add(this.refTask("", "样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
-         moreGrid.add(this.refTask("", "合并与追加", "merge / append", new Color(87,140,245), () -> this.browseMethod("data", "合并与追加")));
-         moreGrid.add(this.refTask("", "数据结构", "reshape / xtset / tsset", new Color(37,180,144), () -> this.browseMethod("data", "数据结构")));
-         moreGrid.add(this.refTask("", "相关分析", "correlate / pwcorr", new Color(57,125,242), () -> this.browseMethod("stats", "相关分析")));
-         moreGrid.add(this.refTask("", "均值检验", "ttest", new Color(245,138,45), () -> this.browseMethod("stats", "均值检验")));
-         moreGrid.add(this.refTask("", "频数列联", "tabulate", new Color(142,91,230), () -> this.browseMethod("stats", "频数列联")));
+         moreGrid.add(this.refTask("导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.browseMethod("data", "导入与转换")));
+         moreGrid.add(this.refTask("数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
+         moreGrid.add(this.refTask("变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
+         moreGrid.add(this.refTask("样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
+         moreGrid.add(this.refTask("合并与追加", "merge / append", new Color(87,140,245), () -> this.browseMethod("data", "合并与追加")));
+         moreGrid.add(this.refTask("数据结构", "reshape / xtset / tsset", new Color(37,180,144), () -> this.browseMethod("data", "数据结构")));
+         moreGrid.add(this.refTask("相关分析", "correlate / pwcorr", new Color(57,125,242), () -> this.browseMethod("stats", "相关分析")));
+         moreGrid.add(this.refTask("均值检验", "ttest", new Color(245,138,45), () -> this.browseMethod("stats", "均值检验")));
+         moreGrid.add(this.refTask("频数列联", "tabulate", new Color(142,91,230), () -> this.browseMethod("stats", "频数列联")));
          more.add(moreGrid, BorderLayout.CENTER);
          body.add(more);
 
@@ -4459,6 +4792,7 @@ public final class HxWorkbench {
 
       private void openHomeTask(String var1, String var2) {
          if ("special".equals(var1)) {
+            this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
             this.activeCategoryCode = var2;
             this.activeCategoryName = "test".equals(var2) ? "测试数据" : "性能设置";
             this.activeMethodName = this.activeCategoryName;
@@ -4498,7 +4832,7 @@ public final class HxWorkbench {
                } else if (!containsAny(var2, "oneclick", "控制变量组合", "组合稳健", "规格稳健", "稳健性组合", "控制变量怎么加", "结果稳不稳")
                   && (!var2.contains("控制变量") || !var2.contains("稳") && !var2.contains("组合") && !var2.contains("敏感"))) {
                   if (containsAny(var2, "导入", "excel", "csv", "转换dta", "转dta", "数据转换")) {
-                     this.navigateTo("data", "导入与转换", "hxconvert");
+                     this.browseMethod("data", "导入与转换");
                   } else if (containsAny(var2, "面板回归", "xtreg", "随机效应", "面板固定")) {
                      this.browseMethod("reg", "面板模型");
                   } else if (containsAny(var2, "工具变量", "2sls", "内生性", "ivregress", "ivreghdfe")) {
@@ -4735,7 +5069,7 @@ public final class HxWorkbench {
                this.updateRegressPreview();
             } else if (var1.command.startsWith("oneclick")) {
                this.browseMethodCategory("oneclick");
-               this.openCommandPage(var1.command);
+               this.openCommandPageFromChooser(var1.command);
                this.rebuilding = true;
                this.setComboValue(this.oneClickY, var1.oneY);
                this.setComboValue(this.oneClickX, var1.oneX);
@@ -4749,7 +5083,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(var1.command)) {
                this.browseMethodCategory("did");
-               this.openCommandPage("did_builder");
+               this.openCommandPageFromChooser("did_builder");
                this.rebuilding = true;
                this.setComboValue(this.didAction, var1.didAction);
                this.setComboValue(this.depvar, var1.depvar);
@@ -4776,7 +5110,11 @@ public final class HxWorkbench {
                   this.browseMethod(var1.category, var1.method);
                }
 
-               this.openCommandPage(var1.command);
+               if (!var1.category.isBlank() && !var1.method.isBlank()) {
+                  this.openCommandPageFromChooser(var1.command);
+               } else {
+                  this.openCommandPage(var1.command);
+               }
                this.rebuilding = true;
                this.setComboValue(this.depvar, var1.depvar);
                setListSelectedValues(this.variables, splitWords(var1.controls));
@@ -4872,72 +5210,73 @@ public final class HxWorkbench {
             case "分数结果": return "fracreg · betareg";
             case "广义线性模型": return "glm";
             case "选择模型": return "heckman · heckprobit · heckpoisson";
-            case "时间序列": return "arima · newey · prais · dfuller";
-            case "多元时间序列": return "var · svar · vec · irf";
+            case "时间序列": return "arima · arfima · newey · arch · dfuller";
+            case "多元时间序列": return "var · varsoc · vargranger · irf · svar · vec";
             case "空间自回归模型": return "spregress · spivregress · spxtregress";
-            case "纵向/面板数据": return "xtreg · xtlogit · xtprobit · xtpoisson";
-            case "多层混合效应模型": return "mixed · melogit · meprobit · mepoisson";
-            case "生存分析": return "stset · sts · stcox · streg";
-            case "流行病学及相关": return "cc · cs · ir";
-            case "内生协变量": return "eregress · eprobit · eoprobit · epoisson";
+            case "纵向/面板数据": return "xtreg · xtlogit · xtpoisson · xtgee · xtivreg";
+            case "多层混合效应模型": return "mixed · melogit · mepoisson · mestreg";
+            case "生存分析": return "stset · stcox · streg · stintreg · stcrreg";
+            case "流行病学及相关": return "cc · cs · ir · mcc · dstdize";
+            case "内生协变量": return "eregress · eprobit · eoprobit · eintreg";
             case "样本选择模型": return "heckman · heckprobit · heckoprobit";
-            case "因果推断/处理效应": return "teffects · didregress · xtdidregress";
+            case "因果推断/处理效应": return "teffects · eteffects · etregress · stteffects";
             case "结构方程模型(SEM)": return "sem · gsem";
             case "潜在类别分析(LCA)": return "gsem";
             case "有限混合模型(FMM)": return "fmm";
-            case "项目反应理论(IRT)": return "irt";
-            case "多元分析": return "factor · pca · manova · cluster";
-            case "调查数据分析": return "svy";
-            case "Lasso回归": return "lasso · elasticnet · sqrtlasso";
+            case "项目反应理论(IRT)": return "irt · irtgraph · diflogistic · difmh";
+            case "DSGE模型": return "dsge · dsgenl";
+            case "多元分析": return "alpha · factor · pca · canon · ca · manova";
+            case "调查数据分析": return "svyset · svydescribe · svy";
+            case "Lasso回归": return "lasso · elasticnet · sqrtlasso · dsregress · poregress";
             case "Meta分析": return "meta";
             case "多重插补": return "mi";
-            case "非参数分析": return "npregress · kdensity · lowess · lpoly";
-            case "精确统计": return "bitesti · tabi";
+            case "非参数分析": return "npregress · nptrend · kdensity · lowess · lpoly";
+            case "精确统计": return "exlogistic · expoisson · bitest · ksmirnov · tabi";
             case "重抽样": return "bootstrap · jackknife · permute · simulate";
-            case "效能，精度和样品含量": return "power";
-            case "贝叶斯分析": return "bayes · bayesmh · bayespredict";
-            case "贝叶斯模型平均": return "bma";
-            case "工具变量与内生性": return "ivregress · ivreghdfe";
-            case "估计后分析": return "test · lincom · predict · margins";
+            case "效能，精度和样品含量": return "power · ciwidth";
+            case "贝叶斯分析": return "bayes · bayesmh · bayespredict · bayesstats";
+            case "贝叶斯模型平均": return "bmaregress · bmastats · bmagraph · bmapredict";
+            case "工具变量与内生性": return "ivregress · ivprobit · ivtobit · ivpoisson · ivreghdfe";
+            case "估计后分析": return "test · lincom · predict · margins · estat · estimates";
             default: return "查看该分类下的 Stata 命令";
          }
       }
 
       private static String graphMethodPreview(String method) {
          switch (method) {
-            case "二维图(散点图，折线图等)": return "twoway · scatter · line · connected";
-            case "条形图": return "graph bar · graph hbar";
-            case "点图": return "graph dot · dotplot";
+            case "二维图(散点图，折线图等)": return "twoway · scatter · line · connected · lfit · qfit";
+            case "条形图": return "graph bar";
+            case "点图": return "graph dot";
             case "饼图": return "graph pie";
             case "直方图": return "histogram";
-            case "箱线图": return "graph box · graph hbox";
+            case "箱线图": return "graph box";
             case "等高线图": return "twoway contour";
             case "散点图矩阵": return "graph matrix";
             case "分布图": return "histogram · kdensity";
             case "平滑和密度": return "kdensity · lowess · lpoly";
-            case "回归诊断图": return "rvfplot · rvpplot · avplot";
+            case "回归诊断图": return "rvfplot · rvpplot · avplot · avplots · lvr2plot · cprplot · acprplot";
             case "时间序列图": return "tsline";
             case "面板数据折线图": return "xtline";
             case "生存分析图": return "sts graph";
-            case "ROC分析": return "roctab · rocfit · roccomp";
-            case "多元分析图": return "pca · factor · cluster";
-            case "质量控制": return "质量控制相关图形";
-            case "更多统计图形": return "marginsplot · 更多统计图形";
+            case "ROC分析": return "roctab · rocfit · roccomp · rocgold · rocreg · rocregplot";
+            case "多元分析图": return "screeplot · scoreplot · loadingplot · biplot · cluster dendrogram";
+            case "质量控制": return "cchart · pchart · rchart · xchart · shewhart · serrbar";
+            case "更多统计图形": return "symplot · qnorm · qqplot · dotplot · sunflower · marginsplot · coefplot · event_plot";
             case "图形组合": return "graph combine";
-            case "管理图形": return "graph display · graph save · graph export";
-            case "更改方案/大小": return "set scheme · graph set";
+            case "管理图形": return "graph dir · graph display · graph save · graph export";
+            case "更改方案/大小": return "set scheme · 单图 xsize()/ysize()/scale()";
             default: return "查看该分类下的 Stata 图形命令";
          }
       }
 
       private static String dataMethodPreview(String method) {
          switch (method) {
-            case "导入与转换": return "Excel · CSV · TXT → DTA";
-            case "数据检查": return "misstable · duplicates";
-            case "变量处理": return "generate · replace · encode · winsor2";
-            case "样本处理": return "keep · drop · if · in";
-            case "合并与追加": return "merge · append";
-            case "数据结构": return "reshape · collapse · xtset · tsset";
+            case "导入与转换": return "use · import · export · save";
+            case "数据检查": return "describe · codebook · isid · assert · duplicates";
+            case "变量处理": return "generate · egen · recode · rename · encode";
+            case "样本处理": return "keep · drop · expand";
+            case "合并与追加": return "merge · append · joinby · frlink / frget";
+            case "数据结构": return "reshape · collapse · contract · xtset / tsset · frame";
             default: return "查看该分类下的 Stata 命令";
          }
       }
@@ -4951,7 +5290,7 @@ public final class HxWorkbench {
 
       private JButton groupedMethodRow(String category, String number, String method, String preview, Color accent) {
          JButton row = new JButton(
-            "<html><table width='930' cellpadding='0' cellspacing='0'><tr>"
+            "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='58'><span style='color:#7b8aa3'>" + html(number) + "</span></td>"
                + "<td width='315'><b>" + html(method) + "</b></td>"
                + "<td><span style='font-family:monospace;color:#65758f'>" + html(preview) + "</span></td>"
@@ -5049,6 +5388,7 @@ public final class HxWorkbench {
          this.inspectorToggle.setVisible(false);
          this.chooserResultsHost.revalidate();
          this.chooserResultsHost.repaint();
+         this.resetChooserScroll(this.chooserCatalogScroll);
          this.stageLayout.show(this.stageCards, "chooser");
          this.syncSidebarFromContext();
       }
@@ -5126,7 +5466,7 @@ public final class HxWorkbench {
       private JButton statsMethodRow(String number, String method, Color accent) {
          String commands = statsMethodPreview(method);
          JButton row = new JButton(
-            "<html><table width='930' cellpadding='0' cellspacing='0'><tr>"
+            "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='58'><span style='color:#7b8aa3'>" + html(number) + "</span></td>"
                + "<td width='315'><b>" + html(method) + "</b></td>"
                + "<td><span style='font-family:monospace;color:#65758f'>" + html(commands) + "</span></td>"
@@ -5220,8 +5560,8 @@ public final class HxWorkbench {
             {"描述与比较", "汇总、表格和假设检验", new Color(54, 114, 236), new String[]{"汇总，表格和假设检验"}},
             {"回归与模型", "常见结果变量、广义模型与选择模型", new Color(35, 169, 105), new String[]{"线性模型及相关", "二元结果", "序数结果", "分类结果", "计数结果", "分数结果", "广义线性模型", "选择模型"}},
             {"时间与面板数据", "时间序列、空间、纵向与多层数据", new Color(128, 92, 220), new String[]{"时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型"}},
-            {"进阶与结构", "生存、流行病学、内生性与样本选择", new Color(235, 151, 39), new String[]{"生存分析", "流行病学及相关", "内生协变量", "样本选择模型"}},
-            {"因果与结构模型", "处理效应、SEM、潜在类别与多元分析", new Color(222, 92, 112), new String[]{"因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析"}},
+            {"进阶与结构", "生存、流行病学与内生协变量", new Color(235, 151, 39), new String[]{"生存分析", "流行病学及相关", "内生协变量"}},
+            {"因果与结构模型", "处理效应、SEM、潜变量、DSGE 与多元分析", new Color(222, 92, 112), new String[]{"因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "DSGE模型", "多元分析", "调查数据分析"}},
             {"扩展方法", "正则化、插补、重抽样、效能与贝叶斯", new Color(57, 145, 183), new String[]{"Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均"}},
             {"扩展与第三方", "工具变量、内生性与估计后分析", new Color(71, 126, 188), new String[]{"工具变量与内生性", "估计后分析"}}
          };
@@ -5240,6 +5580,10 @@ public final class HxWorkbench {
          this.activeCategoryName = categoryLabel(var1);
          this.syncSidebarFromContext();
          this.activeMethodName = "";
+         this.chooserAvailableCommands.clear();
+         this.selectedChooserCommand = "";
+         this.chooserSearchField.setText("");
+         this.updateChooserInspector("");
          this.selectCategoryCode(var1);
          LinkedHashSet<String> methodSet = new LinkedHashSet<>(previewMethodsForCategory(var1));
          if (!this.previewMode) {
@@ -5287,7 +5631,7 @@ public final class HxWorkbench {
          text.add(a); text.add(Box.createVerticalStrut(6)); text.add(d); row.add(n,BorderLayout.WEST); row.add(text,BorderLayout.CENTER); return row;
       }
 
-      private JComponent exactLinearMainCard(String glyph, String command, String title, String desc, String example, Color accent) {
+      private JComponent exactLinearMainCard(String command, String title, String desc, String example, Color accent) {
          JPanel card = new JPanel(new BorderLayout(12, 6));
          card.setBackground(SURFACE);
          card.setBorder(BorderFactory.createCompoundBorder(
@@ -5308,13 +5652,13 @@ public final class HxWorkbench {
          text.add(name);
          card.add(text, BorderLayout.CENTER);
          JButton enter = this.refButton("进入设置", true);
-         enter.addActionListener(e -> this.openCommandPage(command));
+         enter.addActionListener(e -> this.openCommandPageFromLinearCatalog(command));
          card.add(enter, BorderLayout.EAST);
          card.setPreferredSize(new Dimension(500, 82));
          return card;
       }
 
-      private JComponent exactLinearGroup(String glyph, String title, String[][] entries, Color accent) {
+      private JComponent exactLinearGroup(String title, String[][] entries, Color accent) {
          JPanel card = new JPanel(new BorderLayout(0, 8));
          card.setBackground(SURFACE);
          card.setBorder(BorderFactory.createCompoundBorder(
@@ -5337,7 +5681,7 @@ public final class HxWorkbench {
             b.setContentAreaFilled(false);
             b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
             String cmd = e[0];
-            b.addActionListener(ev -> this.openCommandPage(cmd));
+            b.addActionListener(ev -> this.openCommandPageFromLinearCatalog(cmd));
             list.add(b);
          }
          card.add(list, BorderLayout.CENTER);
@@ -5373,7 +5717,7 @@ public final class HxWorkbench {
          header.add(actions, BorderLayout.EAST);
          root.add(header, BorderLayout.NORTH);
 
-         JPanel body = new JPanel();
+         JPanel body = new WidthTrackingPanel();
          body.setOpaque(false);
          body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
@@ -5406,10 +5750,10 @@ public final class HxWorkbench {
          commonCard.add(ct, BorderLayout.NORTH);
          JPanel commonGrid = new JPanel(new GridLayout(2,2,12,12));
          commonGrid.setOpaque(false);
-         commonGrid.add(this.exactLinearMainCard("","regress","普通线性回归","","",new Color(54,114,236)));
-         commonGrid.add(this.exactLinearMainCard("","areg","单组固定效应","","",new Color(29,164,101)));
-         commonGrid.add(this.exactLinearMainCard("","reghdfe","高维固定效应回归","","",new Color(245,125,30)));
-         commonGrid.add(this.exactLinearMainCard("","qreg","分位数回归","","",new Color(134,84,225)));
+         commonGrid.add(this.exactLinearMainCard("regress","普通线性回归","","",new Color(54,114,236)));
+         commonGrid.add(this.exactLinearMainCard("areg","单组固定效应","","",new Color(29,164,101)));
+         commonGrid.add(this.exactLinearMainCard("reghdfe","高维固定效应回归","","",new Color(245,125,30)));
+         commonGrid.add(this.exactLinearMainCard("qreg","分位数回归","","",new Color(134,84,225)));
          commonCard.add(commonGrid, BorderLayout.CENTER);
          commonCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
          body.add(commonCard);
@@ -5422,22 +5766,23 @@ public final class HxWorkbench {
          more.add(mt, BorderLayout.NORTH);
          JPanel groups = new JPanel(new GridLayout(2,2,12,12));
          groups.setOpaque(false);
-         groups.add(this.exactLinearGroup("","稳健与异常值处理",new String[][]{{"rreg","稳健回归"},{"cnsreg","约束线性回归"},{"newey","Newey-West"}},new Color(47,104,213)));
-         groups.add(this.exactLinearGroup("","加权与广义最小二乘",new String[][]{{"regressw","加权最小二乘"},{"vwls","可变权重"},{"gls","广义最小二乘"},{"prais","Prais-Winsten"}},new Color(37,172,92)));
-         groups.add(this.exactLinearGroup("","工具变量与内生性",new String[][]{{"ivregress","工具变量"},{"ivreg","2SLS"},{"ivprobit","IV Probit"},{"control","控制函数"}},new Color(245,128,30)));
-         groups.add(this.exactLinearGroup("","其他线性扩展",new String[][]{{"sureg","SUR"},{"seemingly","SUR"},{"seemingly2","SUR 扩展"},{"ml","最大似然"}},new Color(132,85,220)));
+         groups.add(this.exactLinearGroup("稳健与异常值处理",new String[][]{{"rreg","稳健回归"},{"cnsreg","约束线性回归"},{"newey","Newey-West"}},new Color(47,104,213)));
+          groups.add(this.exactLinearGroup("加权与广义最小二乘",new String[][]{{"regress","加权最小二乘（使用权重）"},{"vwls","可变权重"},{"xtgls","面板广义最小二乘"},{"prais","Prais-Winsten"}},new Color(37,172,92)));
+          groups.add(this.exactLinearGroup("工具变量与内生性",new String[][]{{"ivregress","工具变量"},{"ivreg2","增强型 2SLS"},{"ivprobit","IV Probit"},{"cfregress","控制函数"}},new Color(245,128,30)));
+          groups.add(this.exactLinearGroup("其他线性扩展",new String[][]{{"sureg","SUR"},{"mvreg","多元回归"},{"reg3","联立方程"},{"sem","结构方程"}},new Color(132,85,220)));
          more.add(groups, BorderLayout.CENTER);
          body.add(more);
 
          JScrollPane scroll = softScroll(body);
          scroll.setBorder(null);
          scroll.getVerticalScrollBar().setUnitIncrement(18);
+         this.exactLinearScroll = scroll;
          root.add(scroll, BorderLayout.CENTER);
          return root;
       }
 
       private void showExactLinearPage() {
-         this.activeCategoryCode="reg"; this.activeCategoryName="回归"; this.activeMethodName="线性模型"; this.chooserReady=false; this.setSidebarActive("reg"); this.inspectorToggle.setVisible(false); this.stageLayout.show(this.stageCards,"linear_exact"); this.statusLabel.setText("数据检查不停歇保障数据质量，仅用于质量评估与诊断。");
+          this.activeCategoryCode="reg"; this.activeCategoryName="回归"; this.activeMethodName="线性模型"; this.chooserReady=false; this.syncSidebarFromContext(); this.inspectorToggle.setVisible(false); this.resetChooserScroll(this.exactLinearScroll); this.stageLayout.show(this.stageCards,"linear_exact"); this.statusLabel.setText("请选择线性模型命令进入设置。");
       }
 
       private JPanel buildChooserInfoBlock(String title, JTextArea body, int rows) {
@@ -5525,7 +5870,7 @@ public final class HxWorkbench {
             }
          });
          this.chooserInspectorOpenButton.addActionListener(e -> {
-            if (!this.selectedChooserCommand.isBlank()) this.openCommandPage(this.selectedChooserCommand);
+            if (!this.selectedChooserCommand.isBlank()) this.openCommandPageFromChooser(this.selectedChooserCommand);
          });
          actions.add(this.chooserInspectorHelpButton);
          actions.add(this.chooserInspectorOpenButton);
@@ -5648,11 +5993,23 @@ public final class HxWorkbench {
          scroll.setOpaque(false);
          scroll.getViewport().setOpaque(false);
          scroll.getVerticalScrollBar().setUnitIncrement(18);
+         this.chooserCatalogScroll = scroll;
          catalog.add(scroll, BorderLayout.CENTER);
          center.add(catalog, BorderLayout.CENTER);
          root.add(center, BorderLayout.CENTER);
          root.add(this.buildChooserInspectorPanel(), BorderLayout.EAST);
          return root;
+      }
+
+      private void resetChooserScroll(JScrollPane scroll) {
+         if (scroll == null) return;
+         Runnable reset = () -> {
+            scroll.getViewport().setViewPosition(new java.awt.Point(0, 0));
+            scroll.getVerticalScrollBar().setValue(0);
+            scroll.getHorizontalScrollBar().setValue(0);
+         };
+         reset.run();
+         SwingUtilities.invokeLater(reset);
       }
 
       private void browseMethod(String var1, String var2) {
@@ -5934,7 +6291,7 @@ public final class HxWorkbench {
                String command = Objects.toString(model.getValueAt(row, 0), "");
                WorkbenchFrame.this.updateChooserInspector(command);
                if (event.getClickCount() >= 2 || table.convertColumnIndexToModel(viewColumn) == 4) {
-                  WorkbenchFrame.this.openCommandPage(command);
+                  WorkbenchFrame.this.openCommandPageFromChooser(command);
                }
             }
          });
@@ -6075,6 +6432,7 @@ public final class HxWorkbench {
          }
          this.chooserResultsHost.revalidate();
          this.chooserResultsHost.repaint();
+         this.resetChooserScroll(this.chooserCatalogScroll);
       }
 
       private JComponent chooserMethodLead(String detail) {
@@ -6102,7 +6460,7 @@ public final class HxWorkbench {
          String source = commandSource(command);
          String body;
          if (featured) {
-            body = "<html><table width='960' cellpadding='0' cellspacing='0'><tr>"
+            body = "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='155'><span style='font-family:monospace;font-size:17px;color:#2b63c5'><b>" + html(command) + "</b></span><br>"
                + "<span style='font-size:9px;color:#2b63c5'>" + html(source) + "</span></td>"
                + "<td><span style='font-size:15px'><b>" + html(title) + "</b></span><br>"
@@ -6111,7 +6469,7 @@ public final class HxWorkbench {
                + "<td width='82' align='right'><span style='font-size:10px;color:#53657d'>进入设置  ›</span></td>"
                + "</tr></table></html>";
          } else {
-            body = "<html><table width='960' cellpadding='0' cellspacing='0'><tr>"
+            body = "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='145'><span style='font-family:monospace;font-size:13px;color:#2b63c5'><b>" + html(command) + "</b></span></td>"
                + "<td width='215'><span style='font-size:12px'><b>" + html(title) + "</b></span></td>"
                + "<td><span style='font-size:9px;color:#5e6d82'>" + html(purpose) + "</span></td>"
@@ -6129,8 +6487,8 @@ public final class HxWorkbench {
          row.setContentAreaFilled(false);
          row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
          row.setMaximumSize(new Dimension(Integer.MAX_VALUE, featured ? 72 : 38));
-         row.setPreferredSize(new Dimension(980, featured ? 72 : 38));
-         row.addActionListener(e -> this.openCommandPage(command));
+         row.setPreferredSize(new Dimension(720, featured ? 72 : 38));
+         row.addActionListener(e -> this.openCommandPageFromChooser(command));
          return row;
       }
 
@@ -6209,7 +6567,7 @@ public final class HxWorkbench {
          button.setCursor(Cursor.getPredefinedCursor(12));
          button.setFocusPainted(false);
          button.setContentAreaFilled(false);
-         button.addActionListener(event -> this.openCommandPage(command));
+         button.addActionListener(event -> this.openCommandPageFromChooser(command));
          return button;
       }
 
@@ -6269,10 +6627,31 @@ public final class HxWorkbench {
 
       private void configureWorkspaceBack() {
          this.changeMethodButton.setText("← 上一级");
-         String var1 = this.activeMethodName == null ? "" : this.activeMethodName.trim();
-         this.changeMethodButton.setToolTipText(!var1.isBlank() && !var1.equals(this.activeCategoryName) ? "返回当前方法的命令选择页" : "返回上一级选择");
+         String tooltip;
+         if (this.workspaceReturnTarget == WorkspaceReturnTarget.CHOOSER) {
+            tooltip = "返回当前命令目录";
+         } else if (this.workspaceReturnTarget == WorkspaceReturnTarget.LINEAR_EXACT) {
+            tooltip = "返回线性模型目录";
+         } else {
+            tooltip = "返回首页";
+         }
+         this.changeMethodButton.setToolTipText(tooltip);
          this.homeButton.setText("首页");
          this.homeButton.setToolTipText("返回首页");
+      }
+
+      private void handleWorkspaceBack() {
+         if (this.workspaceReturnTarget == WorkspaceReturnTarget.CHOOSER && this.chooserReady) {
+            this.resetChooserScroll(this.chooserCatalogScroll);
+            this.stageLayout.show(this.stageCards, "chooser");
+            this.syncSidebarFromContext();
+         } else if (this.workspaceReturnTarget == WorkspaceReturnTarget.LINEAR_EXACT) {
+            this.resetChooserScroll(this.exactLinearScroll);
+            this.stageLayout.show(this.stageCards, "linear_exact");
+            this.syncSidebarFromContext();
+         } else {
+            this.showHomePage();
+         }
       }
 
       private void setWorkspaceBreadcrumb(String path) {
@@ -6355,17 +6734,17 @@ public final class HxWorkbench {
 
       private static List<String> previewCommandsForMethod(String var0) {
          if ("汇总，表格和假设检验".equals(var0)) {
-            return Arrays.asList("summarize", "tabstat", "tabulate", "table", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest");
+            return Arrays.asList("summarize", "ameans", "centile", "ci", "mean", "proportion", "ratio", "total", "tabstat", "tabulate", "table", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest");
          }          else if ("线性模型及相关".equals(var0)) {
-            return Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "qreg", "iqreg", "bsqreg", "vwls", "eivreg", "sureg", "mvreg", "correlate", "pwcorr");
+            return Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "hetregress", "qreg", "iqreg", "bsqreg", "sqreg", "vwls", "eivreg", "intreg", "tobit", "truncreg", "churdle", "boxcox", "fp", "nl", "nlsur", "gmm", "sureg", "reg3", "mvreg", "frontier", "correlate", "pwcorr");
          }          else if ("二元结果".equals(var0)) {
-            return Arrays.asList("logit", "logistic", "probit", "hetprobit", "scobit", "cloglog");
+            return Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog");
          }          else if ("序数结果".equals(var0)) {
-            return Arrays.asList("ologit", "oprobit");
+            return Arrays.asList("ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit");
          }          else if ("分类结果".equals(var0)) {
-            return Arrays.asList("mlogit", "mprobit", "asclogit", "asmprobit");
+            return Arrays.asList("mlogit", "mprobit", "clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit", "cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit", "asclogit", "asmprobit");
          }          else if ("计数结果".equals(var0)) {
-            return Arrays.asList("poisson", "nbreg", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg");
+            return Arrays.asList("poisson", "nbreg", "gnbreg", "cpoisson", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg");
          }          else if ("分数结果".equals(var0)) {
             return Arrays.asList("fracreg", "betareg");
          }          else if ("广义线性模型".equals(var0)) {
@@ -6373,25 +6752,25 @@ public final class HxWorkbench {
          }          else if ("选择模型".equals(var0)) {
             return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
          }          else if ("时间序列".equals(var0)) {
-            return Arrays.asList("arima", "newey", "prais", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram");
+            return Arrays.asList("arima", "arfima", "newey", "prais", "arch", "ucm", "mswitch", "threshold", "dfgls", "dfuller", "pperron", "corrgram", "cumsp", "pergram", "wntestb", "wntestq", "psdensity", "rolling", "forecast", "tsappend", "tsfill", "tsfilter", "tsreport", "tssmooth");
          }          else if ("多元时间序列".equals(var0)) {
-            return Arrays.asList("var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf");
+            return Arrays.asList("var", "varsoc", "vargranger", "varlmar", "varnorm", "varstable", "irf", "svar", "vec", "vecrank", "veclmar", "vecnorm", "vecstable", "varbasic", "varwle", "mgarch", "dfactor", "sspace", "xcorr");
          }          else if ("空间自回归模型".equals(var0)) {
             return Arrays.asList("spregress", "spivregress", "spxtregress");
          }          else if ("纵向/面板数据".equals(var0)) {
-            return Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys");
+            return Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtfrontier", "xtivreg", "xtpcse", "xtgls", "xtregar", "xtrc", "xtstreg", "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor", "xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata");
          }          else if ("多层混合效应模型".equals(var0)) {
-            return Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm");
+            return Arrays.asList("mixed", "mecloglog", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "meintreg", "menl", "mestreg", "metobit", "meglm");
          }          else if ("生存分析".equals(var0)) {
-            return Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg");
+            return Arrays.asList("stset", "stcox", "streg", "stintreg", "stcrreg", "sts", "stcurve", "stdescribe", "stsum", "stci", "stbase", "stfill", "stgen", "stsplit", "stvary", "sttocc", "sttoct", "stir", "strate", "stptime", "stmh", "stmc", "ctset", "cttost", "ltable", "snapspan");
          }          else if ("流行病学及相关".equals(var0)) {
-            return Arrays.asList("cc", "cs", "ir");
+            return Arrays.asList("cc", "cs", "ir", "mcc", "dstdize", "pkexamine", "pksumm", "pkcross", "pkequiv", "pkcollapse", "pkshape");
          }          else if ("内生协变量".equals(var0)) {
-            return Arrays.asList("eregress", "eprobit", "eoprobit", "epoisson", "eintreg");
+            return Arrays.asList("eregress", "eprobit", "eoprobit", "eintreg");
          }          else if ("样本选择模型".equals(var0)) {
             return Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson");
          }          else if ("因果推断/处理效应".equals(var0)) {
-            return Arrays.asList("teffects", "etregress", "etpoisson", "didregress", "xtdidregress");
+            return Arrays.asList("teffects", "eteffects", "etregress", "etpoisson", "stteffects");
          }          else if ("结构方程模型(SEM)".equals(var0)) {
             return Arrays.asList("sem", "gsem");
          }          else if ("潜在类别分析(LCA)".equals(var0)) {
@@ -6399,49 +6778,51 @@ public final class HxWorkbench {
          }          else if ("有限混合模型(FMM)".equals(var0)) {
             return Collections.singletonList("fmm");
          }          else if ("项目反应理论(IRT)".equals(var0)) {
-            return Collections.singletonList("irt");
+            return Arrays.asList("irt", "irtgraph", "diflogistic", "difmh");
+         }          else if ("DSGE模型".equals(var0)) {
+            return Arrays.asList("dsge", "dsgenl");
          }          else if ("多元分析".equals(var0)) {
-            return Arrays.asList("factor", "pca", "canon", "cca", "manova", "mvreg", "discrim", "cluster");
+            return Arrays.asList("alpha", "factor", "pca", "canon", "ca", "candisc", "hotelling", "manova", "mvreg", "mca", "mds", "mdslong", "mdsmat", "mvtest", "procrustes", "discrim", "cluster");
          }          else if ("调查数据分析".equals(var0)) {
-            return Collections.singletonList("svy");
+            return Arrays.asList("svyset", "svydescribe", "svy");
          }          else if ("Lasso回归".equals(var0)) {
-            return Arrays.asList("lasso", "elasticnet", "sqrtlasso", "dsregress", "poivregress", "xporegress", "xpoivregress");
+            return Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress");
          }          else if ("Meta分析".equals(var0)) {
             return Collections.singletonList("meta");
          }          else if ("多重插补".equals(var0)) {
             return Collections.singletonList("mi");
          }          else if ("非参数分析".equals(var0)) {
-            return Arrays.asList("ranksum", "median", "signrank", "signtest", "npregress", "kdensity", "lowess", "lpoly");
+            return Arrays.asList("ranksum", "median", "signrank", "signtest", "npregress", "nptrend", "kdensity", "lowess", "lpoly");
          }          else if ("精确统计".equals(var0)) {
-            return Arrays.asList("bitesti", "tabi");
+            return Arrays.asList("exlogistic", "expoisson", "bitest", "bitesti", "ksmirnov", "symmetry", "tetrachoric", "tabi");
          }          else if ("重抽样".equals(var0)) {
             return Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby");
          }          else if ("效能，精度和样品含量".equals(var0)) {
-            return Collections.singletonList("power");
+            return Arrays.asList("power", "ciwidth");
          }          else if ("贝叶斯分析".equals(var0)) {
-            return Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph");
+            return Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesreps", "bayesstats", "bayesgraph", "bayestest");
          }          else if ("贝叶斯模型平均".equals(var0)) {
-            return Collections.singletonList("bma");
+            return Arrays.asList("bmaregress", "bmacoefsample", "bmagraph", "bmastats", "bmapredict");
          }          else if ("工具变量与内生性".equals(var0)) {
-            return Arrays.asList("ivregress", "ivreghdfe");
+            return Arrays.asList("ivregress", "ivprobit", "ivtobit", "ivpoisson", "ivreghdfe");
          }          else if ("估计后分析".equals(var0)) {
-            return Arrays.asList("test", "lincom", "predict", "margins");
+            return Arrays.asList("test", "testparm", "testnl", "lincom", "nlcom", "contrast", "pwcompare", "predict", "predictnl", "margins", "marginsplot", "lrtest", "hausman", "suest", "linktest", "estimates", "estat");
          }          else if ("二维图(散点图，折线图等)".equals(var0)) {
             return Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly");
          }          else if ("条形图".equals(var0)) {
-            return Collections.singletonList("twoway");
+            return Collections.singletonList("graph_bar");
          }          else if ("点图".equals(var0)) {
-            return Collections.singletonList("dotplot");
+            return Collections.singletonList("graph_dot");
          }          else if ("饼图".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_pie");
          }          else if ("直方图".equals(var0)) {
             return Collections.singletonList("histogram");
          }          else if ("箱线图".equals(var0)) {
             return Collections.singletonList("graph_box");
          }          else if ("等高线图".equals(var0)) {
-            return Collections.singletonList("twoway");
+            return Collections.singletonList("twoway_contour");
          }          else if ("散点图矩阵".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_matrix");
          }          else if ("分布图".equals(var0)) {
             return Arrays.asList("histogram", "kdensity");
          }          else if ("平滑和密度".equals(var0)) {
@@ -6453,33 +6834,33 @@ public final class HxWorkbench {
          }          else if ("面板数据折线图".equals(var0)) {
             return Collections.singletonList("xtline");
          }          else if ("生存分析图".equals(var0)) {
-            return Collections.singletonList("sts");
+            return Collections.singletonList("sts_graph");
          }          else if ("ROC分析".equals(var0)) {
-            return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg");
+            return Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot");
          }          else if ("多元分析图".equals(var0)) {
-            return Arrays.asList("pca", "factor", "cluster");
+            return Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay");
          }          else if ("质量控制".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Arrays.asList("cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar");
          }          else if ("更多统计图形".equals(var0)) {
             return Arrays.asList("marginsplot", "coefplot", "event_plot");
          }          else if ("图形组合".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("graph_combine");
          }          else if ("管理图形".equals(var0)) {
             return Collections.singletonList("graph");
          }          else if ("更改方案/大小".equals(var0)) {
-            return Collections.singletonList("graph");
+            return Collections.singletonList("set");
          } else if ("导入与转换".equals(var0)) {
-            return Collections.singletonList("hxconvert");
+            return Arrays.asList("use", "import", "export", "save");
          } else if ("数据检查".equals(var0)) {
-            return Arrays.asList("misstable", "duplicates");
+            return Arrays.asList("describe", "codebook", "isid", "assert", "count", "compare", "duplicates", "misstable");
          } else if ("变量处理".equals(var0)) {
-            return Arrays.asList("generate", "replace", "encode", "decode", "destring", "tostring", "winsor2");
+            return Arrays.asList("generate", "egen", "replace", "recode", "clonevar", "split", "rename", "order", "label", "format", "compress", "encode", "decode", "destring", "tostring", "winsor2");
          } else if ("样本处理".equals(var0)) {
-            return Arrays.asList("keep", "drop");
+            return Arrays.asList("keep", "drop", "expand");
          } else if ("合并与追加".equals(var0)) {
-            return Arrays.asList("merge", "append");
+            return Arrays.asList("merge", "append", "joinby", "cross", "frlink", "frget");
          } else if ("数据结构".equals(var0)) {
-            return Arrays.asList("reshape", "collapse", "xtset", "tsset");
+            return Arrays.asList("reshape", "collapse", "contract", "fillin", "stack", "xpose", "sort", "gsort", "xtset", "tsset", "frame", "frames");
          } else if ("描述统计".equals(var0)) {
             return Arrays.asList("summarize", "tabstat");
          } else if ("相关分析".equals(var0)) {
@@ -6535,9 +6916,9 @@ public final class HxWorkbench {
          } else if ("stats".equals(var0)) {
             return Arrays.asList(
                "汇总，表格和假设检验", "线性模型及相关", "二元结果", "序数结果", "分类结果", "计数结果", "分数结果", "广义线性模型", "选择模型",
-               "时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型", "生存分析", "流行病学及相关", "内生协变量", "样本选择模型",
-               "因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "多元分析", "调查数据分析",
-               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "贝叶斯模型平均", "工具变量与内生性", "估计后分析"
+               "时间序列", "多元时间序列", "空间自回归模型", "纵向/面板数据", "多层混合效应模型", "生存分析", "流行病学及相关", "内生协变量",
+               "因果推断/处理效应", "结构方程模型(SEM)", "潜在类别分析(LCA)", "有限混合模型(FMM)", "项目反应理论(IRT)", "DSGE模型", "多元分析", "调查数据分析",
+               "Lasso回归", "Meta分析", "多重插补", "非参数分析", "精确统计", "重抽样", "效能，精度和样品含量", "贝叶斯分析", "工具变量与内生性", "估计后分析"
             );
          } else if ("reg".equals(var0)) {
             return Arrays.asList("线性模型", "面板模型", "二元结果", "计数模型", "工具变量", "双重差分");
@@ -6557,17 +6938,17 @@ public final class HxWorkbench {
 
       private static String methodSummary(String var0) {
          if ("导入与转换".equals(var0)) {
-            return "把外部文件转换为可分析的 Stata 数据";
+            return "打开、导入、导出和保存 Stata 或外部数据";
          } else if ("数据检查".equals(var0)) {
-            return "检查缺失、重复和关键键值";
+            return "检查结构、编码、唯一键、约束、缺失和重复";
          } else if ("变量处理".equals(var0)) {
-            return "生成、修改、缩尾和转换变量类型";
+            return "生成、重编码、重命名、标签、格式与类型转换";
          } else if ("样本处理".equals(var0)) {
-            return "按研究条件保留或删除样本";
+            return "筛选、删除或按规则扩展观测";
          } else if ("合并与追加".equals(var0)) {
-            return "横向匹配主副表或纵向连接数据";
+            return "按键合并、纵向追加、组合或跨 Frame 连接数据";
          } else if ("数据结构".equals(var0)) {
-            return "转换宽长格式、汇总或声明面板";
+            return "宽长转换、汇总、重组、排序并声明面板或时间结构";
          } else if ("描述统计".equals(var0)) {
             return "查看均值、标准差、分位数和样本量";
          } else if ("相关分析".equals(var0)) {
@@ -6727,7 +7108,7 @@ public final class HxWorkbench {
             styleTextField(var5);
          }
 
-         for (JComboBox var10 : Arrays.asList(this.depvar, this.model, this.panel, this.time, this.vce, this.cluster, this.genericWeightType, this.genericWeightVar)) {
+         for (JComboBox var10 : Arrays.asList(this.depvar, this.model, this.panel, this.time, this.vce, this.cluster, this.genericWeightType, this.genericWeightVar, this.glmRateMode, this.glmEstimationMode)) {
             styleCombo(var10);
          }
 
@@ -6814,14 +7195,7 @@ public final class HxWorkbench {
          styleSecondaryButton(this.changeMethodButton);
          styleSecondaryButton(this.homeButton);
          this.homeButton.addActionListener(var1x -> this.showHomePage());
-         this.changeMethodButton.addActionListener(var1x -> {
-            if (this.chooserReady) {
-               this.stageLayout.show(this.stageCards, "chooser");
-               this.syncSidebarFromContext();
-            } else {
-               this.showHomePage();
-            }
-         });
+         this.changeMethodButton.addActionListener(var1x -> this.handleWorkspaceBack());
          JButton help = new JButton("查看帮助");
          styleSecondaryButton(help);
          help.addActionListener(var1x -> this.openHelp());
@@ -7486,7 +7860,7 @@ public final class HxWorkbench {
 
          var6.addActionListener(var1x -> this.runUtility("sysuse auto, clear", true));
          var7.addActionListener(var1x -> this.chooseAndLoadDta());
-         var8.addActionListener(var1x -> this.navigateTo("data", "导入与转换", "hxconvert"));
+         var8.addActionListener(var1x -> this.openCommandPage("hxconvert"));
          var5.add(var6);
          var5.add(var7);
          var5.add(var8);
@@ -7714,6 +8088,210 @@ public final class HxWorkbench {
             if (this.xtregDepVar != null && variable.equals(Objects.toString(this.xtregDepVar.getSelectedItem(), ""))) return "因变量 Y";
             if (this.xtregIndepList != null && this.xtregIndepList.getSelectedValuesList().contains(variable)) return "解释变量 X";
          }
+         if (isStructuredGlmCommand(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "GLM 结果变量 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "GLM 解释变量 X";
+            if (this.glmRateMode.getSelectedIndex() == 1 && variable.equals(selected(this.panel))) return "offset()";
+            if (this.glmRateMode.getSelectedIndex() == 2 && variable.equals(selected(this.panel))) return "exposure()";
+            if (variable.equals(selected(this.genericWeightVar))) return "权重变量";
+            if ("cluster".equals(selected(this.vce)) && variable.equals(selected(this.cluster))) return "聚类变量";
+         }
+         if (isStructuredFractionalOutcomeCommand(this.currentCommand)) {
+            String cmd = this.currentCommand;
+            if (variable.equals(selected(this.depvar))) return "分数结果 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "均值方程 X";
+            if ("fracreg".equals(cmd)) {
+               if (variable.equals(selected(this.panel))) return "主方程 offset()";
+               if (this.model.getSelectedIndex() == 2 && this.absorb.getSelectedValuesList().contains(variable)) return "方差方程 het()";
+               if (this.model.getSelectedIndex() == 2 && variable.equals(this.newvar.getText().trim())) return "het() offset()";
+            } else if (this.absorb.getSelectedValuesList().contains(variable)) {
+               return "尺度方程 scale()";
+            }
+         }
+         if (isStructuredCountOutcomeCommand(this.currentCommand)) {
+            String cmd = this.currentCommand;
+            if (variable.equals(selected(this.depvar))) return "计数结果 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "均值方程 X";
+            if ("gnbreg".equals(cmd) && this.absorb.getSelectedValuesList().contains(variable)) return "离散参数方程 lnalpha()";
+            if (Arrays.asList("zip", "zinb").contains(cmd) && this.absorb.getSelectedValuesList().contains(variable)) return "零膨胀方程 inflate()";
+            if (variable.equals(selected(this.panel))) {
+               if (this.time.getSelectedIndex() == 1) return "主方程 offset()";
+               if (this.time.getSelectedIndex() == 2) return "主方程 exposure()";
+            }
+            if (Arrays.asList("cpoisson", "tpoisson", "tnbreg").contains(cmd) && variable.equals(this.expression.getText().trim())) return "下界 ll()";
+            if (Arrays.asList("cpoisson", "tpoisson").contains(cmd) && variable.equals(this.newvar.getText().trim())) return "上界 ul()";
+            if (Arrays.asList("zip", "zinb").contains(cmd) && variable.equals(this.newvar.getText().trim())) return "inflate() offset()";
+         }
+         if (isStructuredCategoricalOutcomeCommand(this.currentCommand)) {
+            String cmd = this.currentCommand;
+            if ("clogit".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "二元结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+               if (variable.equals(selected(this.panel))) return "匹配组 group()";
+               if (variable.equals(this.expression.getText().trim())) return "offset()";
+            } else if ("slogit".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "多类别结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+            } else if ("cmset".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return this.model.getSelectedIndex() >= 3 && this.model.getSelectedIndex() <= 4 ? "面板 ID" : "Case ID";
+               if (variable.equals(selected(this.time))) return "时间变量";
+               if (variable.equals(selected(this.panel))) return "备选项变量";
+            } else if ("cmsummarize".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "选择指示 choice()";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "汇总变量";
+            } else if ("cmchoiceset".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "比较变量";
+            } else if ("cmtab".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "选择指示 choice()";
+               if (variable.equals(selected(this.panel))) return "列联比较变量";
+            } else if ("cmsample".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return this.model.getSelectedIndex() == 1 ? "排名 choice()" : "选择指示 choice()";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "备选项特定变量";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "Case-specific 变量";
+            } else if ("cmclogit".equals(cmd)) {
+               if (variable.equals(selected(this.depvar))) return "选择指示 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "备选项特定变量";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "Case-specific 变量";
+               if (variable.equals(this.expression.getText().trim())) return "offset()";
+            }
+         }
+         if (isStructuredOrdinalOutcomeCommand(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "序数结果 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return Arrays.asList("zioprobit", "ziologit").contains(this.currentCommand) ? "主 / 强度方程 X" : "均值方程 X";
+            if (this.absorb.getSelectedValuesList().contains(variable)) return "hetoprobit".equals(this.currentCommand) ? "方差方程 het()" : "膨胀方程 inflate()";
+            if (variable.equals(this.expression.getText().trim())) return "主方程 offset()";
+            if (variable.equals(this.newvar.getText().trim())) return "hetoprobit".equals(this.currentCommand) ? "方差方程 offset()" : "inflate() offset()";
+         }
+         if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+            if ("binreg".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元 / 二项结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+               if (variable.equals(this.expression.getText().trim())) return "试验次数 n()";
+            } else if ("biprobit".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元结果 Y1";
+               if (variable.equals(selected(this.panel))) return "二元结果 Y2";
+               if (this.variables.getSelectedValuesList().contains(variable)) return this.model.getSelectedIndex() == 0 ? "共享解释变量 X" : "方程 1 解释变量";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "方程 2 解释变量";
+            } else if ("hetprobit".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "二元结果 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "均值方程 X";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "方差方程 het()";
+               if (variable.equals(this.expression.getText().trim())) return "方差方程 offset()";
+            }
+         }
+         if (isStructuredLinearRelatedCommand(this.currentCommand)) {
+            if ("intreg".equals(this.currentCommand)) {
+               if (variable.equals(selected(this.depvar))) return "区间下端点";
+               if (variable.equals(selected(this.panel))) return "区间上端点";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+               if (this.absorb.getSelectedValuesList().contains(variable)) return "方差方程 het()";
+            } else {
+               if (variable.equals(selected(this.depvar))) return "结果变量 Y";
+               if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
+               if ("hetregress".equals(this.currentCommand) && this.absorb.getSelectedValuesList().contains(variable)) return "方差方程 het()";
+               if (Arrays.asList("tobit", "truncreg").contains(this.currentCommand)) {
+                  if (variable.equals(this.expression.getText().trim())) return "下界 ll()";
+                  if (variable.equals(this.newvar.getText().trim())) return "上界 ul()";
+               }
+            }
+         }
+         if (isStructuredPrSdTestCommand(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "prtest".equals(this.currentCommand) ? "比例变量 1" : "方差变量 1";
+            if (variable.equals(selected(this.panel))) return this.model.getSelectedIndex() == 1 ? "分组变量" : "比较变量 2";
+         }
+         if ("tabulate".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "分类变量 1";
+            if (variable.equals(selected(this.panel))) return "分类变量 2";
+         }
+         if ("oneway".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "结果变量";
+            if (variable.equals(selected(this.panel))) return "分组因子";
+         }
+         if (Arrays.asList("ranksum", "median").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "检验变量";
+            if (variable.equals(selected(this.panel))) return "分组变量";
+         }
+         if (Arrays.asList("signrank", "signtest").contains(this.currentCommand) && variable.equals(selected(this.depvar))) return "配对变量 1";
+         if (Arrays.asList("histogram", "kdensity").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "分布变量";
+         }
+         if (Arrays.asList("scatter", "lfit").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "纵轴 Y";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "横轴 X";
+         }
+         if (Arrays.asList("line", "connected").contains(this.currentCommand)) {
+            if (this.variables.getSelectedValuesList().contains(variable)) return "纵轴 Y 系列";
+            if (variable.equals(selected(this.panel))) return "横轴 X";
+         }
+         if (Arrays.asList("qfit", "lowess", "lpoly").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "纵轴 Y";
+            if (variable.equals(selected(this.panel))) return "横轴 X";
+         }
+         if (Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "诊断变量 / predictor";
+         }
+         if (Arrays.asList("graph_bar", "graph_dot").contains(this.currentCommand)) {
+            if (this.variables.getSelectedValuesList().contains(variable)) return "数值变量";
+            if (variable.equals(selected(this.panel))) return "分组 over()";
+         }
+         if ("graph_pie".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "扇区数值";
+            if (variable.equals(selected(this.panel))) return "分类 over()";
+         }
+         if ("graph_box".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "箱线变量";
+            if (variable.equals(selected(this.panel))) return "分组变量";
+         }
+         if ("graph_matrix".equals(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "矩阵变量";
+         if ("twoway_contour".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "Z 值";
+            if (variable.equals(selected(this.panel))) return "Y 坐标";
+            if (variable.equals(selected(this.time))) return "X 坐标";
+         }
+         if (Arrays.asList("tsline", "xtline").contains(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "绘图序列";
+         if ("biplot".equals(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "双标图分析变量";
+         if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "gladder", "qladder", "spikeplot").contains(this.currentCommand)
+            && variable.equals(selected(this.depvar))) return "分布诊断变量";
+         if ("dotplot".equals(this.currentCommand) && this.variables.getSelectedValuesList().contains(variable)) return "分布点图变量";
+         if ("qqplot".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "Q–Q 变量 1";
+            if (variable.equals(selected(this.panel))) return "Q–Q 变量 2";
+         }
+         if ("sunflower".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "纵轴 Y";
+            if (variable.equals(selected(this.panel))) return "横轴 X";
+         }
+         if ("cchart".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "缺陷数";
+            if (variable.equals(selected(this.panel))) return "检查单位编号";
+         }
+         if ("pchart".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "不合格数";
+            if (variable.equals(selected(this.panel))) return "检查单位编号";
+            if (variable.equals(selected(this.time))) return "检查样本量";
+         }
+         if (Arrays.asList("rchart", "xchart", "shewhart").contains(this.currentCommand)
+            && this.variables.getSelectedValuesList().contains(variable)) return "样本内重复测量";
+         if ("serrbar".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "均值变量";
+            if (variable.equals(selected(this.panel))) return "标准误 / 标准差";
+            if (variable.equals(selected(this.time))) return "横轴 / 组序变量";
+         }
+         if ("sts_graph".equals(this.currentCommand) && variable.equals(selected(this.panel))) return "生存曲线分组";
+         if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "真实二元结局";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "预测评分 / 分类器";
+         }
+         if ("rocgold".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "真实二元结局";
+            if (variable.equals(selected(this.panel))) return "Gold-standard classifier";
+            if (this.variables.getSelectedValuesList().contains(variable)) return "待比较 classifier";
+         }
+         if ("did_trends".equals(this.currentCommand)) {
+            if (variable.equals(selected(this.depvar))) return "结果变量 Y";
+            if (variable.equals(selected(this.panel))) return "处理组";
+            if (variable.equals(selected(this.time))) return "时间变量";
+         }
          if (variable.equals(selected(this.depvar))) return "因变量 Y";
          if (this.variables.getSelectedValuesList().contains(variable)) return "解释变量 X";
          if (this.absorb.getSelectedValuesList().contains(variable)) return "固定效应 FE";
@@ -7880,7 +8458,7 @@ public final class HxWorkbench {
             if (!var1x.getValueIsAdjusting() && !this.rebuilding) {
                String var2x = this.commandList.getSelectedValue();
                if (var2x != null && !var2x.isBlank()) {
-                  this.openCommandPage(var2x);
+                  this.openCommandPageFromChooser(var2x);
                }
             }
          });
@@ -7915,6 +8493,8 @@ public final class HxWorkbench {
             }
          });
          this.missingChartType.addActionListener(var1x -> this.missingChart.setChartType(selected(this.missingChartType)));
+         this.specialGraphRiskTable.addActionListener(var1x -> this.schedulePreview());
+         this.specialGraphQcStabilized.addActionListener(var1x -> this.schedulePreview());
          ActionListener var1 = var1x -> {
             this.missingVariables.setEnabled(this.missingChooseVariables.isSelected());
             boolean var2x = this.missingMode.getSelectedIndex() > 0;
@@ -7995,6 +8575,12 @@ public final class HxWorkbench {
             this.variables,
             this.newvar,
             this.expression,
+            this.specialGraphQcStd,
+            this.specialGraphQcMean,
+            this.specialGraphQcLower,
+            this.specialGraphQcUpper,
+            this.specialGraphEventStubLag,
+            this.specialGraphEventStubLead,
             this.model,
             this.usingFile,
             this.panel,
@@ -8026,6 +8612,21 @@ public final class HxWorkbench {
          this.regressLevel.addChangeListener(var1x -> this.schedulePreview());
          this.regressNoConstant.addActionListener(var1x -> this.schedulePreview());
          this.regressBeta.addActionListener(var1x -> this.schedulePreview());
+         this.fractionalNoConstant.addActionListener(var1x -> this.schedulePreview());
+         this.fractionalScaleNoConstant.addActionListener(var1x -> this.schedulePreview());
+         this.glmNoConstant.addActionListener(var1x -> this.schedulePreview());
+         this.glmEform.addActionListener(var1x -> this.schedulePreview());
+         this.glmRateMode.addActionListener(var1x -> this.schedulePreview());
+         this.glmEstimationMode.addActionListener(var1x -> this.schedulePreview());
+         this.model.addActionListener(var1x -> {
+            if (!this.rebuilding && "glm".equals(this.currentCommand)) {
+               boolean oldRebuilding = this.rebuilding;
+               this.rebuilding = true;
+               this.updateStructuredGlmLinkChoices();
+               this.rebuilding = oldRebuilding;
+               this.schedulePreview();
+            }
+         });
          this.regressWeightType.addActionListener(var1x -> this.updateRegressConditionalFields());
          this.baselineEstimator.addActionListener(var1x -> {
             if (!this.rebuilding && this.baselineTaskActive) {
@@ -8182,7 +8783,7 @@ public final class HxWorkbench {
          if (var8 != null) {
             this.methodChanged();
          } else if (var10 != null) {
-            this.openCommandPage(var10);
+            this.openCommandPageFromChooser(var10);
          }
 
          this.setBusy(false, var4 == 0 ? "已读取命令目录。" : "读取命令目录失败，返回码 " + var4);
@@ -8239,6 +8840,8 @@ public final class HxWorkbench {
       private void showCommand(String var1) {
          if ("regress".equals(var1)) {
             this.showRegressPage();
+         } else if (this.previewMode) {
+            this.showPreviewCommandPage(var1);
          } else {
             this.regressWorkspaceActive = false;
             this.showWorkspacePage();
@@ -8288,6 +8891,7 @@ public final class HxWorkbench {
       }
 
       private void openBaselineRegressionWorkspace() {
+         this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
          this.activeCategoryCode = "reg";
          this.activeCategoryName = "回归模型";
          this.activeMethodName = "基准回归";
@@ -8308,8 +8912,8 @@ public final class HxWorkbench {
          this.commandTitle.setText("基准回归");
          this.commandTitle.setToolTipText("在同一个任务页面切换 xtreg / reghdfe / areg / regress");
          this.setWorkspaceBreadcrumb("回归模型  ›  基准回归");
-         this.exampleLabel.setText("<html>先设定研究问题，再选择估计方法。默认使用 xtreg；切换估计器时公共变量设置保持不变。</html>");
-         this.insightArea.setText("基准回归工作区把研究任务放在前面。默认使用 xtreg（固定效应），也可以在同一页切换 reghdfe、areg 或 regress。切换时保留 Y、核心 X、Controls、样本条件和标准误等公共设置，只替换估计器特有参数和最终 Stata 命令。");
+         this.exampleLabel.setText("<html>按“选择变量 → 模型与推断 → 检查运行”完成基准回归；右上角可随时切换 xtreg / reghdfe / areg / regress。</html>");
+         this.insightArea.setText("基准回归工作区用于在同一研究设定下比较常用线性估计器。默认使用 xtreg（固定效应），也可以切换 reghdfe、areg 或 regress。切换估计器时保留 Y、核心 X、Controls、样本条件和标准误等公共设置，只替换模型或固定效应等估计器特有参数。底部始终生成当前估计器的真实 Stata 命令。");
          this.syntaxArea.setText("任务工作区：xtreg / reghdfe / areg / regress；最终仍执行所选估计器的真实 Stata 命令。");
          if (this.baselineEstimatorHeader != null) this.baselineEstimatorHeader.setVisible(true);
          this.refreshVariableControls();
@@ -8321,7 +8925,7 @@ public final class HxWorkbench {
             this.rebuilding = false;
          }
          this.switchBaselineEstimator();
-         this.statusLabel.setText("基准回归：默认 xtreg；可在右上角切换估计方法，公共变量设置不会清空。");
+         this.statusLabel.setText("基准回归：按变量 → 模型与推断 → 检查运行组织；切换估计器时公共变量设置保持不变。");
       }
 
       private void switchBaselineEstimator() {
@@ -8353,42 +8957,100 @@ public final class HxWorkbench {
       private void rebuildBaselineForm() {
          String estimator = selected(this.baselineEstimator);
          this.formPanel.removeAll();
-         int row = 0;
-         this.addField(row++, "因变量 Y", this.depvar);
-         this.addField(row++, "核心解释变量 X", this.regressX);
-         this.addField(row++, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+
+         this.enableVariableDrop(this.depvar, "因变量 Y");
+         this.enableVariableDrop(this.regressX, "核心解释变量 X");
+         this.enableVariableDrop(this.regressControls, "控制变量");
+         this.enableVariableDrop(this.absorb, "固定效应");
+         this.enableVariableDrop(this.cluster, "聚类变量");
+         this.enableVariableDrop(this.regressWeightVar, "权重变量");
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(true, "选择变量", "模型与推断"), c);
+
+         JPanel variableCard = this.xtregWizardCardV130(1, "选择变量", "Y、核心 X 和控制变量在所有估计器之间共享；切换方法时不会清空。");
+         JPanel variableBody = this.genericCardBody();
+         JPanel mainVars = new JPanel(new GridLayout(1, 2, 12, 0));
+         mainVars.setOpaque(false);
+         mainVars.add(this.fieldBlock("因变量 Y", this.depvar));
+         mainVars.add(this.fieldBlock("核心解释变量 X", this.regressX));
+         this.addGenericBodyField(variableBody, "核心变量", mainVars);
+         this.addGenericBodyField(variableBody, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+         variableCard.add(variableBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(variableCard, c);
+
+         String methodSubtitle;
+         if ("xtreg".equals(estimator)) {
+            methodSubtitle = "当前估计器为 xtreg；先选择 FE / RE / BE，再设置标准误。面板结构沿用当前 Stata xtset。";
+         } else if ("reghdfe".equals(estimator)) {
+            methodSubtitle = "当前估计器为 reghdfe；选择一个或多个 absorb() 固定效应，再设置标准误。";
+         } else if ("areg".equals(estimator)) {
+            methodSubtitle = "当前估计器为 areg；选择一个 absorb() 固定效应，再设置标准误。";
+         } else {
+            methodSubtitle = "当前估计器为 regress；无需模型或固定效应选项，直接设置标准误。";
+         }
+         JPanel methodCard = this.xtregWizardCardV130(2, "模型与推断 · " + estimator, methodSubtitle);
+         JPanel methodBody = this.genericCardBody();
          this.baselineXtModelFieldBlock = null;
          this.baselineAbsorbFieldBlock = null;
+
          if ("xtreg".equals(estimator)) {
-            this.baselineXtModelFieldBlock = this.addField(row++, "模型", this.baselineXtModel);
+            this.baselineXtModelFieldBlock = (JPanel)this.fieldBlock("模型", this.baselineXtModel);
+            this.baselineXtModelFieldBlock.setAlignmentX(0.0F);
+            this.baselineXtModelFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.baselineXtModelFieldBlock.getPreferredSize().height)));
+            methodBody.add(this.baselineXtModelFieldBlock);
+            methodBody.add(Box.createVerticalStrut(10));
          } else if ("reghdfe".equals(estimator) || "areg".equals(estimator)) {
             this.absorb.setSelectionMode("areg".equals(estimator) ? 0 : 2);
-            this.baselineAbsorbFieldBlock = this.addField(row++, "固定效应 absorb()", this.listPane(this.absorb));
+            this.baselineAbsorbFieldBlock = (JPanel)this.fieldBlock(
+               "areg".equals(estimator) ? "固定效应 absorb()（选择一个）" : "固定效应 absorb()（可多选）",
+               this.listPane(this.absorb)
+            );
+            this.baselineAbsorbFieldBlock.setAlignmentX(0.0F);
+            this.baselineAbsorbFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.baselineAbsorbFieldBlock.getPreferredSize().height)));
+            methodBody.add(this.baselineAbsorbFieldBlock);
+            methodBody.add(Box.createVerticalStrut(10));
          }
-         this.addField(row++, "标准误", this.vce);
-         this.regressClusterFieldBlock = this.addField(row++, "聚类变量", this.cluster);
 
+         this.addGenericBodyField(methodBody, "标准误", this.vce);
+         this.regressClusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+         this.regressClusterFieldBlock.setAlignmentX(0.0F);
+         this.regressClusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.regressClusterFieldBlock.getPreferredSize().height)));
+         methodBody.add(this.regressClusterFieldBlock);
+         methodBody.add(Box.createVerticalStrut(10));
+         methodCard.add(methodBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(methodCard, c);
+
+         JPanel checkCard = this.xtregWizardCardV130(3, "检查运行与更多设置", "样本条件、分类/交互/滞后项、权重和高级 options 集中在这里；默认收起。");
+         JPanel checkBody = this.genericCardBody();
          JPanel moreSettings = this.buildBaselineMoreSettings(estimator);
-         JToggleButton moreToggle = new JToggleButton("展开更多设置  +");
+         JToggleButton moreToggle = new JToggleButton("展开样本与更多设置  +");
          styleSecondaryButton(moreToggle);
          moreSettings.setVisible(false);
+         moreToggle.setAlignmentX(0.0F);
+         moreSettings.setAlignmentX(0.0F);
          moreToggle.addActionListener(event -> {
             boolean expanded = moreToggle.isSelected();
-            moreToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            moreToggle.setText(expanded ? "收起样本与更多设置  −" : "展开样本与更多设置  +");
             moreSettings.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
-         JPanel moreBlock = new JPanel();
-         moreBlock.setOpaque(false);
-         moreBlock.setLayout(new BoxLayout(moreBlock, BoxLayout.Y_AXIS));
-         moreToggle.setAlignmentX(0.0F);
-         moreSettings.setAlignmentX(0.0F);
-         moreBlock.add(moreToggle);
-         moreBlock.add(Box.createVerticalStrut(7));
-         moreBlock.add(moreSettings);
-         this.addField(row++, "更多设置", moreBlock);
-         GridBagConstraints filler = this.constraints(0, row);
+         checkBody.add(moreToggle);
+         checkBody.add(Box.createVerticalStrut(8));
+         checkBody.add(moreSettings);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
          filler.gridwidth = 2;
          filler.weighty = 1.0;
          this.formPanel.add(Box.createVerticalGlue(), filler);
@@ -8536,10 +9198,10 @@ public final class HxWorkbench {
          this.previewArea.setEditable(true);
          this.runButton.setText("运行回归");
          this.setWorkspaceBreadcrumb("回归模型  ›  普通线性回归  ›  regress");
-         this.commandTitle.setText("regress - 普通线性回归");
+         this.commandTitle.setText("regress · 普通线性回归");
          this.commandTitle.setToolTipText("Stata 官方普通最小二乘回归");
-         this.exampleLabel.setText("<html><b>最简单：</b> 选择 Y、核心 X 和控制变量；底部会自动生成 regress 命令。</html>");
-         this.insightArea.setText("适合连续因变量的普通最小二乘回归。\n\n先填写最常用的 Y、核心解释变量 X、Controls 和标准误设置。\n\n样本条件、分类变量、交互项、滞后项、权重和其他低频选项统一放在“更多设置”中；底部始终保留真实 Stata 命令。");
+         this.exampleLabel.setText("<html><b>操作顺序：</b> 先选 Y、核心 X 和控制变量，再设置标准误；样本与低频模型项最后处理。</html>");
+         this.insightArea.setText("适合连续因变量的普通最小二乘回归。\n\n页面按论文实证的常用顺序组织：变量设定 → 推断设置 → 样本与更多设置。\n\n底部始终显示真实 regress 命令，运行后进入 Stata History，便于复现。");
          this.syntaxArea.setText("regress depvar indepvars [if] [in] [weight] [, vce(...) beta level(#) noconstant ...]");
          this.refreshRegressVariables(false);
 
@@ -8548,42 +9210,70 @@ public final class HxWorkbench {
          this.vce.addItem("default");
          this.vce.addItem("robust");
          this.vce.addItem("cluster");
-         if (selected(this.vce).isBlank()) {
-            this.vce.setSelectedItem("default");
-         }
+         if (selected(this.vce).isBlank()) this.vce.setSelectedItem("default");
          this.rebuilding = false;
 
-         this.formPanel.removeAll();
-         int row = 0;
-         this.addField(row++, "因变量 Y", this.depvar);
-         this.addField(row++, "核心解释变量 X", this.regressX);
-         this.addField(row++, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
-         this.addField(row++, "标准误", this.vce);
-         this.regressClusterFieldBlock = this.addField(row++, "聚类变量", this.cluster);
+         this.enableVariableDrop(this.depvar, "因变量 Y");
+         this.enableVariableDrop(this.regressX, "核心解释变量 X");
+         this.enableVariableDrop(this.regressControls, "控制变量");
+         this.enableVariableDrop(this.cluster, "聚类变量");
 
+         this.formPanel.removeAll();
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(true, "选择变量", "推断设置"), c);
+
+         JPanel variableCard = this.xtregWizardCardV130(1, "选择变量", "先确定因变量、核心解释变量和控制变量；右侧变量可直接拖入。");
+         JPanel variableBody = this.genericCardBody();
+         JPanel mainVars = new JPanel(new GridLayout(1, 2, 12, 0));
+         mainVars.setOpaque(false);
+         mainVars.add(this.fieldBlock("因变量 Y", this.depvar));
+         mainVars.add(this.fieldBlock("核心解释变量 X", this.regressX));
+         this.addGenericBodyField(variableBody, "核心变量", mainVars);
+         this.addGenericBodyField(variableBody, "控制变量 Controls（可多选）", this.listPane(this.regressControls));
+         variableCard.add(variableBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(variableCard, c);
+
+         JPanel inferenceCard = this.xtregWizardCardV130(2, "推断设置", "先选择标准误方式；只有选择 Cluster 时才需要聚类变量。");
+         JPanel inferenceBody = this.genericCardBody();
+         this.addGenericBodyField(inferenceBody, "标准误", this.vce);
+         this.regressClusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+         this.regressClusterFieldBlock.setAlignmentX(0.0F);
+         this.regressClusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.regressClusterFieldBlock.getPreferredSize().height)));
+         inferenceBody.add(this.regressClusterFieldBlock);
+         inferenceBody.add(Box.createVerticalStrut(10));
+         inferenceCard.add(inferenceBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(inferenceCard, c);
+
+         JPanel moreCard = this.xtregWizardCardV130(3, "检查运行与更多设置", "样本条件、分类/交互/滞后项、权重和报告选项集中在这里；默认收起。");
+         JPanel moreBody = this.genericCardBody();
          JPanel moreSettings = this.buildRegressMoreSettings();
-         JToggleButton moreToggle = new JToggleButton("展开更多设置  +");
+         JToggleButton moreToggle = new JToggleButton("展开样本与更多设置  +");
          styleSecondaryButton(moreToggle);
          moreSettings.setVisible(false);
+         moreToggle.setAlignmentX(0.0F);
+         moreSettings.setAlignmentX(0.0F);
          moreToggle.addActionListener(event -> {
             boolean expanded = moreToggle.isSelected();
-            moreToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            moreToggle.setText(expanded ? "收起样本与更多设置  −" : "展开样本与更多设置  +");
             moreSettings.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
+         moreBody.add(moreToggle);
+         moreBody.add(Box.createVerticalStrut(8));
+         moreBody.add(moreSettings);
+         moreCard.add(moreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(moreCard, c);
 
-         JPanel moreBlock = new JPanel();
-         moreBlock.setOpaque(false);
-         moreBlock.setLayout(new BoxLayout(moreBlock, BoxLayout.Y_AXIS));
-         moreToggle.setAlignmentX(0.0F);
-         moreSettings.setAlignmentX(0.0F);
-         moreBlock.add(moreToggle);
-         moreBlock.add(Box.createVerticalStrut(7));
-         moreBlock.add(moreSettings);
-         this.addField(row++, "更多设置", moreBlock);
-
-         GridBagConstraints filler = this.constraints(0, row);
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
          filler.gridwidth = 2;
          filler.weighty = 1.0;
          this.formPanel.add(Box.createVerticalGlue(), filler);
@@ -8592,7 +9282,7 @@ public final class HxWorkbench {
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.updateRegressConditionalFields();
          this.updateRegressPreview();
-         this.statusLabel.setText("普通线性回归：常用参数在前；需要时再展开更多设置。");
+         this.statusLabel.setText("普通线性回归：按变量 → 推断 → 检查运行组织；低频设置默认收起。");
       }
 
       private JPanel buildRegressTermBuilder() {
@@ -8939,6 +9629,7 @@ public final class HxWorkbench {
       }
 
       private void showHomePage() {
+         this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
          this.currentCommand = "";
          this.regressWorkspaceActive = false;
          this.baselineTaskActive = false;
@@ -9672,6 +10363,19 @@ public final class HxWorkbench {
       }
 
       private void openCommandPage(String var1) {
+         this.openCommandPage(var1, WorkspaceReturnTarget.HOME);
+      }
+
+      private void openCommandPageFromChooser(String command) {
+         this.openCommandPage(command, WorkspaceReturnTarget.CHOOSER);
+      }
+
+      private void openCommandPageFromLinearCatalog(String command) {
+         this.openCommandPage(command, WorkspaceReturnTarget.LINEAR_EXACT);
+      }
+
+      private void openCommandPage(String var1, WorkspaceReturnTarget returnTarget) {
+         this.workspaceReturnTarget = returnTarget == null ? WorkspaceReturnTarget.HOME : returnTarget;
          this.baselineTaskActive = false;
          if ("xtreg".equals(var1)) {
             this.showXtregWizardPageV130();
@@ -9683,7 +10387,7 @@ public final class HxWorkbench {
             this.showConvertDtaPage();
          } else if ("缺失值分析".equals(var1)) {
             this.showMissingAnalysisPage();
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway").contains(var1)) {
+         } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(var1)) {
             this.showSpecialGraphPage(var1);
          } else if ("did_builder".equals(var1)) {
             this.showDidBuilderPage();
@@ -9698,6 +10402,7 @@ public final class HxWorkbench {
          this.showWorkspacePage();
          this.selectResultView("graph", true);
          this.currentCommand = var1;
+         this.rebuilding = true;
          this.commandDock.setVisible(true);
          this.commandTabs.setVisible(true);
          this.commandTabs.setSelectedIndex(0);
@@ -9711,72 +10416,712 @@ public final class HxWorkbench {
          this.variables.clearSelection();
          this.ifCondition.setText("");
          this.options.setText("");
+         this.specialGraphRiskTable.setSelected(false);
+         this.specialGraphRiskTable.setOpaque(false);
+         this.specialGraphRiskTable.setForeground(TEXT);
+         this.specialGraphQcStabilized.setSelected(false);
+         this.specialGraphQcStabilized.setOpaque(false);
+         this.specialGraphQcStabilized.setForeground(TEXT);
+         this.specialGraphQcStd.setText("");
+         this.specialGraphQcMean.setText("");
+         this.specialGraphQcLower.setText("");
+         this.specialGraphQcUpper.setText("");
+         styleTextField(this.specialGraphQcStd);
+         styleTextField(this.specialGraphQcMean);
+         styleTextField(this.specialGraphQcLower);
+         styleTextField(this.specialGraphQcUpper);
+         this.specialGraphEventStubLag.setText("");
+         this.specialGraphEventStubLead.setText("");
+         styleTextField(this.specialGraphEventStubLag);
+         styleTextField(this.specialGraphEventStubLead);
+         this.configureSpecialGraphModel(var1);
          this.expression.setText("twoway".equals(var1) ? "(scatter y x) (lfit y x)" : "");
-         this.formPanel.removeAll();
-         int var2 = 0;
+
+         String coreTitle;
+         String coreSubtitle;
+         String optionLabel = "其他图形选项";
+         boolean includeIf = !"twoway".equals(var1)
+            && !Arrays.asList("screeplot", "scoreplot", "loadingplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "cchart", "pchart", "rocregplot", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph").contains(var1);
          if (Arrays.asList("histogram", "kdensity").contains(var1)) {
-            this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " - 直方图" : " - 核密度图"));
+            this.commandTitle.setText(var1 + ("histogram".equals(var1) ? " · 直方图" : " · 核密度图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y</html>");
-            this.insightArea.setText("主要意图：观察单个数值变量的分布形状、偏态和尾部。\n\n推荐数据：包含连续或有序数值变量的数据。\n\n优点：回归前快速发现长尾、多峰和异常值。\n\n缺点与注意：分箱或带宽会影响视觉结果，图形主要用于描述与诊断。");
+            this.insightArea.setText("主要意图：观察单个数值变量的分布形状、偏态和尾部。\n\n推荐数据：连续或有序数值变量。右侧预览用于快速检查分布，正式图形仍由 Stata 绘制。\n\n分箱或带宽会影响视觉结果，图形主要用于描述与诊断。");
             this.syntaxArea.setText(var1 + " varname [if] [, options]");
-            this.addField(var2++, "要观察的变量", this.depvar);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "分布变量";
+            coreSubtitle = "选择一个要观察的数值变量；样本筛选和图形细节放在下一步。";
          } else if (Arrays.asList("scatter", "lfit").contains(var1)) {
-            this.commandTitle.setText(var1 + ("scatter".equals(var1) ? " - 散点图" : " - 线性拟合图"));
+            this.commandTitle.setText(var1 + ("scatter".equals(var1) ? " · 散点图" : " · 线性拟合图"));
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway " + var1 + " y x</html>");
-            this.insightArea
-               .setText(
-                  "主要意图：观察 Y 与 X 的原始关系"
-                     + ("lfit".equals(var1) ? "和线性拟合方向。" : "、离群点与可能的非线性。")
-                     + "\n\n推荐数据：至少包含两个数值变量。\n\n优点：关系直观，适合核对模型设定。\n\n缺点与注意：图中关系是条件相关，不能自动解释为因果效应。"
-               );
+            this.insightArea.setText("主要意图：观察 Y 与 X 的原始关系" + ("lfit".equals(var1) ? "和线性拟合方向。" : "、离群点与可能的非线性。") + "\n\n至少需要两个数值变量。右侧预览会随 Y/X 选择更新。\n\n图中关系用于探索与诊断，因果解释仍取决于研究设计。");
             this.syntaxArea.setText("twoway " + var1 + " y x [if] [, options]");
-            this.addField(var2++, "纵轴变量 Y", this.depvar);
-            this.addField(var2++, "横轴变量 X（选择一个）", this.listPane(this.variables));
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "坐标变量";
+            coreSubtitle = "先指定纵轴 Y 和唯一的横轴 X；右侧同步显示关系预览。";
+         } else if (Arrays.asList("line", "connected").contains(var1)) {
+            boolean connected = "connected".equals(var1);
+            this.commandTitle.setText(connected ? "connected · 带点折线图" : "line · 折线图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (connected ? "connected y x" : "line y1 y2 x") + "</html>");
+            this.insightArea.setText("主要意图：沿一个明确的横轴 X 连接一个或多个 Y 系列。\n\nY 可以选择多个系列，X 只选择一次；connected 同时保留观测点，line 主要显示连接线。\n\n排序、connect()/sort、线型、marker、标题和尺寸继续使用 Stata 原生图形 options。");
+            this.syntaxArea.setText("twoway " + var1 + " yvarlist xvar [if] [in] [, options]");
+            coreTitle = "Y 系列与横轴 X";
+            coreSubtitle = "选择至少一个纵轴 Y 系列，再指定唯一横轴 X；无需把 X 混进 Y 列表。";
+         } else if ("qfit".equals(var1)) {
+            this.commandTitle.setText("qfit · 二次拟合图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> twoway qfit mpg weight</html>");
+            this.insightArea.setText("主要意图：用二次函数快速查看 Y 随 X 的弯曲趋势。\n\nY 与 X 分别选择，页面固定保持 qfit y x 的原生顺序。\n\n置信区间需要 qfitci；本页只生成 qfit，线型、范围和标题继续使用 Stata 原生 options。");
+            this.syntaxArea.setText("twoway qfit yvar xvar [if] [in] [, options]");
+            coreTitle = "Y / X 坐标";
+            coreSubtitle = "分别指定纵轴 Y 和横轴 X；二次项由 qfit 自动拟合。";
+         } else if (Arrays.asList("lowess", "lpoly").contains(var1)) {
+            boolean localPoly = "lpoly".equals(var1);
+            this.commandTitle.setText(localPoly ? "lpoly · 局部多项式平滑图" : "lowess · LOWESS 平滑图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y x</html>");
+            this.insightArea.setText(localPoly
+               ? "主要意图：用局部多项式回归平滑 Y 与 X 的关系。\n\n分别选择 Y 和 X；degree()、kernel()、bandwidth() 以及置信区间等继续使用 lpoly 原生 options。\n\n平滑结果用于探索函数形式，带宽和阶数会影响曲线形状。"
+               : "主要意图：用局部加权回归平滑 Y 与 X 的关系。\n\n分别选择 Y 和 X；bandwidth()、mean、noweight、line options 等继续使用 lowess 原生 options。\n\n平滑结果用于探索非线性，带宽会影响曲线形状。");
+            this.syntaxArea.setText(var1 + " yvar xvar [if] [in] [, options]");
+            coreTitle = "Y / X 与平滑关系";
+            coreSubtitle = "分别指定纵轴 Y 和横轴 X；平滑参数按需要在图形设置中调整。";
+         } else if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(var1)) {
+            boolean needsPredictor = Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(var1);
+            String diagnosticName;
+            if ("rvfplot".equals(var1)) diagnosticName = "残差 vs 拟合值";
+            else if ("rvpplot".equals(var1)) diagnosticName = "残差 vs predictor";
+            else if ("avplot".equals(var1)) diagnosticName = "Added-variable plot";
+            else if ("avplots".equals(var1)) diagnosticName = "全部 Added-variable plots";
+            else if ("lvr2plot".equals(var1)) diagnosticName = "Leverage vs residual-squared";
+            else if ("cprplot".equals(var1)) diagnosticName = "Component-plus-residual plot";
+            else diagnosticName = "Augmented component-plus-residual plot";
+            this.commandTitle.setText(var1 + " · " + diagnosticName);
+            String diagnosticExample = needsPredictor ? var1 + " mpg" : ("rvfplot".equals(var1) ? "rvfplot, yline(0)" : var1);
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + diagnosticExample + "</html>");
+            this.insightArea.setText(needsPredictor
+               ? "这是回归后诊断图。先运行兼容的回归，再选择一个要检查的 predictor / 诊断变量。\n\n本页不会要求重新选择原回归的因变量；残差、拟合值和其他诊断量来自当前 estimation result。\n\n典型用法是在 regress 后；当前模型是否兼容由 Stata 在执行时判断。"
+               : "这是回归后诊断图。页面直接沿用当前兼容的 estimation result，不需要重新选择原始数据中的 Y 或 X。\n\n诊断量由上一回归结果生成；本页只保留样本范围与图形 options。\n\n典型用法是在 regress 后；当前模型是否兼容由 Stata 在执行时判断。");
+            this.syntaxArea.setText(needsPredictor ? var1 + " varname [if] [in] [, options]" : var1 + " [if] [in] [, options]");
+            coreTitle = needsPredictor ? "诊断变量 / predictor" : "沿用上一回归结果";
+            coreSubtitle = needsPredictor ? "只选择当前诊断图要求的 predictor；原回归 Y/X 不在这里重复选择。" : "无需选择原始变量；确认上一条兼容回归已成功运行。";
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(var1)) {
+            boolean bar = "graph_bar".equals(var1);
+            this.commandTitle.setText((bar ? "graph bar · 条形图" : "graph dot · 点图"));
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (bar ? "graph bar price, over(foreign)" : "graph dot price, over(foreign)") + "</html>");
+            this.insightArea.setText("主要意图：汇总一个或多个数值变量，并按可选分类变量比较组间水平。\n\n数值变量至少选择 1 个；分组变量可选。默认统计量及 (mean)/(count) 等汇总方式继续使用 Stata 原生图形语法。\n\n复杂的第二层 over()、stack、percentages、标签和样式放在更多图形设置中。");
+            this.syntaxArea.setText((bar ? "graph bar" : "graph dot") + " [stat] varlist [if] [, over(group) options]");
+            coreTitle = "数值变量与分组";
+            coreSubtitle = "选择一个或多个数值变量；需要组间比较时再选择分组变量。";
+         } else if ("graph_pie".equals(var1)) {
+            this.commandTitle.setText("graph pie · 饼图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph pie, over(foreign)</html>");
+            this.insightArea.setText("主要意图：显示分类变量各类别占比，或用一个可选数值变量控制扇区大小。\n\n分类变量必填；最常用写法是 graph pie, over(category)。如果选择数值变量，则生成 graph pie measure, over(category)。\n\n标签、百分比显示、legend 和 by() 等继续放在更多图形设置中。");
+            this.syntaxArea.setText("graph pie [varname] [if], over(category) [options]");
+            coreTitle = "分类与扇区大小";
+            coreSubtitle = "先选分类变量；只有需要用数值决定扇区大小时才选择数值变量。";
+         } else if ("graph_matrix".equals(var1)) {
+            this.commandTitle.setText("graph matrix · 散点图矩阵");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph matrix mpg weight length</html>");
+            this.insightArea.setText("主要意图：一次查看多个连续变量的两两关系、离群点和相关形态。\n\n至少选择 2 个变量；变量过多会让矩阵迅速变密，建议先放核心连续变量。\n\nhalf、diagonal()、marker 与标题等继续放在更多图形设置中。");
+            this.syntaxArea.setText("graph matrix varlist [if] [, options]");
+            coreTitle = "矩阵变量";
+            coreSubtitle = "选择至少两个要两两比较的数值变量；先保留核心变量，避免矩阵过密。";
+         } else if ("twoway_contour".equals(var1)) {
+            this.commandTitle.setText("twoway contour · 等高线图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> twoway contour depth northing easting</html>");
+            this.insightArea.setText("主要意图：用颜色或等高线展示 Z 随 Y、X 两个坐标共同变化的表面。\n\nStata 原生顺序固定为 Z → Y → X；三个角色必须使用不同变量。\n\n插值方法、ccuts()/levels()、颜色和标题等继续放在更多图形设置中。");
+            this.syntaxArea.setText("twoway contour zvar yvar xvar [if] [, options]");
+            coreTitle = "Z / Y / X 坐标";
+            coreSubtitle = "按 Stata 原生顺序分别选择 Z 值、纵向坐标 Y 和横向坐标 X。";
+         } else if (Arrays.asList("tsline", "xtline").contains(var1)) {
+            boolean panelLine = "xtline".equals(var1);
+            this.commandTitle.setText(panelLine ? "xtline · 面板数据折线图" : "tsline · 时间序列折线图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (panelLine ? "xtline y, overlay" : "tsline y") + "</html>");
+            this.insightArea.setText(panelLine
+               ? "主要意图：按当前 xtset 的面板与时间结构绘制一个或多个变量的面板轨迹。\n\n本页不伪造额外时间参数；panel/time 结构沿用当前 Stata xtset。可选择默认分面显示或 overlay 叠加所有面板。\n\n正式绘图前如果尚未 xtset，请先到数据结构页面完成声明。"
+               : "主要意图：按当前 tsset 的时间结构绘制一个或多个变量的时间路径。\n\n时间轴沿用当前 Stata tsset，本页只选择真正要画的序列。\n\n正式绘图前如果尚未 tsset，请先到数据结构页面完成声明。");
+            this.syntaxArea.setText(panelLine ? "xtline varlist [if] [, overlay options]" : "tsline varlist [if] [, options]");
+            coreTitle = panelLine ? "面板序列" : "时间序列";
+            coreSubtitle = panelLine ? "选择至少一个变量；显示方式可在分面与 overlay 之间切换。" : "选择至少一个要沿当前时间轴绘制的变量。";
+         } else if ("sts_graph".equals(var1)) {
+            this.commandTitle.setText("sts graph · Kaplan–Meier 与生存函数图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> sts graph, by(group) risktable</html>");
+            this.insightArea.setText("主要意图：在已经 stset 的数据上绘制 Kaplan–Meier 生存曲线、失败函数、累计风险或平滑风险函数。\n\n分析时间与失败事件沿用当前 stset；这里只选择可选分组、曲线类型和是否显示风险人数表。\n\n调整协变量、置信区间、tmin()/tmax() 和图形样式继续放在更多图形设置中。");
+            this.syntaxArea.setText("sts graph [if] [, by(group) failure|cumhaz|hazard risktable options]");
+            coreTitle = "生存曲线设置";
+            coreSubtitle = "沿用当前 stset；选择可选分组、曲线类型，并按需显示风险人数表。";
+         } else if ("rocgold".equals(var1)) {
+            this.commandTitle.setText("rocgold · 与 Gold-standard ROC 比较");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> rocgold status goldscore model2 model3, graph</html>");
+            this.insightArea.setText("主要意图：把多个 classifier 的 ROC 面积分别与一个明确的 gold-standard classifier 比较。\n\n真实二元结局、gold standard 和至少一个待比较评分分别选择，避免把 gold 混进普通 classifier 列表。\n\nSidak/Bonferroni 多重比较校正、summary 和图形样式继续放在更多设置中。");
+            this.syntaxArea.setText("rocgold refvar goldclass compareclasses [if] [, sidak graph summary options]");
+            coreTitle = "Gold standard 与待比较评分";
+            coreSubtitle = "先选真实二元结局，再指定唯一 gold-standard classifier，最后选择一个或多个待比较评分。";
+         } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
+            boolean compareRoc = "roccomp".equals(var1);
+            this.commandTitle.setText(compareRoc ? "roccomp · 比较多条 ROC 曲线" : "roctab · 非参数 ROC 曲线");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (compareRoc ? "roccomp status mod1 mod2, graph" : "roctab disease rating, graph") + "</html>");
+            this.insightArea.setText(compareRoc
+               ? "主要意图：在同一真实二元结局下比较两个或多个预测评分/分类器的 ROC 面积，并直接绘图。\n\n真实结局必填且应为二元变量；预测评分至少选择 2 个。独立样本 by()、summary 和图形样式继续放在更多设置中。"
+               : "主要意图：用真实二元结局和一个连续/有序预测评分估计非参数 ROC 曲线与 AUC。\n\n真实结局必填，预测评分只选 1 个；本图形入口默认加入 graph。detail、binomial、Lorenz 和图形样式继续放在更多设置中。");
+            this.syntaxArea.setText(compareRoc ? "roccomp refvar classvars [if] [, graph options]" : "roctab refvar classvar [if] [, graph options]");
+            coreTitle = "真实结局与预测评分";
+            coreSubtitle = compareRoc ? "选择一个真实二元结局，再选择至少两个要比较的评分。" : "选择一个真实二元结局和且仅一个预测评分。";
+         } else if ("rocregplot".equals(var1)) {
+            this.commandTitle.setText("rocregplot · ROC regression 结果图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> rocregplot, at1(currage=40) at2(currage=50)</html>");
+            this.insightArea.setText("这是 rocreg 的后估计图。先成功运行 rocreg，本页直接使用当前 ROC regression 结果绘制 marginal 或 covariate-specific ROC curves。\n\nat1()/at2()/... 用于比较协变量取值下的 ROC 曲线；多个 classifier、置信区间、plot#opts()、legend、标题和尺寸继续使用 rocregplot 原生 options。\n\n这里不重新选择 refvar/classvar，也不把当前数据变量误当成新的 ROC 输入。");
+            this.syntaxArea.setText("rocregplot [, options]");
+            coreTitle = "上一条 rocreg 结果";
+            coreSubtitle = "直接复用当前 rocreg estimation result；需要比较协变量情景时在图形设置中填写 at#() 等原生 options。";
+         } else if ("biplot".equals(var1)) {
+            this.commandTitle.setText("biplot · 多元双标图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> biplot x1 x2 x3 x4</html>");
+            this.insightArea.setText("主要意图：直接对当前数据中的多个变量做 biplot analysis，同时显示观测位置与变量方向。\n\n至少选择 2 个数值变量；变量方向与观测位置共同用于理解低维结构。\n\ndim()、rowlabel()、rowover()、generate() 和样式设置放在更多图形设置中。");
+            this.syntaxArea.setText("biplot varlist [if] [, dim() rowlabel() rowover() options]");
+            coreTitle = "双标图变量";
+            coreSubtitle = "选择至少两个参与 biplot analysis 的数值变量；无需手写整段命令。";
+         } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(var1)) {
+            String postName;
+            String postNeed;
+            if ("screeplot".equals(var1)) { postName = "碎石图"; postNeed = "factor / pca 等兼容多元分析"; }
+            else if ("scoreplot".equals(var1)) { postName = "因子 / 主成分得分图"; postNeed = "factor / factormat / pca / pcamat"; }
+            else if ("loadingplot".equals(var1)) { postName = "因子 / 主成分载荷图"; postNeed = "factor / factormat / pca / pcamat"; }
+            else if ("cabiplot".equals(var1)) { postName = "对应分析双标图"; postNeed = "ca / camat"; }
+            else if ("caprojection".equals(var1)) { postName = "对应分析投影图"; postNeed = "ca / camat"; }
+            else if ("mdsconfig".equals(var1)) { postName = "MDS 配置图"; postNeed = "mds / mdslong / mdsmat"; }
+            else if ("mdsshepard".equals(var1)) { postName = "MDS Shepard 图"; postNeed = "mds / mdslong / mdsmat"; }
+            else { postName = "Procrustes 叠加图"; postNeed = "procrustes"; }
+            this.commandTitle.setText(var1 + " · " + postName);
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + "</html>");
+            this.insightArea.setText("这是后估计图。先运行兼容的 " + postNeed + "，本页直接沿用最近一次模型结果。\n\n页面只暴露真正属于绘图阶段的 Stata options；默认留空即可运行基础图。\n\n维度、标签、坐标轴和样式按当前命令的官方 options 继续调整。");
+            this.syntaxArea.setText(var1 + " [, options]");
+            coreTitle = "沿用上一模型结果";
+            coreSubtitle = "无需重新选择原始变量；确认已有兼容的多元分析结果，再按需设置绘图 options。";
+         } else if ("cluster_dendrogram".equals(var1)) {
+            this.commandTitle.setText("cluster dendrogram · 层次聚类树状图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> cluster dendrogram</html>");
+            this.insightArea.setText("主要意图：在层次聚类结果后查看对象逐步合并成簇的树状结构。\n\n聚类分析名可以留空以使用当前兼容结果，也可以显式填写之前保存的 hierarchical cluster 名。\n\nhorizontal、cutnumber()、labels 等继续放在更多图形设置中。");
+            this.syntaxArea.setText("cluster dendrogram [clname] [, options]");
+            coreTitle = "聚类结果";
+            coreSubtitle = "通常直接沿用当前层次聚类结果；有多个聚类结果时再填写分析名。";
+         } else if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "gladder", "qladder", "spikeplot").contains(var1)) {
+            this.commandTitle.setText(var1 + " · 分布诊断图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " y</html>");
+            this.insightArea.setText("主要意图：检查单个数值变量的分布、对称性、尾部或变换特征。\n\n本页只需要选择一个真实变量；样本条件与低频图形 options 放到下一步。\n\n图形用于描述与诊断，具体解释取决于所选分布诊断命令。");
+            this.syntaxArea.setText(var1 + " varname [if] [, options]");
+            coreTitle = "诊断变量";
+            coreSubtitle = "选择一个要检查分布形态的数值变量。";
+         } else if (Arrays.asList("qchi", "pchi").contains(var1)) {
+            this.commandTitle.setText(var1 + " · 卡方分布诊断图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + var1 + " distance, df(2)</html>");
+            this.insightArea.setText("主要意图：把一个非负统计量与指定自由度的卡方分布进行图形比较。\n\n选择待诊断变量，并显式填写 df() 自由度；工作台会自动生成 df()。\n\n其他绘图样式与样本条件继续放在更多图形设置中。");
+            this.syntaxArea.setText(var1 + " varname [if], df(#) [options]");
+            coreTitle = "变量与自由度";
+            coreSubtitle = "选择诊断变量，并填写正的自由度 df；无需手写 df()。";
+         } else if (Arrays.asList("qqplot", "sunflower").contains(var1)) {
+            boolean qq = "qqplot".equals(var1);
+            this.commandTitle.setText(qq ? "qqplot · 两变量 Q–Q 图" : "sunflower · 高密度散点图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> " + (qq ? "qqplot x1 x2" : "sunflower y x") + "</html>");
+            this.insightArea.setText(qq
+               ? "主要意图：比较两个变量的经验分布分位数。\n\n两个变量分别选择，工作台固定保持 qqplot var1 var2 的顺序，并阻止重复角色。"
+               : "主要意图：用 sunflower 标记缓解大量重复/密集散点的遮挡。\n\n明确选择纵轴 Y 和横轴 X；两个角色必须使用不同变量。");
+            this.syntaxArea.setText(qq ? "qqplot var1 var2 [if] [, options]" : "sunflower y x [if] [, options]");
+            coreTitle = qq ? "两个分布变量" : "Y / X 坐标";
+            coreSubtitle = qq ? "分别指定两个要比较经验分布的变量。" : "分别指定纵轴 Y 和横轴 X。";
+         } else if ("dotplot".equals(var1)) {
+            this.commandTitle.setText("dotplot · 分布型点图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> dotplot y</html>");
+            this.insightArea.setText("主要意图：用堆叠点展示一个或多个变量的经验分布。\n\n这里的 dotplot 与 graph dot 汇总点图属于不同命令；本页直接选择要展示的变量列表。\n\n分组、中心和样式等按 Stata 原生 options 调整。");
+            this.syntaxArea.setText("dotplot varlist [if] [, options]");
+            coreTitle = "分布变量";
+            coreSubtitle = "选择至少一个变量；可多选，无需手写 varlist。";
+         } else if ("cchart".equals(var1)) {
+            this.commandTitle.setText("cchart · 缺陷数控制图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> cchart defects day</html>");
+            this.insightArea.setText("主要意图：按检查单位观察缺陷数是否落在过程控制限内。\n\n选择缺陷数变量和单位编号变量；单位编号用于横轴识别各检查单位。\n\n控制限样式、连接线、标记、标题等继续使用 Stata 原生图形 options。");
+            this.syntaxArea.setText("cchart defect_var unit_var [, options]");
+            coreTitle = "缺陷数与检查单位";
+            coreSubtitle = "分别选择每个单位的缺陷数和单位编号；无需手写两个变量的顺序。";
+         } else if ("pchart".equals(var1)) {
+            this.commandTitle.setText("pchart · 不合格率控制图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> pchart rejects day ssize, stabilized</html>");
+            this.insightArea.setText("主要意图：根据每个检查单位的不合格数和实际检查样本量绘制 fraction-defective 控制图。\n\n依次选择不合格数、单位编号和样本量变量；样本量不等时可显式开启 stabilized。\n\nStata 会根据不合格数 / 样本量计算比例；这里不要把已经算好的比例变量放进“不合格数”角色。");
+            this.syntaxArea.setText("pchart reject_var unit_var ssize_var [, stabilized options]");
+            coreTitle = "不合格数 / 单位 / 样本量";
+            coreSubtitle = "三个角色分别选择；样本量不等时可开启 stabilized。";
+         } else if ("rchart".equals(var1)) {
+            this.commandTitle.setText("rchart · R 极差控制图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> rchart m1 m2 m3 m4, connect(l)</html>");
+            this.insightArea.setText("主要意图：比较每个样本内多次测量的极差，检查过程离散程度是否稳定。\n\n一行代表一个样本，所选多个变量代表该样本内的重复测量；可选填写已知过程标准差 std()。\n\n样本筛选支持 if / in，连接方式、控制线和标题继续使用原生 options。");
+            this.syntaxArea.setText("rchart varlist [if] [in] [, std(#) options]");
+            coreTitle = "样本内重复测量";
+            coreSubtitle = "选择同一批样本内的测量列；已知过程标准差时再填写 std()。";
+         } else if ("xchart".equals(var1)) {
+            this.commandTitle.setText("xchart · X-bar 均值控制图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> xchart m1 m2 m3 m4, mean(10) std(.5)</html>");
+            this.insightArea.setText("主要意图：按样本观察重复测量的平均水平是否稳定。\n\n一行代表一个样本，多个变量代表样本内重复测量。std()、mean() 可留空让 Stata 从数据估计；如果直接指定控制限，lower() 与 upper() 必须成对填写。\n\n样本筛选支持 if / in。");
+            this.syntaxArea.setText("xchart varlist [if] [in] [, std(#) mean(#) lower(#) upper(#) options]");
+            coreTitle = "重复测量与控制限";
+            coreSubtitle = "先选择测量列；过程参数未知时可全部留空，已知时再填写相应参数。";
+         } else if ("shewhart".equals(var1)) {
+            this.commandTitle.setText("shewhart · X-bar + R 联合控制图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> shewhart m1 m2 m3 m4, std(.5) mean(10)</html>");
+            this.insightArea.setText("主要意图：在同一输出中纵向对齐 X-bar 均值控制图与 R 极差控制图。\n\n一行代表一个样本，多个变量代表样本内重复测量；std() 和 mean() 都可留空，由 Stata 从数据计算。\n\n样本筛选支持 if / in，组合图样式继续使用原生 options。");
+            this.syntaxArea.setText("shewhart varlist [if] [in] [, std(#) mean(#) options]");
+            coreTitle = "重复测量与过程参数";
+            coreSubtitle = "选择样本内测量列；已知总体过程参数时再填写 std() / mean()。";
+         } else if ("serrbar".equals(var1)) {
+            this.commandTitle.setText("serrbar · 均值与标准误条形图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> serrbar mean se group</html>");
+            this.insightArea.setText("主要意图：对已经汇总好的均值和标准误/标准差绘制误差条。\n\n命令固定需要三个角色：均值变量、误差变量和横轴/组序变量；本页分别选择并保持原生顺序。\n\n如果数据还是明细观测，请先 collapse 或其他汇总步骤生成所需统计量。");
+            this.syntaxArea.setText("serrbar meanvar sevar xvar [if] [, options]");
+            coreTitle = "均值 / 误差 / 横轴";
+            coreSubtitle = "分别选择三个角色；工作台会阻止角色重复。";
+         } else if ("marginsplot".equals(var1)) {
+            this.commandTitle.setText("marginsplot · margins 结果图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> marginsplot</html>");
+            this.insightArea.setText("主要意图：把上一条 margins 保存的预测、边际效应或对比结果直接绘图。\n\n横轴、分组和置信区间来自 margins 的结果；本页不重新要求选择原始数据里的 Y / X。\n\nrecast()/recastci()/plotopts()、参考线、标题以及 xsize()/ysize()/scale() 继续使用 Stata 原生图形 options。");
+            this.syntaxArea.setText("marginsplot [, options]");
+            coreTitle = "上一条 margins 结果";
+            coreSubtitle = "直接复用当前 margins 结果；需要改变横轴或情景时，应先重新运行 margins。";
+         } else if ("coefplot".equals(var1)) {
+            this.commandTitle.setText("coefplot · 回归系数与置信区间图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> coefplot m1 m2, drop(_cons) xline(0)</html>");
+            this.insightArea.setText("主要意图：从当前模型、已保存 estimates 或 Stata matrix 中提取系数并比较置信区间。\n\n结果对象可留空表示当前活动模型，也可填写 m1 m2、(m1) (m2) 或 matrix(...) 等作者原生规格；这里不把数据变量误当成系数来源。\n\nkeep()/drop()/rename()/recast()、参考线、标签、分组和尺寸继续使用 coefplot / twoway 原生 options。");
+            this.syntaxArea.setText("coefplot subgraph [ || subgraph ... ] [, globalopts]");
+            coreTitle = "估计结果 / 矩阵对象";
+            coreSubtitle = "留空使用当前活动模型；多个保存模型或矩阵按 coefplot 原生 result specification 填写。";
+         } else if ("event_plot".equals(var1)) {
+            this.commandTitle.setText("event_plot · Event Study 动态系数图");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> event_plot, default_look</html>");
+            this.insightArea.setText("主要意图：把已经估计好的事件研究系数和置信区间画成动态效应图。\n\n结果对象可留空使用当前 estimation result，也可填写一个或多个 stored estimates，或 bmat#Vmat 矩阵对；最多组合 8 个结果。\n\ndid_imputation 的 tau#/pre# 命名可自动识别；其他估计器无法自动识别时，显式填写 stub_lag()/stub_lead()。图形样式继续使用作者原生 options。");
+            this.syntaxArea.setText("event_plot [result_spec ...] [, stub_lag(string) stub_lead(string) options]");
+            coreTitle = "事件研究结果对象";
+            coreSubtitle = "先指定结果来源；系数前后期命名无法自动识别时，再填写 lag / lead stub。";
+         } else if ("graph_combine".equals(var1)) {
+            this.commandTitle.setText("graph combine · 组合已生成图形");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph combine g1 g2, cols(2)</html>");
+            this.insightArea.setText("主要意图：把已经命名或保存的多个 Stata 图形组合成一个版面。\n\n这里填写图形名或 .gph 文件名，空格分隔；数据变量窗口不会被误当成图形对象来源。\n\ncols()/rows()/xcommon/ycommon、标题和边距放在更多图形设置中。");
+            this.syntaxArea.setText("graph combine graphlist [, options]");
+            coreTitle = "待组合图形";
+            coreSubtitle = "填写至少两个已命名图形或 .gph 文件；例如 g1 g2。";
+         } else if ("graph".equals(var1)) {
+            this.commandTitle.setText("graph · 图形对象管理");
+            this.exampleLabel.setText("<html><b>最简单例子：</b> graph dir</html>");
+            this.insightArea.setText("主要意图：管理已经生成的 Stata 图形对象。\n\n先选择操作，再填写对应的图形名/文件参数；列出图形 dir 不需要参数。\n\n保存和导出面向 .gph 或 PNG/SVG/PDF 等文件，页面不会要求选择数据变量。");
+            this.syntaxArea.setText("graph dir | display | save | export | rename | close ...");
+            coreTitle = "图形管理操作";
+            coreSubtitle = "先选择 dir/display/save/export/rename/close，再填写该操作真正需要的对象或文件参数。";
          } else if ("graph_box".equals(var1)) {
-            this.commandTitle.setText("graph box - 分布与异常值箱线图");
+            this.commandTitle.setText("graph box · 分布与异常值箱线图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> graph box y, over(group)</html>");
-            this.insightArea.setText("主要意图：观察变量分布、中位数、四分位距和潜在异常值。\n\n推荐数据：包含数值型结果变量；分组比较时再选择类别变量。\n\n优点：组间分布差异直观。\n\n缺点与注意：箱线图是描述性图形，分组样本过少时不稳定。");
+            this.insightArea.setText("主要意图：观察变量分布、中位数、四分位距和潜在异常值。\n\n结果变量必填，分组变量可选。分组样本过少时箱线图可能不稳定。\n\n右侧先做分布预览，正式箱线图由 Stata Graph 窗口输出。");
             this.syntaxArea.setText("graph box y [, over(group) options]");
-            this.addField(var2++, "要观察的变量", this.depvar);
-            this.addField(var2++, "分组变量（可选）", this.panel);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "其他图形选项");
+            coreTitle = "分布与分组";
+            coreSubtitle = "选择结果变量；需要组间比较时再选择分组变量。";
          } else if ("did_trends".equals(var1)) {
             this.commandTitle.setText("处理组 / 对照组趋势图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> hxtrendplot y, group(treat) time(year)</html>");
-            this.insightArea
-               .setText("主要意图：比较处理组与对照组在政策前后的平均结果走势。\n\n推荐数据：含结果变量、时间变量和 0/1 处理组变量的面板或重复截面数据。\n\n优点：平行趋势和动态变化一眼可见。\n\n缺点与注意：趋势图用于诊断；正式 DID 仍要明确处理时点、基准期和识别假设。");
+            this.insightArea.setText("主要意图：比较处理组与对照组在政策前后的平均结果走势。\n\n需要结果变量、时间变量和处理组变量。右侧趋势预览用于检查分组和时间方向。\n\n趋势图属于 DID 诊断；正式识别仍需明确处理时点、基准期和识别假设。");
             this.syntaxArea.setText("hxtrendplot y [if], group(treat) time(year) [policy(#) options()]");
-            this.addField(var2++, "结果变量 Y", this.depvar);
-            this.addField(var2++, "处理组变量（建议 0/1）", this.panel);
-            this.addField(var2++, "时间变量", this.time);
-            this.addSpecialGraphAdvancedSettings(var2++, true, "政策时点或其他选项");
+            coreTitle = "趋势变量";
+            coreSubtitle = "一次填好结果 Y、处理组和时间变量；处理组通常使用 0/1 编码。";
+            optionLabel = "政策时点或其他选项";
          } else {
-            this.commandTitle.setText("twoway - 自定义叠加图");
+            this.commandTitle.setText("twoway · 自定义叠加图");
             this.exampleLabel.setText("<html><b>最简单例子：</b> twoway (scatter y x) (lfit y x)</html>");
-            this.insightArea.setText("主要意图：自由组合散点、拟合线、置信区间和其他二维图层。\n\n推荐数据：包含要绘制的数值型横轴和纵轴变量。\n\n优点：表达能力强，适合论文图形。\n\n缺点与注意：图层表达式需要遵循 Stata twoway 语法，可先从示例修改。");
+            this.insightArea.setText("主要意图：自由组合散点、拟合线、置信区间和其他二维图层。\n\n图层主体直接采用 Stata twoway 语法，适合已经明确所需图层的用户。\n\n页面保留真实表达式，便于复制到 do-file 继续精修。");
             this.syntaxArea.setText("twoway (plottype ...) (plottype ...) [, options]");
-            if (this.expression.getText().isBlank()) {
-               this.expression.setText("(scatter y x) (lfit y x)");
-            }
-
-            this.addField(var2++, "图层表达式", this.expression);
-            this.addSpecialGraphAdvancedSettings(var2++, false, "其他图形选项");
+            if (this.expression.getText().isBlank()) this.expression.setText("(scatter y x) (lfit y x)");
+            coreTitle = "图层表达式";
+            coreSubtitle = "填写一个或多个 twoway 图层；可从默认散点 + 拟合线示例直接修改。";
          }
 
-         GridBagConstraints var3 = this.constraints(0, var2);
-         var3.gridwidth = 2;
-         var3.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var3);
+         if ("cchart".equals(var1)) {
+            this.enableVariableDrop(this.depvar, "缺陷数变量");
+            this.enableVariableDrop(this.panel, "检查单位编号");
+         } else if ("pchart".equals(var1)) {
+            this.enableVariableDrop(this.depvar, "不合格数变量");
+            this.enableVariableDrop(this.panel, "检查单位编号");
+            this.enableVariableDrop(this.time, "检查样本量");
+         } else if (Arrays.asList("rchart", "xchart", "shewhart").contains(var1)) {
+            this.enableVariableDrop(this.variables, "样本内重复测量变量");
+         } else if (Arrays.asList("line", "connected").contains(var1)) {
+            this.enableVariableDrop(this.variables, "纵轴 Y 系列");
+            this.enableVariableDrop(this.panel, "横轴 X");
+         } else if (Arrays.asList("qfit", "lowess", "lpoly").contains(var1)) {
+            this.enableVariableDrop(this.depvar, "纵轴 Y");
+            this.enableVariableDrop(this.panel, "横轴 X");
+         } else if (Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(var1)) {
+            this.enableVariableDrop(this.depvar, "诊断变量 / predictor");
+         } else {
+            this.enableVariableDrop(this.depvar, "Y / 分布变量");
+            this.enableVariableDrop(this.variables, "横轴 X");
+            this.enableVariableDrop(this.panel, "分组 / 处理组变量");
+            this.enableVariableDrop(this.time, "时间变量");
+         }
+
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new GridBagLayout());
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(false, coreTitle, ""), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, coreTitle, coreSubtitle);
+         JPanel coreBody = this.genericCardBody();
+         if (Arrays.asList("histogram", "kdensity").contains(var1)) {
+            this.addGenericBodyField(coreBody, "要观察的变量", this.depvar);
+         } else if (Arrays.asList("scatter", "lfit").contains(var1)) {
+            JPanel xy = new JPanel(new GridLayout(1, 2, 12, 0));
+            xy.setOpaque(false);
+            xy.add(this.fieldBlock("纵轴变量 Y", this.depvar));
+            xy.add(this.fieldBlock("横轴变量 X（选择一个）", this.listPane(this.variables)));
+            this.addGenericBodyField(coreBody, "Y / X", xy);
+         } else if (Arrays.asList("line", "connected").contains(var1)) {
+            JPanel lineVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            lineVars.setOpaque(false);
+            lineVars.add(this.fieldBlock("纵轴 Y 系列（至少 1 个，可多选）", this.listPane(this.variables)));
+            lineVars.add(this.fieldBlock("横轴 X（选择一个）", this.panel));
+            this.addGenericBodyField(coreBody, "Y 系列 / X", lineVars);
+            JLabel lineSeriesHint = new JLabel("多个 Y 会共用同一个 X；工作台会阻止把横轴变量同时放入 Y 系列。");
+            lineSeriesHint.setForeground(MUTED);
+            lineSeriesHint.setFont(lineSeriesHint.getFont().deriveFont(9.8F));
+            lineSeriesHint.setAlignmentX(0.0F);
+            coreBody.add(lineSeriesHint);
+         } else if (Arrays.asList("qfit", "lowess", "lpoly").contains(var1)) {
+            JPanel smoothVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            smoothVars.setOpaque(false);
+            smoothVars.add(this.fieldBlock("纵轴 Y", this.depvar));
+            smoothVars.add(this.fieldBlock("横轴 X", this.panel));
+            this.addGenericBodyField(coreBody, "Y / X", smoothVars);
+         } else if (Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(var1)) {
+            this.addGenericBodyField(coreBody, "诊断变量 / predictor", this.depvar);
+            JLabel diagnosticVarHint = new JLabel("这里只选择诊断针对的 predictor；原回归的因变量与其他协变量直接沿用当前 estimation result。");
+            diagnosticVarHint.setForeground(MUTED);
+            diagnosticVarHint.setFont(diagnosticVarHint.getFont().deriveFont(9.8F));
+            diagnosticVarHint.setAlignmentX(0.0F);
+            coreBody.add(diagnosticVarHint);
+         } else if (Arrays.asList("rvfplot", "avplots", "lvr2plot").contains(var1)) {
+            JLabel diagnosticPostHint = new JLabel("<html>直接使用最近一次兼容回归结果。页面不显示原始变量选择框；需要改变模型时先重新运行回归。</html>");
+            diagnosticPostHint.setForeground(MUTED);
+            diagnosticPostHint.setFont(diagnosticPostHint.getFont().deriveFont(10.0F));
+            diagnosticPostHint.setAlignmentX(0.0F);
+            coreBody.add(diagnosticPostHint);
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(var1)) {
+            JPanel graphVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            graphVars.setOpaque(false);
+            graphVars.add(this.fieldBlock("数值变量（可多选）", this.listPane(this.variables)));
+            graphVars.add(this.fieldBlock("分组变量 over()（可选）", this.panel));
+            this.addGenericBodyField(coreBody, "变量", graphVars);
+            JLabel graphHint = new JLabel("需要 (mean)/(count) 等统计量或第二层 over() 时，在下一步“更多图形设置”中按 Stata 原生语法补充。");
+            graphHint.setForeground(MUTED);
+            graphHint.setFont(graphHint.getFont().deriveFont(9.8F));
+            graphHint.setAlignmentX(0.0F);
+            coreBody.add(graphHint);
+         } else if ("graph_pie".equals(var1)) {
+            JPanel pieVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            pieVars.setOpaque(false);
+            pieVars.add(this.fieldBlock("分类变量 over()（必填）", this.panel));
+            pieVars.add(this.fieldBlock("数值变量（可选）", this.depvar));
+            this.addGenericBodyField(coreBody, "饼图变量", pieVars);
+            JLabel pieHint = new JLabel("只想显示各类别频数/占比时，数值变量留空即可；例如 graph pie, over(foreign)。");
+            pieHint.setForeground(MUTED);
+            pieHint.setFont(pieHint.getFont().deriveFont(9.8F));
+            pieHint.setAlignmentX(0.0F);
+            coreBody.add(pieHint);
+         } else if ("graph_matrix".equals(var1)) {
+            this.addGenericBodyField(coreBody, "矩阵变量（至少 2 个，可多选）", this.listPane(this.variables));
+            JLabel matrixHint = new JLabel("建议先选 2–6 个核心连续变量；变量太多时单元格会变小，解释也会变困难。");
+            matrixHint.setForeground(MUTED);
+            matrixHint.setFont(matrixHint.getFont().deriveFont(9.8F));
+            matrixHint.setAlignmentX(0.0F);
+            coreBody.add(matrixHint);
+         } else if ("twoway_contour".equals(var1)) {
+            JPanel contourVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            contourVars.setOpaque(false);
+            contourVars.add(this.fieldBlock("Z 值 / 等高线变量", this.depvar));
+            contourVars.add(this.fieldBlock("Y 坐标", this.panel));
+            contourVars.add(this.fieldBlock("X 坐标", this.time));
+            this.addGenericBodyField(coreBody, "三个变量角色", contourVars);
+            JLabel contourHint = new JLabel("Stata 顺序是 contour z y x；这里分别固定三个角色，避免把 Y/X 顺序写反。");
+            contourHint.setForeground(MUTED);
+            contourHint.setFont(contourHint.getFont().deriveFont(9.8F));
+            contourHint.setAlignmentX(0.0F);
+            coreBody.add(contourHint);
+         } else if (Arrays.asList("tsline", "xtline").contains(var1)) {
+            this.addGenericBodyField(coreBody, "要绘制的变量（可多选）", this.listPane(this.variables));
+            if ("xtline".equals(var1)) {
+               this.addGenericBodyField(coreBody, "面板显示方式", this.model);
+            }
+            JLabel lineHint = new JLabel("<html>时间/面板结构沿用当前 <b>" + ("xtline".equals(var1) ? "xtset" : "tsset") + "</b>；本页不会偷偷改写数据声明。</html>");
+            lineHint.setForeground(MUTED);
+            lineHint.setFont(lineHint.getFont().deriveFont(9.8F));
+            lineHint.setAlignmentX(0.0F);
+            coreBody.add(lineHint);
+         } else if ("sts_graph".equals(var1)) {
+            JPanel survivalVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            survivalVars.setOpaque(false);
+            survivalVars.add(this.fieldBlock("分组变量 by()（可选）", this.panel));
+            survivalVars.add(this.fieldBlock("曲线类型", this.model));
+            this.addGenericBodyField(coreBody, "曲线与分组", survivalVars);
+            this.addGenericBodyField(coreBody, "常用显示", this.specialGraphRiskTable);
+            JLabel survivalHint = new JLabel("当前分析时间和失败事件来自 stset；如果尚未 stset，请先完成生存数据声明。");
+            survivalHint.setForeground(MUTED);
+            survivalHint.setFont(survivalHint.getFont().deriveFont(9.8F));
+            survivalHint.setAlignmentX(0.0F);
+            coreBody.add(survivalHint);
+         } else if ("rocgold".equals(var1)) {
+            JPanel goldTop = new JPanel(new GridLayout(1, 2, 12, 0));
+            goldTop.setOpaque(false);
+            goldTop.add(this.fieldBlock("真实二元结局", this.depvar));
+            goldTop.add(this.fieldBlock("Gold-standard classifier", this.panel));
+            this.addGenericBodyField(coreBody, "基准角色", goldTop);
+            this.addGenericBodyField(coreBody, "待比较 classifier（至少 1 个，可多选）", this.listPane(this.variables));
+            JLabel goldHint = new JLabel("命令中 gold standard 固定排在第一个 classifier；本页会自动保持这个顺序。");
+            goldHint.setForeground(MUTED);
+            goldHint.setFont(goldHint.getFont().deriveFont(9.8F));
+            goldHint.setAlignmentX(0.0F);
+            coreBody.add(goldHint);
+         } else if (Arrays.asList("roctab", "roccomp").contains(var1)) {
+            JPanel rocVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            rocVars.setOpaque(false);
+            rocVars.add(this.fieldBlock("真实二元结局", this.depvar));
+            rocVars.add(this.fieldBlock("预测评分 / 分类器", this.listPane(this.variables)));
+            this.addGenericBodyField(coreBody, "ROC 变量", rocVars);
+            JLabel rocHint = new JLabel("本图形入口会自动加入 graph；复杂 by()、summary、detail、权重或样式可在最终命令中继续补充。");
+            rocHint.setForeground(MUTED);
+            rocHint.setFont(rocHint.getFont().deriveFont(9.8F));
+            rocHint.setAlignmentX(0.0F);
+            coreBody.add(rocHint);
+         } else if ("rocregplot".equals(var1)) {
+            JLabel rocRegPlotHint = new JLabel("<html>使用最近一次成功的 <b>rocreg</b> 结果。常见比较可在下一步直接写 <b>at1(currage=40) at2(currage=50)</b>；无需重新选择 ROC 原始变量。</html>");
+            rocRegPlotHint.setForeground(MUTED);
+            rocRegPlotHint.setFont(rocRegPlotHint.getFont().deriveFont(10.0F));
+            rocRegPlotHint.setAlignmentX(0.0F);
+            coreBody.add(rocRegPlotHint);
+         } else if ("biplot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "参与分析的变量（至少 2 个，可多选）", this.listPane(this.variables));
+            JLabel biplotHint = new JLabel("biplot 会直接对所选变量执行多元双标图分析；这里选择原始分析变量，而不是上一模型的 components。");
+            biplotHint.setForeground(MUTED);
+            biplotHint.setFont(biplotHint.getFont().deriveFont(9.8F));
+            biplotHint.setAlignmentX(0.0F);
+            coreBody.add(biplotHint);
+         } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(var1)) {
+            JLabel postHint = new JLabel("<html>本页沿用最近一次兼容模型结果。需要改变 dimensions / labels / axes 时，在下一步展开 Stata 原生图形 options。</html>");
+            postHint.setForeground(MUTED);
+            postHint.setFont(postHint.getFont().deriveFont(10.0F));
+            postHint.setAlignmentX(0.0F);
+            coreBody.add(postHint);
+         } else if ("cluster_dendrogram".equals(var1)) {
+            this.addGenericBodyField(coreBody, "聚类分析名（可选）", this.expression);
+            JLabel clusterHint = new JLabel("留空时使用当前兼容的层次聚类结果；只有同时保存了多个 cluster result 时才需要显式填写分析名。");
+            clusterHint.setForeground(MUTED);
+            clusterHint.setFont(clusterHint.getFont().deriveFont(9.8F));
+            clusterHint.setAlignmentX(0.0F);
+            coreBody.add(clusterHint);
+         } else if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "gladder", "qladder", "spikeplot").contains(var1)) {
+            this.addGenericBodyField(coreBody, "要诊断的变量", this.depvar);
+         } else if (Arrays.asList("qchi", "pchi").contains(var1)) {
+            JPanel chiVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            chiVars.setOpaque(false);
+            chiVars.add(this.fieldBlock("诊断变量", this.depvar));
+            chiVars.add(this.fieldBlock("自由度 df（只填数字）", this.expression));
+            this.addGenericBodyField(coreBody, "变量与自由度", chiVars);
+         } else if (Arrays.asList("qqplot", "sunflower").contains(var1)) {
+            JPanel pairVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            pairVars.setOpaque(false);
+            pairVars.add(this.fieldBlock("qqplot".equals(var1) ? "变量 1" : "纵轴 Y", this.depvar));
+            pairVars.add(this.fieldBlock("qqplot".equals(var1) ? "变量 2" : "横轴 X", this.panel));
+            this.addGenericBodyField(coreBody, "两个变量角色", pairVars);
+         } else if ("dotplot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "分布变量（至少 1 个，可多选）", this.listPane(this.variables));
+         } else if ("cchart".equals(var1)) {
+            JPanel cVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            cVars.setOpaque(false);
+            cVars.add(this.fieldBlock("缺陷数变量", this.depvar));
+            cVars.add(this.fieldBlock("检查单位编号", this.panel));
+            this.addGenericBodyField(coreBody, "两个变量角色", cVars);
+            JLabel cHint = new JLabel("每行对应一个检查单位；缺陷数是 count，单位编号用于识别横轴上的单位。");
+            cHint.setForeground(MUTED);
+            cHint.setFont(cHint.getFont().deriveFont(9.8F));
+            cHint.setAlignmentX(0.0F);
+            coreBody.add(cHint);
+         } else if ("pchart".equals(var1)) {
+            JPanel pVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            pVars.setOpaque(false);
+            pVars.add(this.fieldBlock("不合格数", this.depvar));
+            pVars.add(this.fieldBlock("检查单位编号", this.panel));
+            pVars.add(this.fieldBlock("检查样本量", this.time));
+            this.addGenericBodyField(coreBody, "三个变量角色", pVars);
+            this.addGenericBodyField(coreBody, "样本量不等", this.specialGraphQcStabilized);
+            JLabel pHint = new JLabel("填写每个单位实际检查的数量；pchart 会自行计算 fraction defective，不需要预先生成比例。");
+            pHint.setForeground(MUTED);
+            pHint.setFont(pHint.getFont().deriveFont(9.8F));
+            pHint.setAlignmentX(0.0F);
+            coreBody.add(pHint);
+         } else if ("rchart".equals(var1)) {
+            this.addGenericBodyField(coreBody, "样本内重复测量变量（可多选）", this.listPane(this.variables));
+            this.addGenericBodyField(coreBody, "已知过程标准差 std()（可选，只填数字）", this.specialGraphQcStd);
+            JLabel rHint = new JLabel("数据结构：每一行是一批/一个样本；m1、m2、m3… 是该样本内的重复测量。");
+            rHint.setForeground(MUTED);
+            rHint.setFont(rHint.getFont().deriveFont(9.8F));
+            rHint.setAlignmentX(0.0F);
+            coreBody.add(rHint);
+         } else if ("xchart".equals(var1)) {
+            this.addGenericBodyField(coreBody, "样本内重复测量变量（可多选）", this.listPane(this.variables));
+            JPanel xKnown = new JPanel(new GridLayout(1, 2, 12, 0));
+            xKnown.setOpaque(false);
+            xKnown.add(this.fieldBlock("已知标准差 std()（可选）", this.specialGraphQcStd));
+            xKnown.add(this.fieldBlock("已知总体均值 mean()（可选）", this.specialGraphQcMean));
+            this.addGenericBodyField(coreBody, "已知过程参数", xKnown);
+            JPanel xLimits = new JPanel(new GridLayout(1, 2, 12, 0));
+            xLimits.setOpaque(false);
+            xLimits.add(this.fieldBlock("下控制限 lower()（可选）", this.specialGraphQcLower));
+            xLimits.add(this.fieldBlock("上控制限 upper()（可选）", this.specialGraphQcUpper));
+            this.addGenericBodyField(coreBody, "直接指定 X-bar 控制限", xLimits);
+            JLabel xHint = new JLabel("lower()/upper() 要么都留空、要么一起填写；留空时控制限由 mean/std（指定或估计）计算。");
+            xHint.setForeground(MUTED);
+            xHint.setFont(xHint.getFont().deriveFont(9.8F));
+            xHint.setAlignmentX(0.0F);
+            coreBody.add(xHint);
+         } else if ("shewhart".equals(var1)) {
+            this.addGenericBodyField(coreBody, "样本内重复测量变量（可多选）", this.listPane(this.variables));
+            JPanel sKnown = new JPanel(new GridLayout(1, 2, 12, 0));
+            sKnown.setOpaque(false);
+            sKnown.add(this.fieldBlock("已知标准差 std()（可选）", this.specialGraphQcStd));
+            sKnown.add(this.fieldBlock("已知总体均值 mean()（可选）", this.specialGraphQcMean));
+            this.addGenericBodyField(coreBody, "已知过程参数", sKnown);
+            JLabel sHint = new JLabel("两项都可留空；Stata 会从重复测量数据计算过程均值和离散程度。");
+            sHint.setForeground(MUTED);
+            sHint.setFont(sHint.getFont().deriveFont(9.8F));
+            sHint.setAlignmentX(0.0F);
+            coreBody.add(sHint);
+         } else if ("serrbar".equals(var1)) {
+            JPanel seVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            seVars.setOpaque(false);
+            seVars.add(this.fieldBlock("均值变量", this.depvar));
+            seVars.add(this.fieldBlock("标准误 / 标准差", this.panel));
+            seVars.add(this.fieldBlock("横轴 / 组序变量", this.time));
+            this.addGenericBodyField(coreBody, "三个变量角色", seVars);
+         } else if ("marginsplot".equals(var1)) {
+            JLabel marginsHint = new JLabel("<html>使用最近一次成功的 <b>margins</b> 结果。若需要新的 at()/dydx()/contrast 情景，请先回到 margins 页面重新计算。</html>");
+            marginsHint.setForeground(MUTED);
+            marginsHint.setFont(marginsHint.getFont().deriveFont(10.0F));
+            marginsHint.setAlignmentX(0.0F);
+            coreBody.add(marginsHint);
+         } else if ("coefplot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "模型 / 矩阵规格（可留空）", this.expression);
+            JLabel coefHint = new JLabel("<html>留空 = 当前模型；常见写法：<b>m1 m2</b>。需要分组、多个 subgraph 或 matrix() 时可直接使用 coefplot 作者原生规格。</html>");
+            coefHint.setForeground(MUTED);
+            coefHint.setFont(coefHint.getFont().deriveFont(9.8F));
+            coefHint.setAlignmentX(0.0F);
+            coreBody.add(coefHint);
+         } else if ("event_plot".equals(var1)) {
+            this.addGenericBodyField(coreBody, "结果对象（可留空）", this.expression);
+            JPanel eventStubs = new JPanel(new GridLayout(1, 2, 12, 0));
+            eventStubs.setOpaque(false);
+            eventStubs.add(this.fieldBlock("政策后 stub_lag()（可选）", this.specialGraphEventStubLag));
+            eventStubs.add(this.fieldBlock("政策前 stub_lead()（可选）", this.specialGraphEventStubLead));
+            this.addGenericBodyField(coreBody, "系数命名规则", eventStubs);
+            JLabel eventHint = new JLabel("<html>stub 中用 <b>#</b> 代表相对期数字，例如 tau# / pre#；多个结果可按顺序填写多个 stub。did_imputation 默认通常可留空。</html>");
+            eventHint.setForeground(MUTED);
+            eventHint.setFont(eventHint.getFont().deriveFont(9.8F));
+            eventHint.setAlignmentX(0.0F);
+            coreBody.add(eventHint);
+         } else if ("graph_combine".equals(var1)) {
+            this.addGenericBodyField(coreBody, "图形名 / .gph 文件（空格分隔）", this.expression);
+         } else if ("graph".equals(var1)) {
+            this.addGenericBodyField(coreBody, "操作", this.model);
+            this.addGenericBodyField(coreBody, "图形名 / 文件参数", this.expression);
+            JLabel manageHint = new JLabel("dir 无需参数；display 可留空显示当前图；save/export 需要文件名；rename 填 old new；close 可填图形名或 _all。");
+            manageHint.setForeground(MUTED);
+            manageHint.setFont(manageHint.getFont().deriveFont(9.8F));
+            manageHint.setAlignmentX(0.0F);
+            coreBody.add(manageHint);
+         } else if ("graph_box".equals(var1)) {
+            JPanel boxVars = new JPanel(new GridLayout(1, 2, 12, 0));
+            boxVars.setOpaque(false);
+            boxVars.add(this.fieldBlock("要观察的变量", this.depvar));
+            boxVars.add(this.fieldBlock("分组变量（可选）", this.panel));
+            this.addGenericBodyField(coreBody, "变量", boxVars);
+         } else if ("did_trends".equals(var1)) {
+            JPanel trendVars = new JPanel(new GridLayout(1, 3, 10, 0));
+            trendVars.setOpaque(false);
+            trendVars.add(this.fieldBlock("结果变量 Y", this.depvar));
+            trendVars.add(this.fieldBlock("处理组变量（建议 0/1）", this.panel));
+            trendVars.add(this.fieldBlock("时间变量", this.time));
+            this.addGenericBodyField(coreBody, "趋势设定", trendVars);
+            JLabel trendHint = new JLabel("处理组与时间变量决定右侧趋势预览的分组与横轴；正式图形由 hxtrendplot 执行。");
+            trendHint.setForeground(MUTED);
+            trendHint.setFont(trendHint.getFont().deriveFont(9.8F));
+            trendHint.setAlignmentX(0.0F);
+            coreBody.add(trendHint);
+         } else {
+            this.addGenericBodyField(coreBody, "图层表达式", this.expression);
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         String checkTitle = includeIf ? "样本与图形设置" : "图形设置与检查";
+         String checkSubtitle = includeIf
+            ? "样本条件和 Stata 原生图形 options 默认收起；底部实时命令用于运行前核对。"
+            : "Stata 原生图形 options 默认收起；底部实时命令用于运行前核对。";
+         JPanel checkCard = this.xtregWizardCardV130(2, checkTitle, checkSubtitle);
+         JPanel checkBody = this.genericCardBody();
+         JPanel graphMore = this.buildSpecialGraphMoreSettings(includeIf, optionLabel);
+         graphMore.setAlignmentX(0.0F);
+         checkBody.add(graphMore);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
          this.updateSpecialGraphPreview();
-         this.statusLabel.setText("图形页面已就绪；右侧“图形预览”会随变量选择更新。");
+         this.statusLabel.setText(Arrays.asList("rocregplot", "marginsplot", "coefplot", "event_plot").contains(var1) ? "结果图页面按结果对象 → 图形设置组织；不会要求重新选择原始数据变量。" : "图形页面按变量设定 → 检查运行组织；右侧图形预览会随变量选择更新。");
+         if (!this.previewMode && Arrays.asList("coefplot", "event_plot").contains(var1)) this.offerOptionalDependency(var1);
       }
 
 
-      private void addSpecialGraphAdvancedSettings(int row, boolean includeIf, String optionLabel) {
+      private void configureSpecialGraphModel(String command) {
+         this.model.removeAllItems();
+         if ("xtline".equals(command)) {
+            this.model.addItem("按面板分图（默认）");
+            this.model.addItem("叠加所有面板（overlay）");
+            this.model.setSelectedIndex(0);
+         } else if ("sts_graph".equals(command)) {
+            this.model.addItem("生存函数（默认）");
+            this.model.addItem("失败函数（failure）");
+            this.model.addItem("累计风险（cumhaz）");
+            this.model.addItem("风险函数（hazard）");
+            this.model.setSelectedIndex(0);
+         } else if ("graph".equals(command)) {
+            this.model.addItem("列出内存图形（dir）");
+            this.model.addItem("显示图形（display）");
+            this.model.addItem("保存 .gph（save）");
+            this.model.addItem("导出文件（export）");
+            this.model.addItem("重命名图形（rename）");
+            this.model.addItem("关闭图形（close）");
+            this.model.setSelectedIndex(0);
+         } else {
+            this.model.addItem("");
+         }
+      }
+
+      private JPanel buildSpecialGraphMoreSettings(boolean includeIf, String optionLabel) {
+         JPanel block = new JPanel();
+         block.setOpaque(false);
+         block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
+         boolean includeIn = Arrays.asList("rchart", "xchart", "shewhart", "line", "connected", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(this.currentCommand);
+
          JPanel content = new JPanel();
          content.setOpaque(false);
          content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
@@ -9784,26 +11129,32 @@ public final class HxWorkbench {
             content.add(this.labeledInline("样本条件 if", this.ifCondition));
             content.add(Box.createVerticalStrut(8));
          }
+         if (includeIn) {
+            content.add(this.labeledInline("观测范围 in（例如 1/20）", this.inCondition));
+            content.add(Box.createVerticalStrut(8));
+         }
          content.add(this.labeledInline(optionLabel, this.options));
          content.setVisible(false);
-         JToggleButton toggle = new JToggleButton("展开更多设置  +");
+
+         JToggleButton toggle = new JToggleButton(includeIf ? "展开样本与图形设置  +" : "展开图形设置  +");
          styleSecondaryButton(toggle);
+         toggle.setAlignmentX(0.0F);
+         content.setAlignmentX(0.0F);
          toggle.addActionListener(event -> {
             boolean expanded = toggle.isSelected();
-            toggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+            if (includeIf) {
+               toggle.setText(expanded ? "收起样本与图形设置  −" : "展开样本与图形设置  +");
+            } else {
+               toggle.setText(expanded ? "收起图形设置  −" : "展开图形设置  +");
+            }
             content.setVisible(expanded);
             this.formPanel.revalidate();
             this.formPanel.repaint();
          });
-         JPanel block = new JPanel();
-         block.setOpaque(false);
-         block.setLayout(new BoxLayout(block, BoxLayout.Y_AXIS));
-         toggle.setAlignmentX(0.0F);
-         content.setAlignmentX(0.0F);
          block.add(toggle);
          block.add(Box.createVerticalStrut(7));
          block.add(content);
-         this.addField(row, "更多设置", block);
+         return block;
       }
 
 
@@ -10210,101 +11561,188 @@ public final class HxWorkbench {
          this.rebuilding = false;
          String var2 = selected(this.didAction);
          this.formPanel.removeAll();
-         int var15 = 0;
-         this.addField(var15++, "当前只做哪一步", this.didAction);
+         this.enableVariableDrop(this.depvar, "结果变量");
+         this.enableVariableDrop(this.variables, "控制变量");
+         this.enableVariableDrop(this.didUnit, "个体变量");
+         this.enableVariableDrop(this.didTime, "时间变量");
+         this.enableVariableDrop(this.didTreat, "处理组变量");
+         this.enableVariableDrop(this.didPost, "政策后变量");
+         this.enableVariableDrop(this.didEvent, "相对政策时间");
+         this.enableVariableDrop(this.didEventCode, "事件研究编码");
+         this.enableVariableDrop(this.cluster, "聚类变量");
+
+         boolean regressionStep = var2.startsWith("DID 交互回归") || var2.startsWith("事件研究回归");
+         String taskTitle;
+         String taskSubtitle;
          if (var2.startsWith("生成政策后")) {
-            if (this.didNewVar.getText().isBlank()) {
-               this.didNewVar.setText("post");
-            }
-
-            JPanel var4 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var4.setOpaque(false);
-            var4.add(this.labeled("时间变量（如 year）", this.didTime));
-            var4.add(this.labeled("政策发生年份", this.didPolicyTime));
-            var4.add(this.labeled("新变量名", this.didNewVar));
-            this.addField(var15++, "生成 post", var4);
+            taskTitle = "生成 post";
+            taskSubtitle = "用时间变量和政策发生年份生成政策后虚拟变量，并保留时间缺失值。";
          } else if (var2.startsWith("生成交互项")) {
-            if (this.didNewVar.getText().isBlank()) {
-               this.didNewVar.setText("did");
-            }
-
-            JPanel var21 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var21.setOpaque(false);
-            var21.add(this.labeled("处理组变量 treat（0/1）", this.didTreat));
-            var21.add(this.labeled("政策后变量 post（0/1）", this.didPost));
-            var21.add(this.labeled("新变量名", this.didNewVar));
-            this.addField(var15++, "生成 did", var21);
+            taskTitle = "生成 did";
+            taskSubtitle = "用 treat × post 生成 DID 交互项；运行前会检查 treat/post 是否为 0/1。";
          } else if (var2.startsWith("生成相对")) {
-            if (this.didNewVar.getText().isBlank()) {
-               this.didNewVar.setText("event_time");
-            }
+            taskTitle = "生成 event_time";
+            taskSubtitle = "以政策发生年份为 0，生成直观的政策前后相对时间。";
+         } else if (var2.startsWith("生成事件研究编码")) {
+            taskTitle = "生成 event_code";
+            taskSubtitle = "选择 event_time 与真实存在的基准期，自动生成 Stata 因子变量可用的非负编码。";
+         } else if (var2.startsWith("DID 交互回归")) {
+            taskTitle = "DID 模型设定";
+            taskSubtitle = "集中设置核心变量、面板结构、固定效应、控制变量和推断方式。";
+         } else if (var2.startsWith("事件研究回归")) {
+            taskTitle = "事件研究设定";
+            taskSubtitle = "使用已生成的 event_code 设置动态效应回归，并保留基准期信息。";
+         } else {
+            taskTitle = "政策前联合检验";
+            taskSubtitle = "根据 event_code 的生成记录自动识别政策前非基准期，并生成 testparm。";
+         }
 
-            JPanel var22 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var22.setOpaque(false);
-            var22.add(this.labeled("时间变量（如 year）", this.didTime));
-            var22.add(this.labeled("政策发生年份", this.didPolicyTime));
-            var22.add(this.labeled("新变量名", this.didNewVar));
-            this.addField(var15++, "生成 event_time", var22);
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("选择步骤", taskTitle, regressionStep ? "样本与运行" : "检查运行"), c);
+
+         JPanel actionCard = this.xtregWizardCardV130(1, "选择步骤", "一次只完成一个 DID / Event Study 动作；切换后页面立即只保留该动作需要的字段。");
+         JPanel actionBody = this.genericCardBody();
+         this.addGenericBodyField(actionBody, "当前要做什么", this.didAction);
+         actionCard.add(actionBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(actionCard, c);
+
+         JPanel taskCard = this.xtregWizardCardV130(2, taskTitle, taskSubtitle);
+         JPanel taskBody = this.genericCardBody();
+
+         if (var2.startsWith("生成政策后")) {
+            if (this.didNewVar.getText().isBlank()) this.didNewVar.setText("post");
+            JPanel row = new JPanel(new GridLayout(1, 3, 9, 0));
+            row.setOpaque(false);
+            row.add(this.labeled("时间变量（如 year）", this.didTime));
+            row.add(this.labeled("政策发生年份", this.didPolicyTime));
+            row.add(this.labeled("新变量名", this.didNewVar));
+            this.addGenericBodyField(taskBody, "生成规则", row);
+         } else if (var2.startsWith("生成交互项")) {
+            if (this.didNewVar.getText().isBlank()) this.didNewVar.setText("did");
+            JPanel row = new JPanel(new GridLayout(1, 3, 9, 0));
+            row.setOpaque(false);
+            row.add(this.labeled("处理组 treat（0/1）", this.didTreat));
+            row.add(this.labeled("政策后 post（0/1）", this.didPost));
+            row.add(this.labeled("新变量名", this.didNewVar));
+            this.addGenericBodyField(taskBody, "交互项规则", row);
+         } else if (var2.startsWith("生成相对")) {
+            if (this.didNewVar.getText().isBlank()) this.didNewVar.setText("event_time");
+            JPanel row = new JPanel(new GridLayout(1, 3, 9, 0));
+            row.setOpaque(false);
+            row.add(this.labeled("时间变量（如 year）", this.didTime));
+            row.add(this.labeled("政策发生年份", this.didPolicyTime));
+            row.add(this.labeled("新变量名", this.didNewVar));
+            this.addGenericBodyField(taskBody, "相对时间规则", row);
          } else if (var2.startsWith("生成事件研究编码")) {
             if (this.didNewVar.getText().isBlank() || Arrays.asList("post", "did", "event_time").contains(this.didNewVar.getText().trim())) {
                this.didNewVar.setText("event_code");
             }
+            JPanel row = new JPanel(new GridLayout(1, 3, 9, 0));
+            row.setOpaque(false);
+            row.add(this.labeled("相对政策时间 event_time", this.didEvent));
+            row.add(this.labeled("基准期（原始相对时间）", this.didBasePeriod));
+            row.add(this.labeled("新编码变量名", this.didNewVar));
+            this.addGenericBodyField(taskBody, "编码规则", row);
+            JLabel hint = new JLabel("<html>工具先确认基准期确实存在，再自动平移编码；回归时继续使用原始基准期含义，无需手算编码值。</html>");
+            hint.setForeground(MUTED);
+            hint.setFont(hint.getFont().deriveFont(9.8F));
+            hint.setAlignmentX(0.0F);
+            taskBody.add(hint);
+         } else if (regressionStep) {
+            JPanel core = new JPanel(new GridLayout(1, 3, 9, 0));
+            core.setOpaque(false);
+            core.add(this.labeled("结果变量 Y", this.depvar));
+            core.add(this.labeled("处理组 treat（0/1）", this.didTreat));
+            if (var2.startsWith("事件研究回归")) {
+               core.add(this.labeled("事件研究编码 event_code", this.didEventCode));
+            } else {
+               core.add(this.labeled("政策后 post（0/1）", this.didPost));
+            }
+            this.addGenericBodyField(taskBody, var2.startsWith("事件研究回归") ? "事件研究核心变量" : "DID 核心变量", core);
 
-            JPanel var23 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var23.setOpaque(false);
-            var23.add(this.labeled("相对政策时间 event_time", this.didEvent));
-            var23.add(this.labeled("基准期（原始相对时间）", this.didBasePeriod));
-            var23.add(this.labeled("新编码变量名", this.didNewVar));
-            this.addField(var15++, "生成可用于回归的 event_code", var23);
-            JLabel var5 = new JLabel("工具会先确认所选基准期确实存在，再自动平移编码；你不需要自己计算编码值。");
-            var5.setForeground(MUTED);
-            this.addField(var15++, "为什么需要这一步", var5);
-         } else if (var2.startsWith("DID 交互回归")) {
-            JPanel var24 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var24.setOpaque(false);
-            var24.add(this.labeled("结果变量 Y", this.depvar));
-            var24.add(this.labeled("处理组 treat（0/1）", this.didTreat));
-            var24.add(this.labeled("政策后 post（0/1）", this.didPost));
-            this.addField(var15++, "DID 核心变量", var24);
-            var15 = this.addDidPanelStructure(var15);
-            this.addField(var15++, "控制变量（可多选）", this.listPane(this.variables));
-            this.addDidModelSettings(var15++);
-            this.addField(var15++, "样本条件 if（可选）", this.ifCondition);
-            this.addField(var15++, "更多估计选项（可选）", this.options);
-         } else if (var2.startsWith("事件研究回归")) {
-            JPanel var25 = new JPanel(new GridLayout(1, 3, 9, 0));
-            var25.setOpaque(false);
-            var25.add(this.labeled("结果变量 Y", this.depvar));
-            var25.add(this.labeled("处理组 treat（0/1）", this.didTreat));
-            var25.add(this.labeled("事件研究编码 event_code", this.didEventCode));
-            this.addField(var15++, "事件研究核心变量", var25);
-            var15 = this.addDidPanelStructure(var15);
-            JLabel var28 = new JLabel("event_code 请先用上一步生成；基准期已经写入变量设置，回归时无需再次手算。");
-            var28.setForeground(MUTED);
-            this.addField(var15++, "基准期说明", var28);
-            this.addField(var15++, "控制变量（可多选）", this.listPane(this.variables));
-            this.addDidModelSettings(var15++);
-            this.addField(var15++, "样本条件 if（可选）", this.ifCondition);
-            this.addField(var15++, "更多估计选项（可选）", this.options);
+            JPanel panelAndFe = new JPanel();
+            panelAndFe.setOpaque(false);
+            panelAndFe.setLayout(new BoxLayout(panelAndFe, BoxLayout.Y_AXIS));
+            JPanel panelGrid = new JPanel(new GridLayout(1, 2, 9, 0));
+            panelGrid.setOpaque(false);
+            panelGrid.add(this.labeled("个体变量（如 firm）", this.didUnit));
+            panelGrid.add(this.labeled("时间变量（如 year）", this.didTime));
+            panelGrid.setAlignmentX(0.0F);
+            panelAndFe.add(panelGrid);
+            panelAndFe.add(Box.createVerticalStrut(8));
+            JPanel feRow = new JPanel(new FlowLayout(0, 14, 0));
+            feRow.setOpaque(false);
+            feRow.add(this.didUnitFE);
+            feRow.add(this.didTimeFE);
+            feRow.setAlignmentX(0.0F);
+            panelAndFe.add(feRow);
+            this.addGenericBodyField(taskBody, "面板结构与固定效应", panelAndFe);
+
+            if (var2.startsWith("事件研究回归")) {
+               JLabel baseHint = new JLabel("<html>event_code 请先由“生成事件研究编码”步骤创建；基准期信息已经随编码记录，回归时无需再次换算。</html>");
+               baseHint.setForeground(MUTED);
+               baseHint.setFont(baseHint.getFont().deriveFont(9.8F));
+               baseHint.setAlignmentX(0.0F);
+               taskBody.add(baseHint);
+               taskBody.add(Box.createVerticalStrut(8));
+            }
+
+            this.addGenericBodyField(taskBody, "控制变量（可多选）", this.listPane(this.variables));
+            boolean clustered = "cluster".equals(selected(this.vce));
+            JPanel modelRow = new JPanel(new GridLayout(1, clustered ? 3 : 2, 9, 0));
+            modelRow.setOpaque(false);
+            modelRow.add(this.labeled("估计方法", this.didEstimator));
+            modelRow.add(this.labeled("标准误", this.vce));
+            if (clustered) modelRow.add(this.labeled("聚类变量", this.cluster));
+            this.addGenericBodyField(taskBody, "估计与推断", modelRow);
          } else {
-            JPanel var26 = new JPanel(new GridLayout(1, 2, 9, 0));
-            var26.setOpaque(false);
-            var26.add(this.labeled("处理组 treat（0/1）", this.didTreat));
-            var26.add(this.labeled("事件研究编码 event_code", this.didEventCode));
-            this.addField(var15++, "自动识别政策前交互项", var26);
-            JLabel var29 = new JLabel("工具会根据之前生成 event_code 时记录的 event_time、平移量和基准期，自动生成 testparm；无需复制系数名。");
-            var29.setForeground(MUTED);
-            this.addField(var15++, "检验说明", var29);
+            JPanel row = new JPanel(new GridLayout(1, 2, 9, 0));
+            row.setOpaque(false);
+            row.add(this.labeled("处理组 treat（0/1）", this.didTreat));
+            row.add(this.labeled("事件研究编码 event_code", this.didEventCode));
+            this.addGenericBodyField(taskBody, "自动识别政策前交互项", row);
+            JLabel hint = new JLabel("<html>工具根据 event_code 的生成记录、平移量和基准期自动生成 testparm；无需复制或手写系数名。</html>");
+            hint.setForeground(MUTED);
+            hint.setFont(hint.getFont().deriveFont(9.8F));
+            hint.setAlignmentX(0.0F);
+            taskBody.add(hint);
          }
+         taskCard.add(taskBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(taskCard, c);
 
-         GridBagConstraints var27 = this.constraints(0, var15);
-         var27.gridwidth = 2;
-         var27.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var27);
+         JPanel runCard = this.xtregWizardCardV130(3, regressionStep ? "样本与运行" : "检查运行",
+            regressionStep ? "最后补充样本条件和低频估计选项，并在下方核对真实 Stata 命令。" : "运行前在下方核对自动生成的真实 Stata 命令；完成后新变量会自动带入后续步骤。");
+         JPanel runBody = this.genericCardBody();
+         if (regressionStep) {
+            this.addGenericBodyField(runBody, "样本条件 if（可选）", this.ifCondition);
+            this.addGenericBodyField(runBody, "更多估计选项（可选）", this.options);
+         } else {
+            JLabel runHint = new JLabel("<html>当前步骤的命令会显示在下方命令区。点击“运行当前步骤”后，成功生成的 post、event_time 或 event_code 会自动填入后续对应位置。</html>");
+            runHint.setForeground(MUTED);
+            runHint.setFont(runHint.getFont().deriveFont(9.8F));
+            runHint.setAlignmentX(0.0F);
+            runBody.add(runHint);
+         }
+         runCard.add(runBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(runCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
          this.updateDidBuilderPreview();
-         this.statusLabel.setText("DID 当前只显示本步骤需要的字段；共同政策时点设定下，常用双向固定效应和按个体聚类已作为默认项。");
+         this.statusLabel.setText("DID 当前按“选择步骤 → 当前任务 → 检查运行”组织；共同政策时点设定下，双向固定效应和按个体聚类继续作为常用默认项。");
       }
 
       private int addDidPanelStructure(int var1) {
@@ -10373,6 +11811,2684 @@ public final class HxWorkbench {
          return false;
       }
 
+      private JComponent genericStepStripV152(boolean hasMethodSettings, String coreStepTitle, String methodStepTitle) {
+         JPanel strip = cardPanel();
+         strip.setBackground(SURFACE);
+         strip.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
+            new EmptyBorder(9, 10, 9, 10)
+         ));
+         String[][] steps = hasMethodSettings
+            ? new String[][]{
+               {"1", coreStepTitle, "先完成当前任务最关键的变量、文件或表达式"},
+               {"2", methodStepTitle, "再设置当前命令真正支持的方法、固定效应或推断选项"},
+               {"3", "检查运行", "最后检查样本范围、低频设置和真实 Stata 命令"}
+            }
+            : new String[][]{
+               {"1", coreStepTitle, "先完成当前任务最关键的变量、文件或表达式"},
+               {"2", "检查运行", "最后检查样本范围、低频设置和真实 Stata 命令"}
+            };
+         strip.setLayout(new GridLayout(1, steps.length, 8, 0));
+         for (int i = 0; i < steps.length; i++) {
+            JPanel p = new JPanel(new BorderLayout(6, 0));
+            p.setOpaque(false);
+            p.setMinimumSize(new Dimension(0, 0));
+            JComponent n = this.xtregCircleBadge(steps[i][0], i == 0, 24);
+            p.add(n, BorderLayout.WEST);
+            JLabel label = new JLabel("<html><b>" + html(steps[i][1]) + "</b></html>");
+            label.setForeground(TEXT);
+            label.setFont(label.getFont().deriveFont(10.5F));
+            label.setToolTipText(steps[i][2]);
+            label.setMinimumSize(new Dimension(0, 0));
+            p.add(label, BorderLayout.CENTER);
+            strip.add(p);
+         }
+         strip.setPreferredSize(new Dimension(0, 52));
+         strip.setMinimumSize(new Dimension(0, 52));
+         strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+         return strip;
+      }
+
+      private static String genericCoreTitle(String command) {
+         if (Arrays.asList("table", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest").contains(command)) return "检验设定";
+         if (Arrays.asList("iqreg", "bsqreg", "sureg", "mvreg").contains(command)) return "方程与变量";
+         if (Arrays.asList("logistic", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "mlogit", "mprobit", "asclogit", "asmprobit").contains(command)) return "结果与解释变量";
+         if (Arrays.asList("zip", "zinb", "tpoisson", "tnbreg", "fracreg", "betareg", "glm", "heckman", "heckprobit", "heckoprobit", "heckpoisson").contains(command)) return "模型变量";
+         if (Arrays.asList("arima", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram").contains(command)) return "时间序列设定";
+         if (Arrays.asList("var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf").contains(command)) return "系统与时间设定";
+         if (Arrays.asList("spregress", "spivregress", "spxtregress").contains(command)) return "空间模型设定";
+         if (Arrays.asList("xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys").contains(command)) return "变量与面板";
+         if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "层级与变量";
+         if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "生存数据设定";
+         if (Arrays.asList("cc", "cs", "ir").contains(command)) return "效应量设定";
+         if (Arrays.asList("eregress", "eprobit", "eoprobit", "eintreg", "teffects", "eteffects", "etregress", "etpoisson", "stteffects").contains(command)) return "因果模型设定";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt", "irtgraph", "diflogistic", "difmh", "dsge", "dsgenl").contains(command)) return "模型结构";
+         if (Arrays.asList("alpha", "factor", "pca", "canon", "ca", "candisc", "hotelling", "manova", "mvreg", "mca", "mds", "mdslong", "mdsmat", "mvtest", "procrustes", "discrim", "cluster").contains(command)) return "多元分析设定";
+         if (Arrays.asList("svyset", "svydescribe", "svy").contains(command)) return "调查设计与估计";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress").contains(command)) return "高维变量设定";
+         if ("meta".equals(command)) return "Meta 分析设定";
+         if ("mi".equals(command)) return "多重插补任务";
+         if (Arrays.asList("npregress", "lowess", "lpoly").contains(command)) return "非参数设定";
+         if (Arrays.asList("bitesti", "tabi").contains(command)) return "精确检验设定";
+         if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "重复任务设定";
+         if ("power".equals(command)) return "效能与样本量";
+         if (Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesstats", "bayesgraph", "bmaregress").contains(command)) return "贝叶斯设定";
+         if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box").contains(command)) return "图形设定";
+         if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(command)) return "诊断图设定";
+         if (Arrays.asList("tsline", "xtline").contains(command)) return "趋势图设定";
+         if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot").contains(command)) return "ROC 设定";
+         if ("generate".equals(command)) return "生成规则";
+         if ("replace".equals(command)) return "修改规则";
+         if (Arrays.asList("keep", "drop").contains(command)) return "处理对象";
+         if ("merge".equals(command)) return "合并设置";
+         if ("append".equals(command)) return "追加设置";
+         if ("reshape".equals(command)) return "转换设置";
+         if ("collapse".equals(command)) return "汇总设置";
+         if (Arrays.asList("xtset", "tsset").contains(command)) return "数据结构";
+         if (Arrays.asList("encode", "decode", "destring", "tostring").contains(command)) return "转换设置";
+         if ("winsor2".equals(command)) return "缩尾设置";
+         if (Arrays.asList("duplicates", "misstable").contains(command)) return "检查范围";
+         if (Arrays.asList("summarize", "tabstat", "correlate", "pwcorr", "tabulate").contains(command)) return "分析变量";
+         if ("ttest".equals(command)) return "检验设置";
+         if (Arrays.asList("ivregress", "ivreghdfe").contains(command)) return "方程设定";
+         if (Arrays.asList("didregress", "xtdidregress").contains(command)) return "DID 设定";
+         if (Arrays.asList("test", "lincom", "margins").contains(command)) return "后估计设置";
+         if ("predict".equals(command)) return "生成设置";
+         if (Arrays.asList("histogram", "kdensity").contains(command)) return "分布设置";
+         if (Arrays.asList("scatter", "lfit").contains(command)) return "坐标变量";
+         if (Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)) return "图形设置";
+         if (isGenericPanelEstimator(command)) return "变量与面板";
+         if (Arrays.asList(
+            "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
+            "logit", "probit", "mlogit", "mprobit", "poisson", "nbreg", "ppmlhdfe"
+         ).contains(command)) return "变量设定";
+         return "核心设置";
+      }
+
+      private static String genericCoreSubtitle(String command) {
+         if (Arrays.asList("table", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest").contains(command)) return "先选择检验对象和分组信息；检验方向、显著性与低频 options 放在最后。";
+         if (Arrays.asList("arima", "arch", "ucm", "dfuller", "pperron", "corrgram", "pergram", "var", "svar", "vec", "varsoc", "vargranger", "varstable", "irf").contains(command)) return "先确认时间结构与分析变量；滞后、趋势、识别限制等命令特有参数集中在后续设置。";
+         if (Arrays.asList("xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtabond", "xtdpdsys").contains(command)) return "先选择结果变量、解释变量和面板结构，再设置当前模型支持的估计选项。";
+         if (Arrays.asList("mixed", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "mestreg", "metobit", "meglm").contains(command)) return "先确定结果变量、解释变量和层级结构；随机效应方程按 Stata 原生语法补充。";
+         if (Arrays.asList("stset", "sts", "stcox", "streg", "stcrreg").contains(command)) return "先确认生存时间、失败事件和解释变量角色；删失与模型细节在最后核对。";
+         if (Arrays.asList("sem", "gsem", "fmm", "irt", "irtgraph", "diflogistic", "difmh", "dsge", "dsgenl").contains(command)) return "先明确模型方程或潜变量结构；复杂路径、类别和分布设定保留 Stata 原生表达。";
+         if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress").contains(command)) return "先设置结果变量和候选解释变量，再核对惩罚、选择和推断规则。";
+         if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(command)) return "先明确要重复执行的统计量或命令，再设置重复次数、随机种子和保存选项。";
+         if (Arrays.asList("graph", "twoway", "line", "connected", "qfit", "dotplot", "graph_box", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "roctab", "rocfit", "roccomp", "rocgold", "rocreg").contains(command)) return "先完成当前图形最关键的变量或结果对象；样本范围和 Stata 图形 options 放在最后。";
+         if ("generate".equals(command)) return "填写新变量名和计算公式；需要限定样本时在最后一步补充 if。";
+         if ("replace".equals(command)) return "选择已有变量并填写新值或公式；样本条件默认直接展开。";
+         if (Arrays.asList("keep", "drop").contains(command)) return "先选择处理变量还是处理样本，再填写对应范围；样本条件默认直接展开。";
+         if ("merge".equals(command)) return "先选择合并关系，再指定关联变量和副表文件；运行前检查键的唯一性。";
+         if ("append".equals(command)) return "选择要追加的 using 数据文件；当前内存数据作为第一张表保留在上方。";
+         if ("reshape".equals(command)) return "先选择宽转长或长转宽，再填写 stub、i() 和 j()。";
+         if ("collapse".equals(command)) return "先选择统计量，再选择汇总变量和 by() 分组变量。";
+         if (Arrays.asList("xtset", "tsset").contains(command)) return "指定个体与时间维度，让后续面板或时间序列命令使用明确的数据结构。";
+         if (Arrays.asList("encode", "decode", "destring", "tostring").contains(command)) return "选择原变量、输出方式与目标变量；低频格式选项集中在最后一步。";
+         if ("winsor2".equals(command)) return "先选择覆盖原变量或创建新变量，再设置变量和缩尾分位点。";
+         if (Arrays.asList("duplicates", "misstable").contains(command)) return "选择需要检查的变量；留空时按 Stata 当前命令的默认范围执行。";
+         if (Arrays.asList("summarize", "tabstat", "correlate", "pwcorr", "tabulate").contains(command)) return "选择要分析的变量；统计细节和显示选项集中在最后一步。";
+         if ("ttest".equals(command)) return "先选择单样本、分组比较或配对比较，再填写变量与比较对象。";
+         if (Arrays.asList("ivregress", "ivreghdfe").contains(command)) return "先区分因变量、正常解释变量、内生变量和工具变量，再设置估计方法。";
+         if (Arrays.asList("didregress", "xtdidregress").contains(command)) return "填写结果变量、协变量、处理变量、group() 和 time()，再设置推断方式。";
+         if (Arrays.asList("test", "lincom", "margins").contains(command)) return "基于上一项估计结果填写检验、线性组合或边际效应表达式。";
+         if ("predict".equals(command)) return "先选择生成预测值、残差或标准化残差，再填写新变量名。";
+         if (Arrays.asList("histogram", "kdensity").contains(command)) return "选择要查看分布的变量；样本筛选、权重和图形 options 放在最后一步。";
+         if (Arrays.asList("scatter", "lfit").contains(command)) return "指定纵轴 Y 和横轴 X；图形细节与样本筛选放在最后一步。";
+         if (Arrays.asList("rocregplot", "event_plot", "marginsplot", "coefplot").contains(command)) return "指定结果对象或命令主体，再在最后一步补充图形 options。";
+         if (isGenericPanelEstimator(command)) return "先选择因变量、解释变量以及面板结构，再设置模型和推断选项。";
+         return "先完成当前任务最关键的变量、文件或表达式；变量可从右侧变量窗口或数据表表头直接拖入。";
+      }
+
+      private JComponent taskStepStripV153(String... titles) {
+         JPanel strip = cardPanel();
+         strip.setBackground(SURFACE);
+         strip.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
+            new EmptyBorder(9, 10, 9, 10)
+         ));
+         strip.setLayout(new GridLayout(1, titles.length, 8, 0));
+         for (int i = 0; i < titles.length; i++) {
+            JPanel p = new JPanel(new BorderLayout(6, 0));
+            p.setOpaque(false);
+            p.setMinimumSize(new Dimension(0, 0));
+            p.add(this.xtregCircleBadge(Integer.toString(i + 1), i == 0, 24), BorderLayout.WEST);
+            JLabel label = new JLabel("<html><b>" + html(titles[i]) + "</b></html>");
+            label.setForeground(TEXT);
+            label.setFont(label.getFont().deriveFont(10.5F));
+            label.setMinimumSize(new Dimension(0, 0));
+            p.add(label, BorderLayout.CENTER);
+            strip.add(p);
+         }
+         strip.setPreferredSize(new Dimension(0, 52));
+         strip.setMinimumSize(new Dimension(0, 52));
+         strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+         return strip;
+      }
+
+      private static boolean isStructuredSummaryTestCommand(String command) {
+         return Arrays.asList("tabulate", "oneway", "ranksum", "median", "signrank", "signtest").contains(command);
+      }
+
+      private static boolean isStructuredLinearRelatedCommand(String command) {
+         return Arrays.asList("hetregress", "intreg", "tobit", "truncreg", "sqreg").contains(command);
+      }
+
+      private static boolean isStructuredGlmCommand(String command) {
+         return "glm".equals(command);
+      }
+
+      private static boolean isStructuredFractionalOutcomeCommand(String command) {
+         return Arrays.asList("fracreg", "betareg").contains(command);
+      }
+
+      private static boolean isStructuredCountOutcomeCommand(String command) {
+         return Arrays.asList("gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg").contains(command);
+      }
+
+      private static boolean isStructuredCategoricalOutcomeCommand(String command) {
+         return Arrays.asList("clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit").contains(command);
+      }
+
+      private static boolean isStructuredOrdinalOutcomeCommand(String command) {
+         return Arrays.asList("hetoprobit", "zioprobit", "ziologit").contains(command);
+      }
+
+      private static boolean isStructuredBinaryOutcomeCommand(String command) {
+         return Arrays.asList("binreg", "biprobit", "hetprobit").contains(command);
+      }
+
+      private static boolean isStructuredPrSdTestCommand(String command) {
+         return Arrays.asList("prtest", "sdtest").contains(command);
+      }
+
+      private static boolean isCoreModelCommand(String command) {
+         return Arrays.asList(
+            "keep", "drop", "merge", "reshape", "collapse", "ttest", "predict", "winsor2", "destring", "tostring"
+         ).contains(command);
+      }
+
+      private static boolean isGenericPanelEstimator(String command) {
+         return Arrays.asList(
+            "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog",
+            "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtivreg", "xtpcse", "xtgls", "xtregar", "xtrc", "xtstreg",
+            "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor", "xtabond", "xtdpdsys", "xtdpd",
+            "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata", "xthdidregress"
+         ).contains(command);
+      }
+
+      private static boolean isGenericPanelTimeRequired(String command) {
+         return Arrays.asList("xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xthdidregress").contains(command);
+      }
+
+      private JPanel genericCardBody() {
+         JPanel body = new JPanel();
+         body.setOpaque(false);
+         body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+         body.setMinimumSize(new Dimension(0, 0));
+         return body;
+      }
+
+      private void addGenericBodyField(JPanel body, String label, JComponent component) {
+         JComponent block = this.fieldBlock(label, component);
+         block.setAlignmentX(0.0F);
+         block.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, block.getPreferredSize().height)));
+         body.add(block);
+         body.add(Box.createVerticalStrut(10));
+      }
+
+      private boolean ensureGenericPanelDeclarationBeforeRun() {
+         if (!isGenericPanelEstimator(this.currentCommand)) return true;
+         String panelVar = selected(this.panel);
+         String timeVar = selected(this.time);
+         if (panelVar.isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择个体 / 面板变量。", "面板结构尚未完整", JOptionPane.INFORMATION_MESSAGE);
+            return false;
+         }
+         if (isGenericPanelTimeRequired(this.currentCommand) && timeVar.isBlank()) {
+            JOptionPane.showMessageDialog(this, "当前命令需要时间变量，用于动态滞后或面板时间序列检验。请同时选择面板变量和时间变量。", "时间变量尚未选择", JOptionPane.INFORMATION_MESSAGE);
+            return false;
+         }
+         String setup = "xtset " + panelVar + (timeVar.isBlank() ? "" : " " + timeVar);
+         int rc = HxWorkbench.StataBridge.execute(setup, false);
+         if (rc != 0) {
+            this.statusLabel.setText("xtset 失败，返回码：" + rc);
+            JOptionPane.showMessageDialog(this, "面板结构声明失败：\n" + setup + "\n\n请检查面板键、重复时间或变量类型。", "xtset 失败", JOptionPane.WARNING_MESSAGE);
+            return false;
+         }
+         return true;
+      }
+
+      private static String structuredOrdinalOffset(String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         return value.startsWith("offset(") ? value : "offset(" + value + ")";
+      }
+
+      private void setStructuredGlmWeights() {
+         this.genericWeightType.removeAllItems();
+         this.genericWeightType.addItem("无");
+         this.genericWeightType.addItem("fweight");
+         this.genericWeightType.addItem("aweight");
+         this.genericWeightType.addItem("iweight");
+         this.genericWeightType.addItem("pweight");
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.genericWeightVar.setEnabled(false);
+      }
+
+      private String structuredGlmFamilyCode() {
+         switch (this.model.getSelectedIndex()) {
+            case 0: return "gaussian";
+            case 1: return "igaussian";
+            case 2: return "binomial";
+            case 3: return "poisson";
+            case 4: return "nbinomial";
+            case 5: return "gamma";
+            default: return "custom";
+         }
+      }
+
+      private String structuredGlmCanonicalLink(String family) {
+         if ("gaussian".equals(family)) return "identity";
+         if ("igaussian".equals(family)) return "power -2";
+         if ("binomial".equals(family)) return "logit";
+         if ("poisson".equals(family)) return "log";
+         if ("nbinomial".equals(family)) return "log";
+         if ("gamma".equals(family)) return "power -1";
+         return "由自定义 family 决定";
+      }
+
+      private void updateStructuredGlmLinkChoices() {
+         String family = this.structuredGlmFamilyCode();
+         String canonical = this.structuredGlmCanonicalLink(family);
+         this.time.removeAllItems();
+         this.time.addItem("默认（" + canonical + "）");
+         if ("gaussian".equals(family) || "igaussian".equals(family) || "poisson".equals(family) || "gamma".equals(family)) {
+            this.time.addItem("identity");
+            this.time.addItem("log");
+            this.time.addItem("power #");
+         } else if ("binomial".equals(family)) {
+            this.time.addItem("identity");
+            this.time.addItem("log");
+            this.time.addItem("logit");
+            this.time.addItem("probit");
+            this.time.addItem("cloglog");
+            this.time.addItem("power #");
+            this.time.addItem("opower #");
+            this.time.addItem("loglog");
+            this.time.addItem("logc");
+         } else if ("nbinomial".equals(family)) {
+            this.time.addItem("identity");
+            this.time.addItem("log");
+            this.time.addItem("power #");
+            this.time.addItem("nbinomial");
+         } else {
+            this.time.addItem("identity");
+            this.time.addItem("log");
+            this.time.addItem("logit");
+            this.time.addItem("probit");
+            this.time.addItem("cloglog");
+            this.time.addItem("power #");
+            this.time.addItem("opower #");
+            this.time.addItem("nbinomial");
+            this.time.addItem("loglog");
+            this.time.addItem("logc");
+         }
+         this.time.addItem("自定义 link()");
+         this.time.setSelectedIndex(0);
+         this.newvar.setText("");
+      }
+
+      private void rebuildStructuredGlmForm() {
+         this.rebuilding = true;
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new GridBagLayout());
+         this.depvar.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.panel.setSelectedItem(null);
+         this.expression.setText("");
+         this.newvar.setText("");
+         this.ifCondition.setText("");
+         this.inCondition.setText("");
+         this.options.setText("");
+         this.cluster.setSelectedItem(null);
+         this.glmRateMode.setSelectedIndex(0);
+         this.glmEstimationMode.setSelectedIndex(0);
+         this.glmNoConstant.setSelected(false);
+         this.glmEform.setSelected(false);
+         this.glmNoConstant.setOpaque(false);
+         this.glmEform.setOpaque(false);
+
+         this.model.removeAllItems();
+         this.model.addItem("Gaussian / normal");
+         this.model.addItem("Inverse Gaussian");
+         this.model.addItem("Binomial / Bernoulli");
+         this.model.addItem("Poisson");
+         this.model.addItem("Negative binomial");
+         this.model.addItem("Gamma");
+         this.model.addItem("自定义 family()");
+         this.model.setSelectedIndex(0);
+         this.updateStructuredGlmLinkChoices();
+
+         this.vce.removeAllItems();
+         this.vce.addItem("default");
+         this.vce.addItem("robust");
+         this.vce.addItem("cluster");
+         this.vce.setSelectedIndex(0);
+         this.setStructuredGlmWeights();
+
+         this.enableVariableDrop(this.depvar, "GLM 结果变量 Y");
+         this.enableVariableDrop(this.variables, "GLM 解释变量 X");
+         this.enableVariableDrop(this.panel, "offset()/exposure() 变量");
+         this.enableVariableDrop(this.expression, "family() 参数 / 分母变量");
+         this.enableVariableDrop(this.genericWeightVar, "权重变量");
+         this.enableVariableDrop(this.cluster, "聚类变量");
+
+         this.commandTitle.setText("glm · 广义线性模型");
+         this.commandTitle.setToolTipText("Stata Statistics > Generalized linear models > Generalized linear models (GLM)");
+         this.exampleLabel.setText("<html><b>最简单例子：</b> glm y x, family(poisson) link(log)</html>");
+         this.insightArea.setText("GLM 的核心是结果分布 family() 与均值链接 link() 的组合。页面只提供 Stata 官方允许的内置 family-link 组合，并保留自定义 family/link 入口。Gaussian+identity、binomial+logit、Poisson+log 等常见组合都有对应的专用 Stata 命令；这里适合需要统一 GLM 框架、非默认链接、准似然或特殊方差设定的情况。");
+         this.syntaxArea.setText("glm depvar [indepvars] [if] [in] [weight] [, family(...) link(...) noconstant exposure(var) offset(var) vce(...) ml|irls eform options]");
+         this.setWorkspaceBreadcrumb("统计  ›  广义线性模型  ›  glm");
+         this.runButton.setText("运行 GLM");
+         this.commandDock.setVisible(true);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("结果与解释变量", "分布与链接", "估计与推断"), c);
+
+         JPanel varsCard = this.xtregWizardCardV130(1, "结果与解释变量", "先选择结果变量 Y 与解释变量 X；GLM 允许 X 留空以估计仅常数项模型。 ");
+         JPanel varsBody = this.genericCardBody();
+         this.addGenericBodyField(varsBody, "结果变量 Y", this.depvar);
+         this.addGenericBodyField(varsBody, "解释变量 X（可多选）", this.listPane(this.variables));
+         varsCard.add(varsBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(varsCard, c);
+
+         JPanel familyCard = this.xtregWizardCardV130(2, "分布与链接", "先选 family()；link() 会自动收窄到该 family 在 Stata 手册中允许的组合，避免生成不合法模型。 ");
+         JPanel familyBody = this.genericCardBody();
+         JPanel familyRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         familyRow.setOpaque(false);
+         familyRow.add(this.fieldBlock("结果分布 family()", this.model));
+         familyRow.add(this.fieldBlock("链接函数 link()", this.time));
+         this.addGenericBodyField(familyBody, "GLM 结构", familyRow);
+         this.addGenericBodyField(familyBody, "family() 附加参数（binomial: 分母 #/变量；nbinomial: #/ml；自定义: family 名称）", this.expression);
+         this.addGenericBodyField(familyBody, "link() 参数（power/opower: 指数 #；自定义: link 名称）", this.newvar);
+         JPanel rateRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         rateRow.setOpaque(false);
+         rateRow.add(this.fieldBlock("率 / 暴露量调整", this.glmRateMode));
+         rateRow.add(this.fieldBlock("offset / exposure 变量", this.panel));
+         this.addGenericBodyField(familyBody, "offset / exposure（可选）", rateRow);
+         familyCard.add(familyBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(familyCard, c);
+
+         JPanel inferenceCard = this.xtregWizardCardV130(3, "估计与推断", "默认使用 ML；需要迭代重加权最小二乘时选择 IRLS。低频的 eim/opg/HAC、scale()/disp()、constraints() 等继续保留在原生 options。 ");
+         JPanel inferenceBody = this.genericCardBody();
+         JPanel fitRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         fitRow.setOpaque(false);
+         fitRow.add(this.fieldBlock("估计方法", this.glmEstimationMode));
+         fitRow.add(this.fieldBlock("标准误 VCE", this.vce));
+         this.addGenericBodyField(inferenceBody, "估计方法与标准误", fitRow);
+         this.addGenericBodyField(inferenceBody, "聚类变量（仅 vce(cluster)）", this.cluster);
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+         weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+         this.addGenericBodyField(inferenceBody, "权重（可选）", weightRow);
+         JPanel flagsRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         flagsRow.setOpaque(false);
+         flagsRow.add(this.glmNoConstant);
+         flagsRow.add(this.glmEform);
+         this.addGenericBodyField(inferenceBody, "报告与常数项", flagsRow);
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(inferenceBody, "样本", sampleRow);
+         this.addGenericBodyField(inferenceBody, "更多 Stata options（可选）", this.options);
+         inferenceCard.add(inferenceBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(inferenceCard, c);
+
+         c.gridy++;
+         c.weighty = 1.0;
+         c.fill = GridBagConstraints.BOTH;
+         this.formPanel.add(Box.createVerticalGlue(), c);
+
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredGlmPreview();
+         this.statusLabel.setText("glm：family()、link()、率调整和估计方法已分开。 ");
+      }
+
+      private String structuredGlmFamilyOption() {
+         String family = this.structuredGlmFamilyCode();
+         String parameter = this.expression.getText().trim();
+         if ("custom".equals(family)) return parameter.isBlank() ? "" : "family(" + parameter + ")";
+         if ("binomial".equals(family) || "nbinomial".equals(family)) {
+            return "family(" + family + (parameter.isBlank() ? "" : " " + parameter) + ")";
+         }
+         return "family(" + family + ")";
+      }
+
+      private String structuredGlmLinkOption() {
+         if (this.time.getSelectedIndex() <= 0) return "";
+         String item = selected(this.time);
+         String parameter = this.newvar.getText().trim();
+         if ("power #".equals(item)) return parameter.isBlank() ? "" : "link(power " + parameter + ")";
+         if ("opower #".equals(item)) return parameter.isBlank() ? "" : "link(opower " + parameter + ")";
+         if ("自定义 link()".equals(item)) return parameter.isBlank() ? "" : "link(" + parameter + ")";
+         return "link(" + item + ")";
+      }
+
+      private void appendStructuredGlmSample(StringBuilder preview) {
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+         String type = selected(this.genericWeightType);
+         String weight = selected(this.genericWeightVar);
+         if (!"无".equals(type) && !weight.isBlank()) preview.append(" [").append(type).append("=").append(weight).append("]");
+      }
+
+      private void updateStructuredGlmPreview() {
+         StringBuilder preview = new StringBuilder("glm");
+         String y = selected(this.depvar);
+         List<String> x = this.variables.getSelectedValuesList();
+         if (!y.isBlank()) preview.append(" ").append(y);
+         if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+         this.appendStructuredGlmSample(preview);
+
+         ArrayList<String> opts = new ArrayList<>();
+         String family = this.structuredGlmFamilyOption();
+         if (!family.isBlank()) opts.add(family);
+         String link = this.structuredGlmLinkOption();
+         if (!link.isBlank()) opts.add(link);
+         String rateVar = selected(this.panel);
+         if (this.glmRateMode.getSelectedIndex() == 1 && !rateVar.isBlank()) opts.add("offset(" + rateVar + ")");
+         if (this.glmRateMode.getSelectedIndex() == 2 && !rateVar.isBlank()) opts.add("exposure(" + rateVar + ")");
+         if (this.glmNoConstant.isSelected()) opts.add("noconstant");
+         if (this.glmEform.isSelected()) opts.add("eform");
+         if (this.glmEstimationMode.getSelectedIndex() == 1) opts.add("irls");
+         String vceValue = selected(this.vce);
+         if ("robust".equals(vceValue)) opts.add("vce(robust)");
+         else if ("cluster".equals(vceValue) && !selected(this.cluster).isBlank()) opts.add("vce(cluster " + selected(this.cluster) + ")");
+         String extra = this.options.getText().trim();
+         if (!extra.isBlank()) opts.add(extra);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.flashCommandPreview();
+      }
+
+      private static Double structuredGlmNumber(String raw) {
+         try {
+            return Double.valueOf(raw.trim());
+         } catch (Exception ignored) {
+            return null;
+         }
+      }
+
+      private boolean validateStructuredGlmBeforeRun() {
+         if (selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "glm 需要选择结果变量 Y。", "结果变量缺失", 1);
+            return false;
+         }
+
+         String family = this.structuredGlmFamilyCode();
+         String familyParameter = this.expression.getText().trim();
+         if ("custom".equals(family) && familyParameter.isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择自定义 family() 后需要填写 family 名称。", "family() 缺失", 1);
+            return false;
+         }
+         if ("binomial".equals(family) && !familyParameter.isBlank()) {
+            Double n = structuredGlmNumber(familyParameter);
+            if (n != null && n <= 0) {
+               JOptionPane.showMessageDialog(this, "binomial 分母 #N 必须大于 0；也可以填写包含试验次数的变量名。", "binomial 分母无效", 1);
+               return false;
+            }
+         }
+         if ("nbinomial".equals(family) && !familyParameter.isBlank() && !"ml".equalsIgnoreCase(familyParameter)) {
+            Double k = structuredGlmNumber(familyParameter);
+            if (k == null || k <= 0) {
+               JOptionPane.showMessageDialog(this, "negative binomial 的 family() 参数只能留空、填写正数 #k，或填写 ml。", "nbinomial 参数无效", 1);
+               return false;
+            }
+         }
+
+         String linkItem = selected(this.time);
+         String linkParameter = this.newvar.getText().trim();
+         if (Arrays.asList("power #", "opower #").contains(linkItem)) {
+            Double power = structuredGlmNumber(linkParameter);
+            if (power == null) {
+               JOptionPane.showMessageDialog(this, linkItem + " 需要填写数值指数 #。", "link() 参数缺失", 1);
+               return false;
+            }
+         }
+         if ("自定义 link()".equals(linkItem) && linkParameter.isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择自定义 link() 后需要填写 link 名称。", "link() 缺失", 1);
+            return false;
+         }
+         if (this.glmRateMode.getSelectedIndex() > 0 && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 offset() 或 exposure() 后必须指定对应变量。", "率调整变量缺失", 1);
+            return false;
+         }
+         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后必须指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "vce(cluster) 需要选择聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+
+         String extra = this.options.getText().trim().toLowerCase(Locale.ROOT);
+         boolean irls = this.glmEstimationMode.getSelectedIndex() == 1;
+         if (irls && (extra.contains("constraints(") || Pattern.compile("(^|[\\s,])collinear($|[\\s,])").matcher(extra).find())) {
+            JOptionPane.showMessageDialog(this, "glm, irls 不允许 constraints() 或 collinear；请删除该选项，或切回 ML。", "IRLS 选项冲突", 1);
+            return false;
+         }
+         if (!irls && Pattern.compile("(^|[\\s,])disp\\(").matcher(extra).find()) {
+            JOptionPane.showMessageDialog(this, "disp(#) 只允许与 irls 一起使用；请切换到 IRLS 或删除 disp().", "disp() 与估计方法冲突", 1);
+            return false;
+         }
+         if (!irls && Pattern.compile("scale\\(\\s*dev\\s*\\)").matcher(extra).find()) {
+            JOptionPane.showMessageDialog(this, "scale(dev) 只允许与 irls 一起使用；请切换到 IRLS 或改用其他 scale() 设置。", "scale(dev) 与估计方法冲突", 1);
+            return false;
+         }
+         return true;
+      }
+
+      private void setStructuredFractionalWeights() {
+         this.genericWeightType.removeAllItems();
+         this.genericWeightType.addItem("无");
+         this.genericWeightType.addItem("fweight");
+         this.genericWeightType.addItem("iweight");
+         this.genericWeightType.addItem("pweight");
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.genericWeightVar.setEnabled(false);
+      }
+
+      private void rebuildStructuredFractionalOutcomeForm() {
+         String command = this.currentCommand;
+         boolean fracreg = "fracreg".equals(command);
+
+         this.rebuilding = true;
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new GridBagLayout());
+         this.depvar.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.absorb.clearSelection();
+         this.panel.setSelectedItem(null);
+         this.newvar.setText("");
+         this.ifCondition.setText("");
+         this.inCondition.setText("");
+         this.options.setText("");
+         this.cluster.setSelectedItem(null);
+         this.fractionalNoConstant.setSelected(false);
+         this.fractionalScaleNoConstant.setSelected(false);
+         this.fractionalNoConstant.setOpaque(false);
+         this.fractionalScaleNoConstant.setOpaque(false);
+
+         this.model.removeAllItems();
+         if (fracreg) {
+            this.model.addItem("Probit");
+            this.model.addItem("Logit");
+            this.model.addItem("异方差 Probit + het()");
+         } else {
+            this.model.addItem("logit（默认）");
+            this.model.addItem("probit");
+            this.model.addItem("cloglog");
+            this.model.addItem("loglog");
+         }
+         this.model.setSelectedIndex(0);
+
+         this.time.removeAllItems();
+         if (fracreg) {
+            this.time.addItem("不适用");
+         } else {
+            this.time.addItem("log（默认）");
+            this.time.addItem("root");
+            this.time.addItem("identity");
+         }
+         this.time.setSelectedIndex(0);
+
+         this.vce.removeAllItems();
+         this.vce.addItem("default");
+         this.vce.addItem("robust");
+         this.vce.addItem("cluster");
+         this.vce.setSelectedIndex(0);
+         this.setStructuredFractionalWeights();
+
+         this.enableVariableDrop(this.depvar, fracreg ? "分数结果 Y（允许 0/1）" : "分数结果 Y（严格 0<Y<1）");
+         this.enableVariableDrop(this.variables, "均值方程 X");
+         this.enableVariableDrop(this.absorb, fracreg ? "异方差方程 het()" : "尺度方程 scale()");
+         if (fracreg) {
+            this.enableVariableDrop(this.panel, "主方程 offset()");
+            this.enableVariableDrop(this.newvar, "het() offset()");
+         }
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String step2;
+         if (fracreg) {
+            title = "fracreg · 分数响应回归";
+            example = "fracreg logit prate mrate age";
+            insight = "fracreg 用于 0≤Y≤1 的比例、率或分数结果，允许结果恰好等于 0 或 1。官方主模型只有 fractional probit 和 fractional logit；选择异方差 Probit 时再用 het() 建模方差。fracreg 默认报告 robust 标准误。";
+            syntax = "fracreg probit|logit depvar [indepvars] [if] [in] [weight] [, het(varlist [, offset(var)]) offset(var) vce(...) options]；het() 仅适用于 probit。";
+            step2 = "链接与异方差";
+         } else {
+            title = "betareg · Beta 回归";
+            example = "betareg prate x1 x2, scale(z1) link(logit) slink(log)";
+            insight = "betareg 要求结果严格位于 0 与 1 之间；只要样本含 0 或 1，就应改用 fracreg 等允许端点的模型。均值方程可选 logit/probit/cloglog/loglog，尺度方程可用 scale() 协变量，并选择 log/root/identity 的 slink()。";
+            syntax = "betareg depvar indepvars [if] [in] [weight] [, scale(varlist [, noconstant]) link(logit|probit|cloglog|loglog) slink(log|root|identity) vce(...) options]";
+            step2 = "均值链接与尺度方程";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+         this.setWorkspaceBreadcrumb("统计  ›  分数结果  ›  " + command);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("结果与均值方程", step2, "样本与推断"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, "结果与均值方程", fracreg
+            ? "Y 可以落在 [0,1]，X 可留空以估计常数项模型。"
+            : "Beta 分布要求 0<Y<1；Stata betareg 语法要求至少指定一项 indepvars。");
+         JPanel coreBody = this.genericCardBody();
+         this.addGenericBodyField(coreBody, fracreg ? "分数结果 Y（0≤Y≤1）" : "分数结果 Y（0<Y<1）", this.depvar);
+         this.addGenericBodyField(coreBody, "均值方程解释变量 X", this.listPane(this.variables));
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel modelCard = this.xtregWizardCardV130(2, step2, fracreg
+            ? "先选 Probit / Logit；只有“异方差 Probit”模式才读取 het() 变量和它自己的 offset。"
+            : "均值链接和尺度链接分开选择；scale() 协变量可留空，此时尺度参数只有常数项。");
+         JPanel modelBody = this.genericCardBody();
+         if (fracreg) {
+            this.addGenericBodyField(modelBody, "均值模型", this.model);
+            this.addGenericBodyField(modelBody, "主方程 offset()（可选）", this.panel);
+            this.addGenericBodyField(modelBody, "异方差方程 het()（仅异方差 Probit）", this.listPane(this.absorb));
+            this.addGenericBodyField(modelBody, "het() 内 offset()（可选）", this.newvar);
+            this.addGenericBodyField(modelBody, "常数项", this.fractionalNoConstant);
+         } else {
+            JPanel links = new JPanel(new GridLayout(1, 2, 10, 0));
+            links.setOpaque(false);
+            links.add(this.fieldBlock("均值链接 link()", this.model));
+            links.add(this.fieldBlock("尺度链接 slink()", this.time));
+            this.addGenericBodyField(modelBody, "链接函数", links);
+            this.addGenericBodyField(modelBody, "尺度方程 scale() 协变量（可选）", this.listPane(this.absorb));
+            JPanel constants = new JPanel(new GridLayout(1, 2, 10, 0));
+            constants.setOpaque(false);
+            constants.add(this.fractionalNoConstant);
+            constants.add(this.fractionalScaleNoConstant);
+            this.addGenericBodyField(modelBody, "常数项", constants);
+         }
+         modelCard.add(modelBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(modelCard, c);
+
+         this.addStructuredCountSampleCard(c);
+         c.gridy++;
+         c.weighty = 1.0;
+         c.fill = GridBagConstraints.BOTH;
+         this.formPanel.add(Box.createVerticalGlue(), c);
+
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredFractionalOutcomePreview();
+         this.statusLabel.setText(command + "：均值链接与方差 / 尺度结构已按官方语法分开。 ");
+      }
+
+      private void appendStructuredFractionalSample(StringBuilder preview) {
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+         String type = selected(this.genericWeightType);
+         String weight = selected(this.genericWeightVar);
+         if (!"无".equals(type) && !weight.isBlank()) preview.append(" [").append(type).append("=").append(weight).append("]");
+      }
+
+      private void appendStructuredFractionalVce(List<String> opts) {
+         String selectedVce = selected(this.vce);
+         if ("robust".equals(selectedVce)) opts.add("vce(robust)");
+         else if ("cluster".equals(selectedVce) && !selected(this.cluster).isBlank()) opts.add("vce(cluster " + selected(this.cluster) + ")");
+      }
+
+      private void updateStructuredFractionalOutcomePreview() {
+         String command = this.currentCommand;
+         boolean fracreg = "fracreg".equals(command);
+         StringBuilder preview = new StringBuilder(command);
+         String y = selected(this.depvar);
+         List<String> x = this.variables.getSelectedValuesList();
+         ArrayList<String> opts = new ArrayList<>();
+
+         if (fracreg) {
+            String family = this.model.getSelectedIndex() == 1 ? "logit" : "probit";
+            preview.append(" ").append(family);
+         }
+         if (!y.isBlank()) preview.append(" ").append(y);
+         if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+         this.appendStructuredFractionalSample(preview);
+
+         if (this.fractionalNoConstant.isSelected()) opts.add("noconstant");
+         if (fracreg) {
+            String mainOffset = selected(this.panel);
+            if (!mainOffset.isBlank()) opts.add("offset(" + mainOffset + ")");
+            if (this.model.getSelectedIndex() == 2) {
+               List<String> hetVars = this.absorb.getSelectedValuesList();
+               if (!hetVars.isEmpty()) {
+                  StringBuilder het = new StringBuilder("het(").append(String.join(" ", hetVars));
+                  String hetOffset = this.newvar.getText().trim();
+                  if (!hetOffset.isBlank()) het.append(", offset(").append(hetOffset).append(")");
+                  het.append(")");
+                  opts.add(het.toString());
+               }
+            }
+         } else {
+            List<String> scaleVars = this.absorb.getSelectedValuesList();
+            if (!scaleVars.isEmpty()) {
+               StringBuilder scale = new StringBuilder("scale(").append(String.join(" ", scaleVars));
+               if (this.fractionalScaleNoConstant.isSelected()) scale.append(", noconstant");
+               scale.append(")");
+               opts.add(scale.toString());
+            }
+            String[] links = {"logit", "probit", "cloglog", "loglog"};
+            int linkIndex = Math.max(0, Math.min(this.model.getSelectedIndex(), links.length - 1));
+            if (linkIndex != 0) opts.add("link(" + links[linkIndex] + ")");
+            String[] slinks = {"log", "root", "identity"};
+            int slinkIndex = Math.max(0, Math.min(this.time.getSelectedIndex(), slinks.length - 1));
+            if (slinkIndex != 0) opts.add("slink(" + slinks[slinkIndex] + ")");
+         }
+
+         this.appendStructuredFractionalVce(opts);
+         String extra = this.options.getText().trim();
+         if (!extra.isBlank()) opts.add(extra);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredFractionalOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         boolean fracreg = "fracreg".equals(command);
+         if (selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择分数结果变量 Y。", "结果变量缺失", 1);
+            return false;
+         }
+         if (!fracreg && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "betareg 官方语法要求指定 indepvars；请至少选择 1 个均值方程解释变量。", "解释变量缺失", 1);
+            return false;
+         }
+         if (fracreg && this.model.getSelectedIndex() == 2 && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "异方差 fractional probit 需要至少选择 1 个 het() 方差方程变量。", "het() 缺失", 1);
+            return false;
+         }
+         if (!fracreg && this.fractionalScaleNoConstant.isSelected() && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "scale() 没有协变量时不能单独设置 scale(..., noconstant)；请先选择尺度方程变量。", "scale() 设置无效", 1);
+            return false;
+         }
+         String weightType = selected(this.genericWeightType);
+         if (!"无".equals(weightType) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后必须指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "vce(cluster) 需要选择聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+         if (fracreg && this.model.getSelectedIndex() != 1) {
+            String extra = this.options.getText().trim().toLowerCase(Locale.ROOT);
+            if (Pattern.compile("(^|[\\s,])or($|[\\s,])").matcher(extra).find()) {
+               JOptionPane.showMessageDialog(this, "fracreg 的 or 仅适用于 fractional logit；请切换到 Logit 或删除 or。", "or 与模型不兼容", 1);
+               return false;
+            }
+         }
+         return true;
+      }
+
+      private static String structuredCountWrappedOption(String name, String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         if (value.startsWith(name + "(")) return value;
+         return name + "(" + value + ")";
+      }
+
+      private static String structuredCountCensorOption(String name, String raw, boolean allowBare) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         if (value.startsWith(name + "(")) return value;
+         if (allowBare && (("ll".equals(name) && "min".equalsIgnoreCase(value)) || ("ul".equals(name) && "max".equalsIgnoreCase(value)))) return name;
+         return name + "(" + value + ")";
+      }
+
+      private static Double structuredCountNumeric(String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return null;
+         int open = value.indexOf('(');
+         int close = value.endsWith(")") ? value.length() - 1 : -1;
+         if (open >= 0 && close > open) value = value.substring(open + 1, close).trim();
+         try {
+            return Double.valueOf(value);
+         } catch (NumberFormatException ex) {
+            return null;
+         }
+      }
+
+      private void setStructuredCountWeights() {
+         this.genericWeightType.removeAllItems();
+         this.genericWeightType.addItem("无");
+         this.genericWeightType.addItem("fweight");
+         this.genericWeightType.addItem("iweight");
+         this.genericWeightType.addItem("pweight");
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.genericWeightVar.setEnabled(false);
+      }
+
+      private void addStructuredCountSampleCard(GridBagConstraints c) {
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与推断", "最后设置样本、权重和常用标准误；低频估计选项继续保留为 Stata 原生 options。");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+         weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+         this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+
+         JPanel vceRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         vceRow.setOpaque(false);
+         vceRow.add(this.fieldBlock("标准误", this.vce));
+         vceRow.add(this.fieldBlock("聚类变量（仅 cluster）", this.cluster));
+         this.addGenericBodyField(sampleBody, "推断", vceRow);
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+      }
+
+      private void rebuildStructuredCountOutcomeForm() {
+         String command = this.currentCommand;
+         boolean generalized = "gnbreg".equals(command);
+         boolean censored = "cpoisson".equals(command);
+         boolean zeroInflated = Arrays.asList("zip", "zinb").contains(command);
+         boolean truncatedPoisson = "tpoisson".equals(command);
+         boolean truncatedNb = "tnbreg".equals(command);
+
+         this.rebuilding = true;
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new GridBagLayout());
+         this.depvar.setSelectedItem(null);
+         this.variables.clearSelection();
+         this.absorb.clearSelection();
+         this.panel.setSelectedItem(null);
+         this.expression.setText("");
+         this.newvar.setText("");
+         this.ifCondition.setText("");
+         this.inCondition.setText("");
+         this.options.setText("");
+         this.cluster.setSelectedItem(null);
+
+         this.time.removeAllItems();
+         this.time.addItem("无率调整");
+         this.time.addItem("offset()");
+         this.time.addItem("exposure()");
+         this.time.setSelectedIndex(0);
+
+         this.model.removeAllItems();
+         if (zeroInflated) {
+            this.model.addItem("Logit：inflate() 协变量");
+            this.model.addItem("Probit：inflate() 协变量");
+            this.model.addItem("Logit：inflate(_cons)");
+            this.model.addItem("Probit：inflate(_cons)");
+         } else if (truncatedNb) {
+            this.model.addItem("dispersion(mean)（默认）");
+            this.model.addItem("dispersion(constant)");
+         } else {
+            this.model.addItem("默认设定");
+         }
+         this.model.setSelectedIndex(0);
+
+         this.vce.removeAllItems();
+         this.vce.addItem("default");
+         this.vce.addItem("robust");
+         this.vce.addItem("cluster");
+         this.vce.setSelectedIndex(0);
+         this.setStructuredCountWeights();
+
+         this.enableVariableDrop(this.depvar, "计数结果 Y");
+         this.enableVariableDrop(this.variables, "均值方程 X");
+         this.enableVariableDrop(this.panel, "offset()/exposure() 变量");
+         if (generalized) this.enableVariableDrop(this.absorb, "lnalpha() 方程变量");
+         if (zeroInflated) {
+            this.enableVariableDrop(this.absorb, "inflate() 方程变量");
+            this.enableVariableDrop(this.newvar, "inflate() offset() 变量");
+         }
+         if (censored || truncatedPoisson || truncatedNb) this.enableVariableDrop(this.expression, "下界 ll()");
+         if (censored || truncatedPoisson) this.enableVariableDrop(this.newvar, "上界 ul()");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String secondStep;
+         if (generalized) {
+            title = "gnbreg · 广义负二项回归";
+            example = "gnbreg y x1 x2, lnalpha(z1 z2)";
+            insight = "gnbreg 在负二项均值方程之外允许 ln(alpha) 随协变量变化。lnalpha() 可以留空；留空时形状参数为常数，结果退化为普通 nbreg 的对应设定。";
+            syntax = "gnbreg depvar [indepvars] [if] [in] [weight] [, lnalpha(varlist) exposure(var) offset(var) vce(...) options]";
+            secondStep = "离散参数方程";
+         } else if (censored) {
+            title = "cpoisson · 删失 Poisson 回归";
+            example = "cpoisson y x1 x2, ul(4) ll(lower)";
+            insight = "cpoisson 用于计数结果被左删失、右删失或双侧删失的情况。ll()/ul() 都可以留空；不指定时模型与普通 Poisson 对应。输入 min/max 可生成 Stata 的裸 ll/ul，分别使用因变量样本最小值/最大值。";
+            syntax = "cpoisson depvar [indepvars] [if] [in] [weight] [, ll[(var|#)] ul[(var|#)] exposure(var) offset(var) vce(...) options]";
+            secondStep = "删失界限";
+         } else if (zeroInflated) {
+            title = ("zip".equals(command) ? "zip · 零膨胀 Poisson 回归" : "zinb · 零膨胀负二项回归");
+            example = command + " y x1 x2, inflate(z1 z2)";
+            insight = "零膨胀模型同时估计计数过程和“额外零值”过程。inflate() 是官方必填方程；可用协变量，也可选择 inflate(_cons) 只估计截距。零膨胀方程默认 Logit，也可切换 Probit。";
+            syntax = command + " depvar [indepvars] [if] [in] [weight], inflate(varlist [, offset(var)] | _cons) [probit exposure(var) offset(var) vce(...) options]";
+            secondStep = "零膨胀方程";
+         } else if (truncatedPoisson) {
+            title = "tpoisson · 截断 Poisson 回归";
+            example = "tpoisson y x1 x2, ll(0)";
+            insight = "tpoisson 用于样本因截断机制而完全看不到某些计数值的情况。ll()/ul() 可使用非负整数或变量；两者都留空时 Stata 默认零截断 ll(0)。";
+            syntax = "tpoisson depvar [indepvars] [if] [in] [weight] [, ll(#|var) ul(#|var) exposure(var) offset(var) vce(...) options]";
+            secondStep = "截断界限";
+         } else {
+            title = "tnbreg · 截断负二项回归";
+            example = "tnbreg y x1 x2, ll(0)";
+            insight = "tnbreg 用于存在过度离散且样本经过下端截断的计数结果。ll() 可留空，Stata 默认 ll(0)；还可在 mean 与 constant 两种 dispersion 参数化之间切换。";
+            syntax = "tnbreg depvar [indepvars] [if] [in] [weight] [, ll(#|var) dispersion(mean|constant) exposure(var) offset(var) vce(...) options]";
+            secondStep = "截断与离散";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText("Stata Statistics > Count outcomes > " + command);
+         this.setWorkspaceBreadcrumb("统计  ›  计数结果  ›  " + command);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+         this.runButton.setText("运行模型");
+         this.commandDock.setVisible(true);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("计数均值方程", secondStep, "样本与推断"), c);
+
+         JPanel mainCard = this.xtregWizardCardV130(1, "计数均值方程", "先选择非负计数结果 Y 与主方程解释变量；需要按暴露量或已知率调整时，再选择 offset()/exposure()。 ");
+         JPanel mainBody = this.genericCardBody();
+         this.addGenericBodyField(mainBody, "计数结果 Y", this.depvar);
+         this.addGenericBodyField(mainBody, "均值方程解释变量 X（可选）", this.listPane(this.variables));
+         JPanel rateRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         rateRow.setOpaque(false);
+         rateRow.add(this.fieldBlock("率调整方式", this.time));
+         rateRow.add(this.fieldBlock("offset / exposure 变量", this.panel));
+         this.addGenericBodyField(mainBody, "率 / 暴露量调整（可选）", rateRow);
+         mainCard.add(mainBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(mainCard, c);
+
+         JPanel secondCard = this.xtregWizardCardV130(2, secondStep, zeroInflated
+            ? "inflate() 是模型的一部分，不是普通控制变量；主方程与额外零值过程要分开解释。"
+            : (censored || truncatedPoisson || truncatedNb ? "删失/截断界限可以使用常数或变量；不要把观测筛选 if 与界限混为一谈。" : "lnalpha() 描述离散参数，不属于计数均值方程。"));
+         JPanel secondBody = this.genericCardBody();
+         if (generalized) {
+            this.addGenericBodyField(secondBody, "lnalpha() 方程变量（可选）", this.listPane(this.absorb));
+         } else if (censored) {
+            this.addGenericBodyField(secondBody, "左删失 ll()（可选；min = 使用样本最小值）", this.expression);
+            this.addGenericBodyField(secondBody, "右删失 ul()（可选；max = 使用样本最大值）", this.newvar);
+         } else if (zeroInflated) {
+            this.addGenericBodyField(secondBody, "额外零值过程", this.model);
+            this.addGenericBodyField(secondBody, "inflate() 协变量（协变量模式必填）", this.listPane(this.absorb));
+            this.addGenericBodyField(secondBody, "inflate() offset 变量（可选；仅协变量模式生效）", this.newvar);
+         } else if (truncatedPoisson) {
+            this.addGenericBodyField(secondBody, "下截断 ll()（可选；默认 0）", this.expression);
+            this.addGenericBodyField(secondBody, "上截断 ul()（可选）", this.newvar);
+         } else {
+            this.addGenericBodyField(secondBody, "下截断 ll()（可选；默认 0）", this.expression);
+            this.addGenericBodyField(secondBody, "离散参数化", this.model);
+         }
+         secondCard.add(secondBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(secondCard, c);
+         this.addStructuredCountSampleCard(c);
+
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredCountOutcomePreview();
+         this.statusLabel.setText(command + "：计数均值过程与离散 / 删失 / 零膨胀 / 截断结构已分开。 ");
+      }
+
+      private void appendStructuredCountSample(StringBuilder preview) {
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+         String type = selected(this.genericWeightType);
+         String variable = selected(this.genericWeightVar);
+         if (!"无".equals(type) && !variable.isBlank()) preview.append(" [").append(type).append("=").append(variable).append("]");
+      }
+
+      private void appendStructuredCountRateOption(List<String> opts) {
+         int mode = this.time.getSelectedIndex();
+         String variable = selected(this.panel);
+         if (mode == 1 && !variable.isBlank()) opts.add("offset(" + variable + ")");
+         if (mode == 2 && !variable.isBlank()) opts.add("exposure(" + variable + ")");
+      }
+
+      private void appendStructuredCountVce(List<String> opts) {
+         String value = selected(this.vce);
+         if ("robust".equals(value)) opts.add("vce(robust)");
+         else if ("cluster".equals(value)) {
+            String cl = selected(this.cluster);
+            if (!cl.isBlank()) opts.add("vce(cluster " + cl + ")");
+         }
+      }
+
+      private void updateStructuredCountOutcomePreview() {
+         String command = this.currentCommand;
+         StringBuilder preview = new StringBuilder(command);
+         String y = selected(this.depvar);
+         List<String> x = this.variables.getSelectedValuesList();
+         if (!y.isBlank()) preview.append(" ").append(y);
+         if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+         this.appendStructuredCountSample(preview);
+
+         ArrayList<String> opts = new ArrayList<>();
+         if ("gnbreg".equals(command)) {
+            List<String> alphaVars = this.absorb.getSelectedValuesList();
+            if (!alphaVars.isEmpty()) opts.add("lnalpha(" + String.join(" ", alphaVars) + ")");
+         } else if ("cpoisson".equals(command)) {
+            String lower = structuredCountCensorOption("ll", this.expression.getText(), true);
+            String upper = structuredCountCensorOption("ul", this.newvar.getText(), true);
+            if (!lower.isBlank()) opts.add(lower);
+            if (!upper.isBlank()) opts.add(upper);
+         } else if (Arrays.asList("zip", "zinb").contains(command)) {
+            int mode = this.model.getSelectedIndex();
+            boolean constantOnly = mode >= 2;
+            boolean probit = mode == 1 || mode == 3;
+            if (constantOnly) {
+               opts.add("inflate(_cons)");
+            } else {
+               List<String> inflateVars = this.absorb.getSelectedValuesList();
+               if (!inflateVars.isEmpty()) {
+                  StringBuilder inflate = new StringBuilder("inflate(").append(String.join(" ", inflateVars));
+                  String inflateOffset = this.newvar.getText().trim();
+                  if (!inflateOffset.isBlank()) inflate.append(", offset(").append(inflateOffset).append(")");
+                  inflate.append(")");
+                  opts.add(inflate.toString());
+               }
+            }
+            if (probit) opts.add("probit");
+         } else if ("tpoisson".equals(command)) {
+            String lower = structuredCountWrappedOption("ll", this.expression.getText());
+            String upper = structuredCountWrappedOption("ul", this.newvar.getText());
+            if (!lower.isBlank()) opts.add(lower);
+            if (!upper.isBlank()) opts.add(upper);
+         } else if ("tnbreg".equals(command)) {
+            String lower = structuredCountWrappedOption("ll", this.expression.getText());
+            if (!lower.isBlank()) opts.add(lower);
+            if (this.model.getSelectedIndex() == 1) opts.add("dispersion(constant)");
+         }
+         this.appendStructuredCountRateOption(opts);
+         this.appendStructuredCountVce(opts);
+         String extra = this.options.getText().trim();
+         if (!extra.isBlank()) opts.add(extra);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredCountOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         if (selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择计数结果变量 Y。", "结果变量缺失", 1);
+            return false;
+         }
+         if (this.time.getSelectedIndex() > 0 && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 offset()/exposure() 后必须指定对应变量。", "率调整变量缺失", 1);
+            return false;
+         }
+         String weightType = selected(this.genericWeightType);
+         if (!"无".equals(weightType) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后必须指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "vce(cluster) 需要选择聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+         if (Arrays.asList("zip", "zinb").contains(command) && this.model.getSelectedIndex() < 2 && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, command + " 的 inflate() 是官方必填项；当前协变量模式需要至少选择 1 个 inflate() 变量，或改用 inflate(_cons)。", "inflate() 缺失", 1);
+            return false;
+         }
+         if (Arrays.asList("tpoisson", "tnbreg").contains(command)) {
+            Double lower = structuredCountNumeric(this.expression.getText());
+            if (lower != null && (lower < 0 || Math.rint(lower) != lower)) {
+               JOptionPane.showMessageDialog(this, command + " 的 ll() 若填写常数，必须是非负整数；也可以填写变量名。", "截断下界无效", 1);
+               return false;
+            }
+         }
+         if ("tpoisson".equals(command)) {
+            Double upper = structuredCountNumeric(this.newvar.getText());
+            if (upper != null && (upper < 0 || Math.rint(upper) != upper)) {
+               JOptionPane.showMessageDialog(this, "tpoisson 的 ul() 若填写常数，必须是非负整数；也可以填写变量名。", "截断上界无效", 1);
+               return false;
+            }
+         }
+         if (Arrays.asList("cpoisson", "tpoisson").contains(command)) {
+            Double lower = structuredCountNumeric(this.expression.getText());
+            Double upper = structuredCountNumeric(this.newvar.getText());
+            if (lower != null && upper != null && lower > upper) {
+               JOptionPane.showMessageDialog(this, "ll() 不能大于 ul()。", "界限顺序无效", 1);
+               return false;
+            }
+         }
+         return true;
+      }
+
+      private static String structuredCategoricalOption(String name, String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         return value.startsWith(name + "(") ? value : name + "(" + value + ")";
+      }
+
+      private void setStructuredCategoricalWeights(String command) {
+         this.genericWeightType.removeAllItems();
+         this.genericWeightType.addItem("无");
+         if ("cmsummarize".equals(command)) {
+            this.genericWeightType.addItem("fweight");
+         } else if ("cmtab".equals(command)) {
+            this.genericWeightType.addItem("fweight");
+            this.genericWeightType.addItem("iweight");
+         } else if (!Arrays.asList("cmset", "cmchoiceset").contains(command)) {
+            this.genericWeightType.addItem("fweight");
+            this.genericWeightType.addItem("iweight");
+            this.genericWeightType.addItem("pweight");
+         }
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.genericWeightVar.setEnabled(false);
+      }
+
+      private void addStructuredCategoricalSampleCard(GridBagConstraints c, String subtitle, boolean showWeight) {
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与检查", subtitle);
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         if (showWeight) {
+            JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+            weightRow.setOpaque(false);
+            weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+            weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+            this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+         }
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+      }
+
+      private void rebuildStructuredCategoricalOutcomeForm() {
+         String command = this.currentCommand;
+         boolean clogit = "clogit".equals(command);
+         boolean slogit = "slogit".equals(command);
+         boolean cmset = "cmset".equals(command);
+         boolean cmsummarize = "cmsummarize".equals(command);
+         boolean cmchoiceset = "cmchoiceset".equals(command);
+         boolean cmtab = "cmtab".equals(command);
+         boolean cmsample = "cmsample".equals(command);
+         boolean cmclogit = "cmclogit".equals(command);
+
+         this.model.removeAllItems();
+         if (cmset) {
+            this.model.addItem("查看当前 CM 设置");
+            this.model.addItem("截面：Case ID + 备选项");
+            this.model.addItem("截面：Case ID，无备选项变量");
+            this.model.addItem("面板：Panel ID + Time + 备选项");
+            this.model.addItem("面板：Panel ID + Time，无备选项变量");
+            this.model.addItem("清除 CM 设置");
+            this.model.setSelectedIndex(1);
+         } else if (cmsample) {
+            this.model.addItem("0/1 选择变量（默认）");
+            this.model.addItem("排名 choice() + ranks");
+            this.model.setSelectedIndex(0);
+         }
+         this.setStructuredCategoricalWeights(command);
+
+         this.enableVariableDrop(this.depvar, cmset ? "Case / Panel ID" : (cmchoiceset ? "比较变量" : "结果 / choice()"));
+         this.enableVariableDrop(this.variables, cmsummarize ? "汇总变量" : (cmsample || cmclogit ? "备选项特定变量" : "解释变量 X"));
+         this.enableVariableDrop(this.panel, cmset ? "备选项变量" : (clogit ? "匹配组 group()" : (cmtab ? "列联比较变量" : "辅助变量")));
+         this.enableVariableDrop(this.time, "时间变量");
+         this.enableVariableDrop(this.absorb, "Case-specific 变量");
+         if (clogit || cmclogit) this.enableVariableDrop(this.expression, "offset() 变量");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String step1;
+         String step2;
+         if (clogit) {
+            title = "clogit · 条件 / 固定效应 Logit";
+            example = "clogit y x1 x2, group(pairid)";
+            insight = "clogit 用于匹配病例-对照或组内固定效应 Logit；group() 是官方必填项。它与 McFadden 选择模型 cmclogit 不是同一个命令。";
+            syntax = "clogit depvar [indepvars] [if] [in] [weight], group(varname) [offset(varname) options]";
+            step1 = "结果与解释变量";
+            step2 = "匹配组";
+         } else if (slogit) {
+            title = "slogit · Stereotype Logit";
+            example = "slogit y x1 x2, dimension(1) baseoutcome(3)";
+            insight = "用于多类别结果、但类别顺序是否应被完整利用并不明确的情形。dimension() 是模型维数，默认 1；最大可用维数取决于结果类别数与解释变量数量。";
+            syntax = "slogit depvar [indepvars] [if] [in] [weight] [, dimension(#) baseoutcome(#|lbl) options]";
+            step1 = "多类别方程";
+            step2 = "维数与基准类别";
+         } else if (cmset) {
+            title = "cmset · 声明 Choice Model 数据结构";
+            example = "cmset consumerid car";
+            insight = "所有 cm 命令之前都必须先 cmset。截面数据使用 Case ID；面板 choice 数据使用 Panel ID + Time；有明确备选项时再指定 alternatives 变量。";
+            syntax = "cmset caseid alt | cmset caseid, noalternatives | cmset panel time alt | cmset panel time, noalternatives | cmset | cmset, clear";
+            step1 = "选择数据结构";
+            step2 = "指定标识变量";
+         } else if (cmsummarize) {
+            title = "cmsummarize · 按已选备选项汇总变量";
+            example = "cmsummarize price mpg, choice(chosen)";
+            insight = "先 cmset，再选择要汇总的变量以及 0/1 choice()。官方只允许 fweight；统计量、time、altwise 和表格布局继续放在原生 options。";
+            syntax = "cmsummarize varlist [if] [in] [fweight=var], choice(choicevar) [options]";
+            step1 = "汇总变量";
+            step2 = "选择指示";
+         } else if (cmchoiceset) {
+            title = "cmchoiceset · 检查 Choice Sets";
+            example = "cmchoiceset";
+            insight = "用于检查 choice-set 模式、大小和不平衡情况。比较变量可以留空；size、observations、time、generate() 等可组合设置继续使用原生 options。";
+            syntax = "cmchoiceset [varname] [if] [in] [, options]";
+            step1 = "Choice-set 检查";
+            step2 = "可选比较变量";
+         } else if (cmtab) {
+            title = "cmtab · 已选备选项列联表";
+            example = "cmtab gender, choice(purchase) row chi2";
+            insight = "choice() 是必填的 0/1 选择指示变量；第二个比较变量可留空得到单向表。面板数据可在 options 中加入 time。官方允许 fweight 和 iweight。";
+            syntax = "cmtab [varname] [if] [in] [weight], choice(choicevar) [options]";
+            step1 = "选择指示";
+            step2 = "列联比较";
+         } else if (cmsample) {
+            title = "cmsample · Choice Model 样本诊断";
+            example = "cmsample x1 x2, choice(chosen) casevars(income)";
+            insight = "用于在估计前后诊断 choice 数据错误和样本排除原因。备选项特定变量、case-specific 变量和 choice() 分开填写；排名结果使用 ranks 模式。";
+            syntax = "cmsample [alt-specific varlist] [if] [in] [weight] [, choice(var) casevars(varlist) ranks generate(newvar[, replace]) options]";
+            step1 = "检查变量";
+            step2 = "Choice 与 Case 变量";
+         } else {
+            title = "cmclogit · McFadden 条件选择 Logit";
+            example = "cmclogit chosen time, casevars(income partysize)";
+            insight = "必须先 cmset。主 varlist 是随备选项变化的 alternative-specific 变量；casevars() 是同一 case 内保持不变的变量，两类变量不能混在一起。";
+            syntax = "cmclogit depvar [alt-specific indepvars] [if] [in] [weight] [, casevars(varlist) offset(varname) options]";
+            step1 = "选择方程";
+            step2 = "变量角色";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153(step1, step2, "样本与检查"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, step1, cmset
+            ? "先选择截面 / 面板 / 查看 / 清除模式；页面只使用当前模式需要的变量。"
+            : "先把当前命令最关键的结果、选择或分析变量放到正确角色。 ");
+         JPanel coreBody = this.genericCardBody();
+         if (cmset) {
+            this.addGenericBodyField(coreBody, "CM 设置模式", this.model);
+         } else if (cmsummarize) {
+            this.addGenericBodyField(coreBody, "要汇总的变量（至少 1 个）", this.listPane(this.variables));
+         } else if (cmchoiceset) {
+            this.addGenericBodyField(coreBody, "比较变量 varname（可选；留空检查 choice sets 本身）", this.depvar);
+         } else if (cmtab) {
+            this.addGenericBodyField(coreBody, "0/1 选择指示 choice()（必填）", this.depvar);
+         } else if (cmsample) {
+            this.addGenericBodyField(coreBody, "备选项特定数值变量（可选）", this.listPane(this.variables));
+         } else {
+            this.addGenericBodyField(coreBody, clogit ? "二元结果 Y" : (slogit ? "多类别结果 Y" : "0/1 选择指示 Y"), this.depvar);
+            this.addGenericBodyField(coreBody, cmclogit ? "备选项特定解释变量（可选）" : "解释变量 X（可选）", this.listPane(this.variables));
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel roleCard = this.xtregWizardCardV130(2, step2, cmset
+            ? "Case / Panel ID 与 alternatives 是不同角色；面板模式还必须指定 Time。"
+            : "把模型结构变量单独填写；页面会按 Stata 官方 option 位置生成命令。 ");
+         JPanel roleBody = this.genericCardBody();
+         if (clogit) {
+            this.addGenericBodyField(roleBody, "匹配组 / 固定效应组 group()（必填）", this.panel);
+            this.addGenericBodyField(roleBody, "offset() 变量（可选）", this.expression);
+         } else if (slogit) {
+            this.addGenericBodyField(roleBody, "dimension() 模型维数（可选；默认 1）", this.expression);
+            this.addGenericBodyField(roleBody, "baseoutcome() 基准类别（可选）", this.newvar);
+         } else if (cmset) {
+            this.addGenericBodyField(roleBody, "Case ID / Panel ID", this.depvar);
+            this.addGenericBodyField(roleBody, "Time（仅面板模式）", this.time);
+            this.addGenericBodyField(roleBody, "Alternatives 变量（有备选项模式）", this.panel);
+            JLabel hint = new JLabel("<html><b>查看当前设置</b>与<b>清除设置</b>模式不会使用这些变量；force、monthly、delta()、format() 等写入最后的原生 options。</html>");
+            hint.setForeground(MUTED);
+            hint.setFont(hint.getFont().deriveFont(9.8F));
+            hint.setAlignmentX(0.0F);
+            roleBody.add(hint);
+         } else if (cmsummarize) {
+            this.addGenericBodyField(roleBody, "0/1 选择指示 choice()（必填）", this.depvar);
+         } else if (cmchoiceset) {
+            JLabel hint = new JLabel("<html>常用原生 options：<b>size</b> 查看 choice-set 大小，<b>observations</b> 按观测而非 case 制表，<b>time</b> 查看面板时间维度，<b>generate()</b> 生成 choice-set 模式分类。</html>");
+            hint.setForeground(MUTED);
+            hint.setFont(hint.getFont().deriveFont(9.8F));
+            hint.setAlignmentX(0.0F);
+            roleBody.add(hint);
+         } else if (cmtab) {
+            this.addGenericBodyField(roleBody, "列联比较变量 varname（可选）", this.panel);
+         } else if (cmsample) {
+            this.addGenericBodyField(roleBody, "choice() 类型", this.model);
+            this.addGenericBodyField(roleBody, "选择 / 排名变量 choice()（可选）", this.depvar);
+            this.addGenericBodyField(roleBody, "Case-specific 变量 casevars()（可选）", this.listPane(this.absorb));
+            this.addGenericBodyField(roleBody, "generate() 新变量（可选；可写 problem, replace）", this.newvar);
+         } else if (cmclogit) {
+            this.addGenericBodyField(roleBody, "Case-specific 变量 casevars()（可选）", this.listPane(this.absorb));
+            this.addGenericBodyField(roleBody, "offset() 变量（可选）", this.expression);
+         }
+         roleCard.add(roleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(roleCard, c);
+
+         boolean showWeight = !Arrays.asList("cmset", "cmchoiceset").contains(command);
+         if (cmset) {
+            JPanel sampleCard = this.xtregWizardCardV130(3, "检查运行", "cmset 不使用 if / in / weight；低频 force 或时间序列单位设置只在声明模式下写入原生 options。 ");
+            JPanel sampleBody = this.genericCardBody();
+            this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+            sampleCard.add(sampleBody, BorderLayout.CENTER);
+            c.gridy++;
+            this.formPanel.add(sampleCard, c);
+         } else {
+            this.addStructuredCategoricalSampleCard(c, "运行前核对实时 Stata 命令；所有 cm utility / estimator 都假定数据已经正确 cmset。", showWeight);
+         }
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredCategoricalOutcomePreview();
+         this.statusLabel.setText(command + "：已按 categorical / choice-model 官方变量角色拆分。 ");
+      }
+
+      private void appendStructuredCategoricalWeight(StringBuilder preview) {
+         String type = selected(this.genericWeightType);
+         String variable = selected(this.genericWeightVar);
+         if (!"无".equals(type) && !variable.isBlank()) preview.append(" [").append(type).append("=").append(variable).append("]");
+      }
+
+      private void appendStructuredCategoricalSample(StringBuilder preview, boolean allowWeight) {
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+         if (allowWeight) this.appendStructuredCategoricalWeight(preview);
+      }
+
+      private void updateStructuredCategoricalOutcomePreview() {
+         String command = this.currentCommand;
+         StringBuilder preview = new StringBuilder(command);
+         ArrayList<String> opts = new ArrayList<>();
+         String y = selected(this.depvar);
+         List<String> x = this.variables.getSelectedValuesList();
+         String extraOptions = this.options.getText().trim();
+
+         if ("cmset".equals(command)) {
+            int mode = this.model.getSelectedIndex();
+            String id = selected(this.depvar);
+            String timeVar = selected(this.time);
+            String alt = selected(this.panel);
+            if (mode == 1 || mode == 2) {
+               if (!id.isBlank()) preview.append(" ").append(id);
+               if (mode == 1 && !alt.isBlank()) preview.append(" ").append(alt);
+               if (mode == 2) opts.add("noalternatives");
+            } else if (mode == 3 || mode == 4) {
+               if (!id.isBlank()) preview.append(" ").append(id);
+               if (!timeVar.isBlank()) preview.append(" ").append(timeVar);
+               if (mode == 3 && !alt.isBlank()) preview.append(" ").append(alt);
+               if (mode == 4) opts.add("noalternatives");
+            } else if (mode == 5) {
+               opts.add("clear");
+            }
+            if (mode >= 1 && mode <= 4 && !extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("clogit".equals(command)) {
+            if (!y.isBlank()) preview.append(" ").append(y);
+            if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+            this.appendStructuredCategoricalSample(preview, true);
+            String group = selected(this.panel);
+            if (!group.isBlank()) opts.add("group(" + group + ")");
+            String offset = structuredCategoricalOption("offset", this.expression.getText());
+            if (!offset.isBlank()) opts.add(offset);
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("slogit".equals(command)) {
+            if (!y.isBlank()) preview.append(" ").append(y);
+            if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+            this.appendStructuredCategoricalSample(preview, true);
+            String dimension = structuredCategoricalOption("dimension", this.expression.getText());
+            String base = structuredCategoricalOption("baseoutcome", this.newvar.getText());
+            if (!dimension.isBlank()) opts.add(dimension);
+            if (!base.isBlank()) opts.add(base);
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("cmsummarize".equals(command)) {
+            if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+            this.appendStructuredCategoricalSample(preview, true);
+            if (!y.isBlank()) opts.add("choice(" + y + ")");
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("cmchoiceset".equals(command)) {
+            if (!y.isBlank()) preview.append(" ").append(y);
+            this.appendStructuredCategoricalSample(preview, false);
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("cmtab".equals(command)) {
+            String compare = selected(this.panel);
+            if (!compare.isBlank()) preview.append(" ").append(compare);
+            this.appendStructuredCategoricalSample(preview, true);
+            if (!y.isBlank()) opts.add("choice(" + y + ")");
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("cmsample".equals(command)) {
+            if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+            this.appendStructuredCategoricalSample(preview, true);
+            if (!y.isBlank()) opts.add("choice(" + y + ")");
+            List<String> caseVars = this.absorb.getSelectedValuesList();
+            if (!caseVars.isEmpty()) opts.add("casevars(" + String.join(" ", caseVars) + ")");
+            if (this.model.getSelectedIndex() == 1) opts.add("ranks");
+            String generated = structuredCategoricalOption("generate", this.newvar.getText());
+            if (!generated.isBlank()) opts.add(generated);
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         } else if ("cmclogit".equals(command)) {
+            if (!y.isBlank()) preview.append(" ").append(y);
+            if (!x.isEmpty()) preview.append(" ").append(String.join(" ", x));
+            this.appendStructuredCategoricalSample(preview, true);
+            List<String> caseVars = this.absorb.getSelectedValuesList();
+            if (!caseVars.isEmpty()) opts.add("casevars(" + String.join(" ", caseVars) + ")");
+            String offset = structuredCategoricalOption("offset", this.expression.getText());
+            if (!offset.isBlank()) opts.add(offset);
+            if (!extraOptions.isBlank()) opts.add(extraOptions);
+         }
+
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredCategoricalOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         if ("cmset".equals(command)) {
+            int mode = this.model.getSelectedIndex();
+            if (mode == 0 || mode == 5) return true;
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, mode >= 3 ? "面板 CM 设置需要 Panel ID。" : "截面 CM 设置需要 Case ID。", "CM 标识变量缺失", 1);
+               return false;
+            }
+            if ((mode == 3 || mode == 4) && selected(this.time).isBlank()) {
+               JOptionPane.showMessageDialog(this, "面板 CM 设置需要 Time 变量。", "CM 时间变量缺失", 1);
+               return false;
+            }
+            if ((mode == 1 || mode == 3) && selected(this.panel).isBlank()) {
+               JOptionPane.showMessageDialog(this, "当前 CM 模式需要 Alternatives 变量；若数据没有显式备选项，请改选 noalternatives 模式。", "备选项变量缺失", 1);
+               return false;
+            }
+            return true;
+         }
+
+         if ("clogit".equals(command)) {
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "clogit 需要选择二元结果变量 Y。", "结果变量缺失", 1);
+               return false;
+            }
+            if (selected(this.panel).isBlank()) {
+               JOptionPane.showMessageDialog(this, "clogit 的 group() 是官方必填项，请选择匹配组 / 固定效应组变量。", "group() 缺失", 1);
+               return false;
+            }
+         } else if ("slogit".equals(command)) {
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "slogit 需要选择多类别结果变量 Y。", "结果变量缺失", 1);
+               return false;
+            }
+            String dimension = this.expression.getText().trim();
+            if (!dimension.isBlank()) {
+               try {
+                  if (Integer.parseInt(dimension) <= 0) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "slogit 的 dimension() 必须是正整数；实际最大维数还取决于结果类别数与解释变量数量。", "dimension() 无效", 1);
+                  return false;
+               }
+            }
+         } else if ("cmsummarize".equals(command)) {
+            if (this.variables.getSelectedValuesList().isEmpty()) {
+               JOptionPane.showMessageDialog(this, "cmsummarize 至少需要选择 1 个要汇总的变量。", "汇总变量缺失", 1);
+               return false;
+            }
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "cmsummarize 的 choice() 是必填项，请选择 0/1 选择指示变量。", "choice() 缺失", 1);
+               return false;
+            }
+         } else if ("cmtab".equals(command)) {
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "cmtab 的 choice() 是必填项，请选择 0/1 选择指示变量。", "choice() 缺失", 1);
+               return false;
+            }
+         } else if ("cmsample".equals(command)) {
+            if (this.model.getSelectedIndex() == 1 && selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "选择 ranks 模式时需要指定排名 choice() 变量。", "排名变量缺失", 1);
+               return false;
+            }
+         } else if ("cmclogit".equals(command)) {
+            if (selected(this.depvar).isBlank()) {
+               JOptionPane.showMessageDialog(this, "cmclogit 需要 0/1 选择指示结果变量；每个 case 只能有一个被选中的 alternative。", "选择结果缺失", 1);
+               return false;
+            }
+         }
+
+         if (!Arrays.asList("cmchoiceset").contains(command) && !"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         return true;
+      }
+
+      private void rebuildStructuredOrdinalOutcomeForm() {
+         String command = this.currentCommand;
+         boolean heteroskedastic = "hetoprobit".equals(command);
+         boolean zeroInflated = Arrays.asList("zioprobit", "ziologit").contains(command);
+
+         this.model.removeAllItems();
+         if (zeroInflated) {
+            this.model.addItem("协变量 + 常数");
+            this.model.addItem("协变量，不含常数 noconstant");
+            this.model.addItem("仅常数 _cons");
+            this.model.setSelectedIndex(0);
+         }
+         this.configureGenericWeightTypes();
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+
+         this.enableVariableDrop(this.depvar, "序数结果 Y");
+         this.enableVariableDrop(this.variables, zeroInflated ? "主 / 强度方程 X" : "均值方程 X");
+         this.enableVariableDrop(this.absorb, heteroskedastic ? "方差方程 het()" : "膨胀方程 inflate()");
+         this.enableVariableDrop(this.expression, "主方程 offset()");
+         this.enableVariableDrop(this.newvar, heteroskedastic ? "方差方程 offset()" : "inflate() offset()");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         if (heteroskedastic) {
+            title = "hetoprobit · 异方差有序 Probit";
+            example = "hetoprobit health age bmi i.exercise, het(age)";
+            insight = "主方程解释有序结果水平，het() 单独解释潜在误差尺度。Stata 官方要求 het()；只有普通有序 Probit 时应使用 oprobit。";
+            syntax = "hetoprobit depvar [indepvars] [if] [in] [weight], het(varlist [, offset(varname)]) [offset(varname) options]";
+         } else if ("zioprobit".equals(command)) {
+            title = "zioprobit · 零膨胀有序 Probit";
+            example = "zioprobit tobacco education income age, inflate(education income i.parent)";
+            insight = "最低类别可以来自两种潜在过程：inflate() 的二元 Probit 过程，以及主有序 Probit 过程。inflate() 为必填，两个过程可以使用不同协变量。";
+            syntax = "zioprobit depvar [indepvars] [if] [in] [weight], inflate(varlist [, noconstant offset(varname)] | _cons) [offset(varname) options]";
+         } else {
+            title = "ziologit · 零膨胀有序 Logit";
+            example = "ziologit tobacco education income age, inflate(education income i.parent)";
+            insight = "最低类别可以来自 inflate() 的二元 Logit 过程或主有序 Logit 过程。inflate() 为必填；需要赔率比显示时可在原生 options 中加入 or。";
+            syntax = "ziologit depvar [indepvars] [if] [in] [weight], inflate(varlist [, noconstant offset(varname)] | _cons) [offset(varname) options]";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("主有序方程", heteroskedastic ? "方差方程" : "最低类别生成方程", "样本与检查"), c);
+
+         JPanel mainCard = this.xtregWizardCardV130(1, "主有序方程", "先选择有序结果 Y 和主方程解释变量。结果变量的具体数字编码不要求等距，但类别顺序必须有实际含义。");
+         JPanel mainBody = this.genericCardBody();
+         this.addGenericBodyField(mainBody, "序数结果 Y", this.depvar);
+         this.addGenericBodyField(mainBody, zeroInflated ? "主 / 强度方程解释变量 X（可选）" : "均值方程解释变量 X（可选）", this.listPane(this.variables));
+         this.addGenericBodyField(mainBody, "主方程 offset() 变量（可选）", this.expression);
+         mainCard.add(mainBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(mainCard, c);
+
+         JPanel secondCard = this.xtregWizardCardV130(2, heteroskedastic ? "方差方程 het()" : "最低类别生成方程 inflate()", heteroskedastic
+            ? "het() 是模型核心且必填；这里的变量解释潜在误差尺度，而不是再次解释结果均值。"
+            : "inflate() 是模型核心且必填；可使用协变量建模额外最低类别，也可以选择仅常数 _cons。两套方程的协变量不必相同。");
+         JPanel secondBody = this.genericCardBody();
+         if (zeroInflated) this.addGenericBodyField(secondBody, "inflate() 形式", this.model);
+         this.addGenericBodyField(secondBody, heteroskedastic ? "方差方程变量 het()（必填）" : "膨胀方程变量 inflate()（协变量模式必填）", this.listPane(this.absorb));
+         this.addGenericBodyField(secondBody, heteroskedastic ? "het() 内 offset()（可选）" : "inflate() 内 offset()（仅协变量模式，可选）", this.newvar);
+         if (zeroInflated) {
+            JLabel hint = new JLabel("<html><b>仅常数 _cons</b> 模式会忽略已选 inflate() 变量，并且不允许 inflation offset；切回协变量模式时原选择仍会保留。</html>");
+            hint.setForeground(MUTED);
+            hint.setFont(hint.getFont().deriveFont(9.8F));
+            hint.setAlignmentX(0.0F);
+            secondBody.add(hint);
+         }
+         secondCard.add(secondBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(secondCard, c);
+
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与检查", "if / in、权重和低频 Stata options 集中到最后；运行前检查下方实时命令，尤其是两套方程的变量角色。");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+         weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+         this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredOrdinalOutcomePreview();
+         this.statusLabel.setText(command + "：主有序方程与第二过程已分开；复杂低频设置继续使用 Stata 原生 options。 ");
+      }
+
+      private void updateStructuredOrdinalOutcomePreview() {
+         String command = this.currentCommand;
+         boolean heteroskedastic = "hetoprobit".equals(command);
+         boolean zeroInflated = Arrays.asList("zioprobit", "ziologit").contains(command);
+         StringBuilder preview = new StringBuilder(command);
+         String y = selected(this.depvar);
+         if (!y.isBlank()) preview.append(" ").append(y);
+         List<String> mainX = this.variables.getSelectedValuesList();
+         if (!mainX.isEmpty()) preview.append(" ").append(String.join(" ", mainX));
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+         String weightType = selected(this.genericWeightType);
+         String weightVar = selected(this.genericWeightVar);
+         if (!"无".equals(weightType) && !weightVar.isBlank()) preview.append(" [").append(weightType).append("=").append(weightVar).append("]");
+
+         ArrayList<String> opts = new ArrayList<>();
+         List<String> secondX = this.absorb.getSelectedValuesList();
+         String secondOffset = structuredOrdinalOffset(this.newvar.getText());
+         if (heteroskedastic) {
+            if (!secondX.isEmpty()) {
+               StringBuilder het = new StringBuilder("het(").append(String.join(" ", secondX));
+               if (!secondOffset.isBlank()) het.append(", ").append(secondOffset);
+               het.append(")");
+               opts.add(het.toString());
+            }
+         } else if (zeroInflated) {
+            int mode = this.model.getSelectedIndex();
+            if (mode == 2) {
+               opts.add("inflate(_cons)");
+            } else if (!secondX.isEmpty()) {
+               ArrayList<String> subopts = new ArrayList<>();
+               if (mode == 1) subopts.add("noconstant");
+               if (!secondOffset.isBlank()) subopts.add(secondOffset);
+               StringBuilder inflate = new StringBuilder("inflate(").append(String.join(" ", secondX));
+               if (!subopts.isEmpty()) inflate.append(", ").append(String.join(" ", subopts));
+               inflate.append(")");
+               opts.add(inflate.toString());
+            }
+         }
+         String mainOffset = structuredOrdinalOffset(this.expression.getText());
+         if (!mainOffset.isBlank()) opts.add(mainOffset);
+         String nativeOptions = this.options.getText().trim();
+         if (!nativeOptions.isBlank()) opts.add(nativeOptions);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredOrdinalOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         boolean heteroskedastic = "hetoprobit".equals(command);
+         boolean zeroInflated = Arrays.asList("zioprobit", "ziologit").contains(command);
+         if (selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择序数结果变量 Y。", "结果变量缺失", 1);
+            return false;
+         }
+         if (heteroskedastic && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "hetoprobit 的 het() 方差方程是必填项；请至少选择 1 个尺度解释变量。", "方差方程缺失", 1);
+            return false;
+         }
+         if (zeroInflated) {
+            int mode = this.model.getSelectedIndex();
+            if (mode != 2 && this.absorb.getSelectedValuesList().isEmpty()) {
+               JOptionPane.showMessageDialog(this, command + " 的 inflate() 是必填项；协变量模式下请至少选择 1 个膨胀方程变量，或改为“仅常数 _cons”。", "膨胀方程缺失", 1);
+               return false;
+            }
+            if (mode == 2 && !this.newvar.getText().trim().isBlank()) {
+               JOptionPane.showMessageDialog(this, "仅常数 _cons 模式不能同时设置 inflate() 内 offset()；请清空该字段或切换到协变量模式。", "inflate() 形式冲突", 1);
+               return false;
+            }
+         }
+         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         return true;
+      }
+
+      private void rebuildStructuredBinaryOutcomeForm() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+
+         this.model.removeAllItems();
+         if (binreg) {
+            this.model.addItem("优势比 OR（logit link）");
+            this.model.addItem("风险比 RR（log link）");
+            this.model.addItem("健康比 HR（log-complement link）");
+            this.model.addItem("风险差 RD（identity link）");
+         } else if (biprobit) {
+            this.model.addItem("共享解释变量：Y1 Y2 X");
+            this.model.addItem("分方程：分别指定 X");
+            this.model.addItem("部分可观测：分方程 + partial");
+         } else {
+            this.model.addItem("异方差 Probit：均值方程 + het() 方差方程");
+         }
+         this.model.setSelectedIndex(0);
+
+         this.genericWeightType.removeAllItems();
+         for (String weight : Arrays.asList("无", "fweight", "iweight", "pweight")) this.genericWeightType.addItem(weight);
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+
+         this.vce.removeAllItems();
+         this.vce.addItem("default");
+         this.vce.addItem("robust");
+         this.vce.addItem("cluster");
+         this.vce.setSelectedItem("default");
+         this.cluster.setSelectedItem(null);
+
+         this.enableVariableDrop(this.depvar, biprobit ? "二元结果 Y1" : "二元 / 二项结果 Y");
+         this.enableVariableDrop(this.variables, biprobit ? "共享 X / 方程 1 X" : (hetprobit ? "均值方程 X" : "解释变量 X"));
+         this.enableVariableDrop(this.panel, "二元结果 Y2");
+         this.enableVariableDrop(this.absorb, biprobit ? "方程 2 X" : "方差方程 het()");
+         this.enableVariableDrop(this.expression, binreg ? "试验次数 n()" : "方差方程 offset()");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String step1;
+         String step2;
+         if (binreg) {
+            title = "binreg · 二项 GLM（OR / RR / HR / RD）";
+            example = "binreg y x1 x2, rr";
+            insight = "binreg 的关键不是换一个二元回归名字，而是明确你要报告的效应尺度。OR 使用 logit link；RR 使用 log link；HR 使用 log-complement link；RD 使用 identity link。若数据是每组成功次数而不是逐个 0/1 观测，可在 n() 填试验总数或对应变量。";
+            syntax = "binreg depvar [indepvars] [if] [in] [weight] [, or | rr | hr | rd n(#|varname) vce(...) options]";
+            step1 = "选择结果与解释变量";
+            step2 = "选择报告尺度";
+         } else if (biprobit) {
+            title = "biprobit · 双变量 Probit";
+            example = "biprobit (y1 = x1 x2) (y2 = x1 x3), vce(robust)";
+            insight = "biprobit 联合估计两个二元 Probit 方程并允许潜在误差相关。Stata 同时支持 Y1 Y2 共用一组 X 的简写，以及两个括号方程分别指定 X；partial 是部分可观测模型，不应与普通双变量 Probit 混为一类。";
+            syntax = "biprobit depvar1 depvar2 [indepvars] ...  |  biprobit (depvar1 = indepvars1) (depvar2 = indepvars2) [, partial ...]";
+            step1 = "选择两个二元结果";
+            step2 = "设置两个方程";
+         } else {
+            title = "hetprobit · 异方差 Probit";
+            example = "hetprobit y x1, het(z1 z2)";
+            insight = "hetprobit 把结果的条件均值与潜变量误差方差分开建模。het() 不是普通附加控制变量，而是方差方程，并且是官方语法中的必填结构；均值方程和方差方程变量应按研究机制分别选择。";
+            syntax = "hetprobit depvar [indepvars] [if] [in] [weight], het(varlist [, offset(varname)]) [options]";
+            step1 = "设置均值方程";
+            step2 = "设置方差方程";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153(step1, step2, "样本与检查"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, step1, binreg
+            ? "结果变量可以是逐个二元结果，也可以是成功次数；解释变量保持标准 Stata varlist。"
+            : (biprobit ? "两个结果变量都必须是二元结果；Y1 与 Y2 不能是同一个变量。" : "先设置二元结果 Y 与均值方程解释变量 X。"));
+         JPanel coreBody = this.genericCardBody();
+         this.addGenericBodyField(coreBody, biprobit ? "二元结果 Y1" : "二元 / 二项结果 Y", this.depvar);
+         if (biprobit) this.addGenericBodyField(coreBody, "二元结果 Y2", this.panel);
+         this.addGenericBodyField(coreBody, biprobit ? "共享 X / 方程 1 X" : (hetprobit ? "均值方程解释变量 X" : "解释变量 X"), this.listPane(this.variables));
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel modelCard = this.xtregWizardCardV130(2, step2, binreg
+            ? "选择 OR / RR / HR / RD 后，页面自动生成对应 Stata 原生 link/reporting option。"
+            : (biprobit ? "共享 X 模式使用简写；分方程模式分别使用两组解释变量；partial 只在第三种模式自动加入。" : "het() 方差方程至少需要 1 个变量；方差方程自己的 offset() 可选。"));
+         JPanel modelBody = this.genericCardBody();
+         this.addGenericBodyField(modelBody, binreg ? "效应尺度" : (biprobit ? "方程结构" : "模型结构"), this.model);
+         if (binreg) {
+            this.addGenericBodyField(modelBody, "试验次数 n()（可选：正整数或变量名）", this.expression);
+         } else if (biprobit) {
+            this.addGenericBodyField(modelBody, "方程 2 解释变量（仅分方程模式）", this.listPane(this.absorb));
+         } else {
+            this.addGenericBodyField(modelBody, "方差方程变量 het()（必填）", this.listPane(this.absorb));
+            this.addGenericBodyField(modelBody, "方差方程 offset() 变量（可选）", this.expression);
+         }
+         modelCard.add(modelBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(modelCard, c);
+
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与检查", "if / in、权重、标准误和其他原生 options 放在最后；页面不会替你改变 Stata 的估计定义。二元结果命令按官方语法只提供 fweight / iweight / pweight。 ");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         weightRow.setOpaque(false);
+         weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+         weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+         this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+         JPanel vceRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         vceRow.setOpaque(false);
+         vceRow.add(this.fieldBlock("标准误方式", this.vce));
+         vceRow.add(this.fieldBlock("聚类变量（仅 cluster）", this.cluster));
+         this.addGenericBodyField(sampleBody, "标准误", vceRow);
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredBinaryOutcomePreview();
+         this.statusLabel.setText(command + "：二元模型核心结构已拆开；低频 maximization / constraints 等继续保留原生 options。 ");
+      }
+
+      private static String binaryOption(String name, String raw) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         if (value.startsWith(name + "(")) return value;
+         return name + "(" + value + ")";
+      }
+
+      private static String biprobitEquation(String y, List<String> xs) {
+         if (y == null || y.isBlank()) return "";
+         return xs == null || xs.isEmpty() ? y : y + " = " + String.join(" ", xs);
+      }
+
+      private void updateStructuredBinaryOutcomePreview() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+         String y1 = selected(this.depvar);
+         String y2 = selected(this.panel);
+         List<String> x1 = this.variables.getSelectedValuesList();
+         List<String> x2 = this.absorb.getSelectedValuesList();
+
+         StringBuilder preview = new StringBuilder(command);
+         if (biprobit && this.model.getSelectedIndex() > 0) {
+            String eq1 = biprobitEquation(y1, x1);
+            String eq2 = biprobitEquation(y2, x2);
+            if (!eq1.isBlank()) preview.append(" (").append(eq1).append(")");
+            if (!eq2.isBlank()) preview.append(" (").append(eq2).append(")");
+         } else {
+            if (!y1.isBlank()) preview.append(" ").append(y1);
+            if (biprobit && !y2.isBlank()) preview.append(" ").append(y2);
+            if (!x1.isEmpty()) preview.append(" ").append(String.join(" ", x1));
+         }
+
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+
+         String weightType = selected(this.genericWeightType);
+         String weightVar = selected(this.genericWeightVar);
+         if (!"无".equals(weightType) && !weightVar.isBlank()) preview.append(" [").append(weightType).append("=").append(weightVar).append("]");
+
+         ArrayList<String> opts = new ArrayList<>();
+         if (binreg) {
+            String[] scaleOpts = {"or", "rr", "hr", "rd"};
+            int idx = Math.max(0, Math.min(this.model.getSelectedIndex(), scaleOpts.length - 1));
+            opts.add(scaleOpts[idx]);
+            String trials = binaryOption("n", this.expression.getText());
+            if (!trials.isBlank()) opts.add(trials);
+         } else if (biprobit) {
+            if (this.model.getSelectedIndex() == 2) opts.add("partial");
+         } else if (hetprobit) {
+            if (!x2.isEmpty()) {
+               String offsetRaw = this.expression.getText().trim();
+               String offset = binaryOption("offset", offsetRaw);
+               opts.add("het(" + String.join(" ", x2) + (offset.isBlank() ? "" : ", " + offset) + ")");
+            }
+         }
+
+         String vc = selected(this.vce);
+         if ("cluster".equals(vc)) {
+            String cl = selected(this.cluster);
+            if (!cl.isBlank()) opts.add("vce(cluster " + cl + ")");
+         } else if (!vc.isBlank() && !"default".equals(vc)) {
+            opts.add("vce(" + vc + ")");
+         }
+         String nativeOptions = this.options.getText().trim();
+         if (!nativeOptions.isBlank()) opts.add(nativeOptions);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredBinaryOutcomeBeforeRun() {
+         String command = this.currentCommand;
+         boolean binreg = "binreg".equals(command);
+         boolean biprobit = "biprobit".equals(command);
+         boolean hetprobit = "hetprobit".equals(command);
+         String y1 = selected(this.depvar);
+         String y2 = selected(this.panel);
+
+         if (y1.isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择结果变量。", "结果变量尚未完整", 1);
+            return false;
+         }
+         if (biprobit) {
+            if (y2.isBlank()) {
+               JOptionPane.showMessageDialog(this, "biprobit 需要选择第二个二元结果 Y2。", "第二个结果变量缺失", 1);
+               return false;
+            }
+            if (y1.equals(y2)) {
+               JOptionPane.showMessageDialog(this, "biprobit 的 Y1 与 Y2 必须是两个不同的结果变量。", "结果变量重复", 1);
+               return false;
+            }
+         }
+         if (hetprobit && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "hetprobit 的 het() 方差方程是必填项；请至少选择 1 个方差方程变量。", "方差方程尚未完整", 1);
+            return false;
+         }
+         if (binreg) {
+            String trials = this.expression.getText().trim();
+            if (!trials.isBlank() && trials.matches("[+-]?\\d+(?:\\.\\d+)?")) {
+               try {
+                  double n = Double.parseDouble(trials);
+                  if (n <= 0 || n != Math.rint(n)) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "binreg 的 n() 若填写常数，必须是正整数；也可以直接填写保存试验次数的变量名。", "试验次数无效", 1);
+                  return false;
+               }
+            }
+         }
+         if (!"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         if ("cluster".equals(selected(this.vce)) && selected(this.cluster).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择 vce(cluster) 后，请指定聚类变量。", "聚类变量缺失", 1);
+            return false;
+         }
+         return true;
+      }
+
+      private void rebuildStructuredLinearRelatedForm() {
+         String command = this.currentCommand;
+         boolean hetregress = "hetregress".equals(command);
+         boolean intreg = "intreg".equals(command);
+         boolean tobit = "tobit".equals(command);
+         boolean truncreg = "truncreg".equals(command);
+         boolean sqreg = "sqreg".equals(command);
+
+         this.enableVariableDrop(this.depvar, intreg ? "区间下端点" : "结果变量 Y");
+         this.enableVariableDrop(this.panel, "区间上端点");
+         this.enableVariableDrop(this.expression, tobit || truncreg ? "下界" : (sqreg ? "分位点" : "模型特有设置"));
+         this.enableVariableDrop(this.newvar, tobit || truncreg ? "上界" : "重复次数");
+
+         this.model.removeAllItems();
+         if (hetregress) {
+            this.model.addItem("Maximum likelihood（默认）");
+            this.model.addItem("Two-step GLS");
+         }
+
+         this.genericWeightType.removeAllItems();
+         List<String> weightTypes = sqreg
+            ? Collections.singletonList("无")
+            : Arrays.asList("无", "fweight", "aweight", "pweight", "iweight");
+         for (String type : weightTypes) this.genericWeightType.addItem(type);
+         this.genericWeightType.setSelectedItem("无");
+         this.genericWeightVar.setSelectedItem(null);
+         this.genericWeightVar.setEnabled(false);
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String coreTitle;
+         String coreSubtitle;
+         String methodTitle;
+         String methodSubtitle;
+
+         if (hetregress) {
+            title = "hetregress · 异方差线性回归";
+            example = "hetregress y x1 x2, het(z1 z2)";
+            insight = "均值方程与方差方程分开设置。默认使用 maximum likelihood；Two-step GLS 时 Stata 要求同时指定 het() 方差方程，且该估计方式不接受权重。";
+            syntax = "hetregress depvar [indepvars] [if] [in] [weight] [, mle_options]  |  hetregress depvar [indepvars] [if] [in], twostep het(varlist) [ts_options]";
+            coreTitle = "均值方程";
+            coreSubtitle = "选择连续结果变量和均值方程中的解释变量。";
+            methodTitle = "方差方程与估计方法";
+            methodSubtitle = "het() 中的变量用于解释残差方差；Two-step GLS 必须指定至少一个方差方程变量。";
+         } else if (intreg) {
+            title = "intreg · 区间回归";
+            example = "intreg y_lower y_upper x1 x2";
+            insight = "区间回归需要两个结果端点。左删失用下端点缺失、右删失用上端点缺失；点数据可让两个端点相等。可选 het() 用另一组变量建模条件方差。";
+            syntax = "intreg depvar_lower depvar_upper [indepvars] [if] [in] [weight] [, options]";
+            coreTitle = "区间结果与解释变量";
+            coreSubtitle = "下端点和上端点都必须指定；它们可以是同一变量以表示精确观测。";
+            methodTitle = "条件方差（可选）";
+            methodSubtitle = "需要显式建模异方差时，在 het() 中选择方差方程变量；否则留空。";
+         } else if (tobit) {
+            title = "tobit · 删失回归";
+            example = "tobit y x1 x2, ll(0)";
+            insight = "删失意味着结果在界限之外仍有观测记录，但真实潜在值不可见。ll()/ul() 可填写常数或变量名；本页还支持输入 min / max 生成 Stata 的裸 ll / ul，使用样本最小值或最大值作为删失点。";
+            syntax = "tobit depvar [indepvars] [if] [in] [weight] [, ll[(varname | #)] ul[(varname | #)] options]";
+            coreTitle = "结果与解释变量";
+            coreSubtitle = "先选择删失结果变量和解释变量。";
+            methodTitle = "删失界限";
+            methodSubtitle = "界限可以留空；若设置，数字或变量名会生成 ll()/ul()，min/max 分别生成裸 ll/ul。留空前请确认模型确实不需要显式删失界限。";
+         } else if (truncreg) {
+            title = "truncreg · 截断回归";
+            example = "truncreg y x1 x2, ll(16)";
+            insight = "截断与删失不同：界限之外的结果和协变量整条观测都不进入样本。ll()/ul() 可以是固定数值，也可以是逐观测变化的变量。";
+            syntax = "truncreg depvar [indepvars] [if] [in] [weight] [, ll(varname | #) ul(varname | #) options]";
+            coreTitle = "结果与解释变量";
+            coreSubtitle = "选择截断样本中的结果变量和解释变量。";
+            methodTitle = "截断界限";
+            methodSubtitle = "界限可以留空；若设置，可填数值或包含逐观测截断点的变量名。留空前请确认模型确实不需要显式截断点。";
+         } else {
+            title = "sqreg · 同时分位数回归";
+            example = "sqreg y x1 x2, quantiles(.25 .5 .75) reps(100)";
+            insight = "一次估计多个条件分位数，并通过 bootstrap 得到包含跨分位协方差块的 VCE，适合直接比较不同分位上的系数。sqreg 不接受权重。";
+            syntax = "sqreg depvar [indepvars] [if] [in] [, quantiles(# ...) reps(#) options]";
+            coreTitle = "结果与解释变量";
+            coreSubtitle = "Y 与 X 的角色和普通线性回归一致，但目标是多个条件分位数。";
+            methodTitle = "分位点与 Bootstrap";
+            methodSubtitle = "分位点可写 .25 .5 .75，也可写 25 50 75；reps() 为正整数。";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153(coreTitle, methodTitle, "样本与选项"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, coreTitle, coreSubtitle);
+         JPanel coreBody = this.genericCardBody();
+         if (intreg) {
+            JPanel bounds = new JPanel(new GridLayout(1, 2, 10, 0));
+            bounds.setOpaque(false);
+            bounds.add(this.fieldBlock("下端点 depvar1", this.depvar));
+            bounds.add(this.fieldBlock("上端点 depvar2", this.panel));
+            this.addGenericBodyField(coreBody, "区间结果", bounds);
+         } else {
+            this.addGenericBodyField(coreBody, "结果变量 Y", this.depvar);
+         }
+         this.addGenericBodyField(coreBody, "解释变量 X（可多选）", this.listPane(this.variables));
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel methodCard = this.xtregWizardCardV130(2, methodTitle, methodSubtitle);
+         JPanel methodBody = this.genericCardBody();
+         if (hetregress) {
+            this.addGenericBodyField(methodBody, "估计方法", this.model);
+            this.addGenericBodyField(methodBody, "方差方程变量 het()（ML 可留空；Two-step 必填）", this.listPane(this.absorb));
+         } else if (intreg) {
+            this.addGenericBodyField(methodBody, "方差方程变量 het()（可选）", this.listPane(this.absorb));
+         } else if (tobit || truncreg) {
+            JPanel limits = new JPanel(new GridLayout(1, 2, 10, 0));
+            limits.setOpaque(false);
+            String lowerLabel = tobit ? "下删失点 ll()：数字 / 变量 / min" : "下截断点 ll()：数字 / 变量";
+            String upperLabel = tobit ? "上删失点 ul()：数字 / 变量 / max" : "上截断点 ul()：数字 / 变量";
+            limits.add(this.fieldBlock(lowerLabel, this.expression));
+            limits.add(this.fieldBlock(upperLabel, this.newvar));
+            this.addGenericBodyField(methodBody, "界限设置", limits);
+         } else {
+            JPanel quantiles = new JPanel(new GridLayout(1, 2, 10, 0));
+            quantiles.setOpaque(false);
+            quantiles.add(this.fieldBlock("quantiles()（默认 .5）", this.expression));
+            quantiles.add(this.fieldBlock("reps()（默认 20）", this.newvar));
+            this.addGenericBodyField(methodBody, "同时估计的分位点", quantiles);
+         }
+         methodCard.add(methodBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(methodCard, c);
+
+         JPanel sampleCard = this.xtregWizardCardV130(3, "样本与选项", "样本范围与原生 options 放在最后；页面只自动生成已经明确拆出的核心结构。复杂 offset()/constraints()/VCE 等仍可直接写入 options。");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         if (!sqreg) {
+            JPanel weightRow = new JPanel(new GridLayout(1, 2, 10, 0));
+            weightRow.setOpaque(false);
+            weightRow.add(this.fieldBlock("权重类型", this.genericWeightType));
+            weightRow.add(this.fieldBlock("权重变量", this.genericWeightVar));
+            this.addGenericBodyField(sampleBody, "权重（可选）", weightRow);
+         }
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateGenericWeightConditionalFields();
+         this.updateStructuredLinearRelatedPreview();
+         this.statusLabel.setText(command + "：核心模型角色已拆开；复杂低频设置继续保留 Stata 原生 options。 ");
+      }
+
+      private static String structuredLimitOption(String kind, String raw, boolean allowBareExtremum) {
+         String value = raw == null ? "" : raw.trim();
+         if (value.isBlank()) return "";
+         if (allowBareExtremum && "ll".equals(kind) && "min".equalsIgnoreCase(value)) return "ll";
+         if (allowBareExtremum && "ul".equals(kind) && "max".equalsIgnoreCase(value)) return "ul";
+         if (value.equals(kind) || value.startsWith(kind + "(")) return value;
+         return kind + "(" + value + ")";
+      }
+
+      private void updateStructuredLinearRelatedPreview() {
+         String command = this.currentCommand;
+         boolean hetregress = "hetregress".equals(command);
+         boolean intreg = "intreg".equals(command);
+         boolean tobit = "tobit".equals(command);
+         boolean truncreg = "truncreg".equals(command);
+         boolean sqreg = "sqreg".equals(command);
+
+         StringBuilder preview = new StringBuilder(command);
+         String y = selected(this.depvar);
+         if (!y.isBlank()) preview.append(" ").append(y);
+         if (intreg) {
+            String upper = selected(this.panel);
+            if (!upper.isBlank()) preview.append(" ").append(upper);
+         }
+         List<String> xs = this.variables.getSelectedValuesList();
+         if (!xs.isEmpty()) preview.append(" ").append(String.join(" ", xs));
+
+         String ifText = this.ifCondition.getText().trim();
+         String inText = this.inCondition.getText().trim();
+         if (!ifText.isBlank()) preview.append(" if ").append(ifText);
+         if (!inText.isBlank()) preview.append(" in ").append(inText);
+
+         String weightType = selected(this.genericWeightType);
+         String weightVar = selected(this.genericWeightVar);
+         if (!sqreg && !"无".equals(weightType) && !weightVar.isBlank()) {
+            preview.append(" [").append(weightType).append("=").append(weightVar).append("]");
+         }
+
+         ArrayList<String> opts = new ArrayList<>();
+         if (hetregress) {
+            if (this.model.getSelectedIndex() == 1) opts.add("twostep");
+            List<String> hetVars = this.absorb.getSelectedValuesList();
+            if (!hetVars.isEmpty()) opts.add("het(" + String.join(" ", hetVars) + ")");
+         } else if (intreg) {
+            List<String> hetVars = this.absorb.getSelectedValuesList();
+            if (!hetVars.isEmpty()) opts.add("het(" + String.join(" ", hetVars) + ")");
+         } else if (tobit || truncreg) {
+            String lower = structuredLimitOption("ll", this.expression.getText(), tobit);
+            String upper = structuredLimitOption("ul", this.newvar.getText(), tobit);
+            if (!lower.isBlank()) opts.add(lower);
+            if (!upper.isBlank()) opts.add(upper);
+         } else if (sqreg) {
+            String qs = this.expression.getText().trim().replace(',', ' ');
+            qs = qs.replaceAll("\\s+", " ").trim();
+            String reps = this.newvar.getText().trim();
+            if (!qs.isBlank()) opts.add("quantiles(" + qs + ")");
+            if (!reps.isBlank()) opts.add("reps(" + reps + ")");
+         }
+         String nativeOptions = this.options.getText().trim();
+         if (!nativeOptions.isBlank()) opts.add(nativeOptions);
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private boolean validateStructuredLinearRelatedBeforeRun() {
+         String command = this.currentCommand;
+         boolean hetregress = "hetregress".equals(command);
+         boolean intreg = "intreg".equals(command);
+         boolean tobit = "tobit".equals(command);
+         boolean truncreg = "truncreg".equals(command);
+         boolean sqreg = "sqreg".equals(command);
+
+         if (selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, intreg ? "intreg 需要选择区间下端点 depvar1。" : command + " 需要选择结果变量 Y。", "模型变量尚未完整", 1);
+            return false;
+         }
+         if (intreg && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "intreg 需要选择区间上端点 depvar2。", "区间端点尚未完整", 1);
+            return false;
+         }
+         if (hetregress && this.model.getSelectedIndex() == 1 && this.absorb.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "hetregress 的 Two-step GLS 必须选择至少 1 个 het() 方差方程变量。", "方差方程尚未完整", 1);
+            return false;
+         }
+         if (hetregress && this.model.getSelectedIndex() == 1 && !"无".equals(selected(this.genericWeightType))) {
+            JOptionPane.showMessageDialog(this, "hetregress 的 Two-step GLS 不接受权重；请把权重类型改为“无”，或改用 Maximum likelihood。", "Two-step GLS 不支持权重", 1);
+            return false;
+         }
+         if (sqreg) {
+            String qtext = this.expression.getText().trim().replace(',', ' ');
+            if (!qtext.isBlank()) {
+               String[] parts = qtext.split("\\s+");
+               for (String part : parts) {
+                  try {
+                     double q = Double.parseDouble(part);
+                     boolean valid = (q > 0.0 && q < 1.0) || (q > 1.0 && q < 100.0);
+                     if (!valid) throw new NumberFormatException();
+                  } catch (NumberFormatException ex) {
+                     JOptionPane.showMessageDialog(this, "sqreg 的 quantiles() 必须是 0–1 之间的小数，或 1–100 之间的百分数，例如 .25 .5 .75 或 25 50 75。", "分位点无效", 1);
+                     return false;
+                  }
+               }
+            }
+            String reps = this.newvar.getText().trim();
+            if (!reps.isBlank()) {
+               try {
+                  if (Integer.parseInt(reps) <= 0) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "sqreg 的 reps() 必须是正整数，例如 100。", "Bootstrap 次数无效", 1);
+                  return false;
+               }
+            }
+         }
+         if (!sqreg && !"无".equals(selected(this.genericWeightType)) && selected(this.genericWeightVar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "选择权重类型后，请指定权重变量。", "权重变量缺失", 1);
+            return false;
+         }
+         return true;
+      }
+
+      private void rebuildStructuredPrSdTestForm() {
+         String command = this.currentCommand;
+         boolean proportion = "prtest".equals(command);
+
+         this.model.removeAllItems();
+         this.model.addItem("单样本：变量 == 数值");
+         this.model.addItem("两组比较：by() 分组");
+         this.model.addItem("双变量：变量1 == 变量2");
+         this.model.setSelectedIndex(0);
+
+         this.enableVariableDrop(this.depvar, proportion ? "比例变量 1" : "方差变量 1");
+         this.enableVariableDrop(this.panel, "分组变量 / 比较变量 2");
+         this.enableVariableDrop(this.expression, proportion ? "假设比例" : "假设标准差");
+
+         String title = proportion ? "prtest · 比例检验" : "sdtest · 方差 / 标准差检验";
+         String example = proportion ? "prtest foreign == 0.5" : "sdtest mpg == 5";
+         String syntax = proportion
+            ? "prtest var == #p  |  prtest var, by(group)  |  prtest var1 == var2"
+            : "sdtest var == #  |  sdtest var, by(group)  |  sdtest var1 == var2";
+         String insight = proportion
+            ? "支持 Stata 官方三种比例检验形态：单样本比例与给定值比较、按 by() 比较两个独立组的比例、以及两个变量的比例比较。两组模式的分组变量必须实际只有两个组；cluster()/rho() 等仅在对应 prtest 形态支持时写入原生 options。"
+            : "支持 Stata 官方三种标准差 / 方差比较形态：单样本标准差与给定值比较、按 by() 比较两个独立组、以及两个变量的方差比较。传统方差检验依赖正态性较强；若该假设不合适，可另外使用 Stata 官方 robvar 稳健方差检验。";
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("选择检验方式", "填写变量与比较对象", "样本与检查"), c);
+
+         JPanel modeCard = this.xtregWizardCardV130(1, "选择检验方式", "三种模式对应 Stata 官方三套语法；页面只使用当前模式需要的字段生成命令。");
+         JPanel modeBody = this.genericCardBody();
+         this.addGenericBodyField(modeBody, "检验方式", this.model);
+         modeCard.add(modeBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(modeCard, c);
+
+         JPanel coreCard = this.xtregWizardCardV130(2, "填写变量与比较对象", "变量 1 始终必选；单样本填写数值，两组 / 双变量模式再选择右侧变量。");
+         JPanel coreBody = this.genericCardBody();
+         this.addGenericBodyField(coreBody, proportion ? "比例变量 1（通常为 0/1）" : "方差 / 标准差变量 1", this.depvar);
+         this.addGenericBodyField(coreBody, "分组变量 / 比较变量 2（两组或双变量模式）", this.panel);
+         this.addGenericBodyField(coreBody, proportion ? "假设比例（单样本模式，0–1）" : "假设标准差（单样本模式，>0）", this.expression);
+         JLabel modeHint = new JLabel("<html>两组模式自动生成 <b>by(group)</b>；双变量模式自动生成 <b>var1 == var2</b>。未被当前模式使用的字段不会进入命令。</html>");
+         modeHint.setForeground(MUTED);
+         modeHint.setFont(modeHint.getFont().deriveFont(9.8F));
+         modeHint.setAlignmentX(0.0F);
+         coreBody.add(modeHint);
+         if (!proportion) {
+            coreBody.add(Box.createVerticalStrut(5));
+            JLabel robustHint = new JLabel("<html>数据明显偏离正态时，可考虑单独使用官方 <b>robvar var, by(group)</b>；本页不会自动把 sdtest 改成其他命令。</html>");
+            robustHint.setForeground(MUTED);
+            robustHint.setFont(robustHint.getFont().deriveFont(9.8F));
+            robustHint.setAlignmentX(0.0F);
+            coreBody.add(robustHint);
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel checkCard = this.xtregWizardCardV130(3, "样本与检查", "if / in 与原生 options 集中在这里；运行前检查下方生成的真实 Stata 命令。");
+         JPanel checkBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(checkBody, "样本范围", sampleRow);
+         this.addGenericBodyField(checkBody, "其他 Stata options（可选）", this.options);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.updateStructuredPrSdTestPreview();
+         this.statusLabel.setText(command + "：已按单样本 / 两组 / 双变量三种官方形态拆分。");
+      }
+
+      private void updateStructuredPrSdTestPreview() {
+         String command = this.currentCommand;
+         int mode = this.model.getSelectedIndex();
+         String first = selected(this.depvar);
+         String second = selected(this.panel);
+         String hypothesized = this.expression.getText().trim();
+         StringBuilder preview = new StringBuilder(command);
+         if (!first.isBlank()) preview.append(" ").append(first);
+         if (mode == 0 && !hypothesized.isBlank()) preview.append(" == ").append(hypothesized);
+         else if (mode == 2 && !second.isBlank()) preview.append(" == ").append(second);
+
+         if (!this.ifCondition.getText().trim().isBlank()) preview.append(" if ").append(this.ifCondition.getText().trim());
+         if (!this.inCondition.getText().trim().isBlank()) preview.append(" in ").append(this.inCondition.getText().trim());
+
+         ArrayList<String> opts = new ArrayList<>();
+         if (mode == 1 && !second.isBlank()) opts.add("by(" + second + ")");
+         if (!this.options.getText().trim().isBlank()) opts.add(this.options.getText().trim());
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
+      private void rebuildStructuredSummaryTestForm() {
+         String command = this.currentCommand;
+         this.enableVariableDrop(this.depvar, "检验 / 分类变量");
+         this.enableVariableDrop(this.panel, "分组 / 第二分类变量");
+         this.enableVariableDrop(this.expression, "比较对象 / 表达式");
+
+         String title;
+         String example;
+         String insight;
+         String syntax;
+         String firstLabel;
+         String secondLabel = "";
+         String firstStep = "选择检验对象";
+         String firstSubtitle;
+
+         if ("tabulate".equals(command)) {
+            title = "tabulate · 频数 / 列联表";
+            example = "tabulate foreign";
+            insight = "选择 1 个分类变量得到单向频数表；再选择第 2 个分类变量时生成双向列联表。卡方检验、行列百分比、缺失值显示等继续使用 tabulate 原生 options。";
+            syntax = "tabulate var1 [var2] [if] [in] [, options]";
+            firstLabel = "分类变量 1";
+            secondLabel = "分类变量 2（可选）";
+            firstStep = "选择分类变量";
+            firstSubtitle = "第 1 个分类变量必选；第 2 个可选。只允许 1–2 个分类变量，避免把 tabulate 当普通 varlist 使用。";
+         } else if ("oneway".equals(command)) {
+            title = "oneway · 单因素方差分析";
+            example = "oneway mpg rep78";
+            insight = "结果变量放在前面，分组因子放在第二个位置。多因素、交互项、协变量或更复杂的 ANOVA 设计请使用 anova 的原生命令主体页。";
+            syntax = "oneway response group [if] [in] [, options]";
+            firstLabel = "结果变量";
+            secondLabel = "分组因子";
+            firstSubtitle = "明确区分连续结果与分组因子；这里只做单因素 ANOVA。";
+         } else if ("ranksum".equals(command)) {
+            title = "ranksum · Wilcoxon 秩和检验";
+            example = "ranksum mpg, by(foreign)";
+            insight = "用于比较独立组的分布位置；检验变量与分组变量是两个不同角色。分组通过官方 by() 选项写入命令。";
+            syntax = "ranksum varname [if] [in], by(group) [options]";
+            firstLabel = "检验变量";
+            secondLabel = "分组变量 by()";
+            firstSubtitle = "选择要比较的变量和独立分组变量；by() 由页面自动生成。";
+         } else if ("median".equals(command)) {
+            title = "median · 中位数相等检验";
+            example = "median mpg, by(foreign)";
+            insight = "检验不同组的中位数是否相等。页面把检验变量与 by() 分组变量分开，避免把分组字段误当普通分析变量。";
+            syntax = "median varname [if] [in], by(group) [options]";
+            firstLabel = "检验变量";
+            secondLabel = "分组变量 by()";
+            firstSubtitle = "选择要比较中位数的变量和分组变量；by() 由页面自动生成。";
+         } else if ("signrank".equals(command)) {
+            title = "signrank · Wilcoxon 配对符号秩检验";
+            example = "signrank before = after";
+            insight = "配对检验使用 varname = exp 结构。左侧选择第一个变量，右侧填写第二个变量或合法 Stata 表达式；页面不会把等号右侧误标成解释变量。";
+            syntax = "signrank varname = exp [if] [in] [, options]";
+            firstLabel = "配对变量 1";
+            firstSubtitle = "左侧选择第一个配对变量；比较对象可直接填写第二个变量名或 Stata 表达式。";
+         } else {
+            title = "signtest · 配对符号检验";
+            example = "signtest before = after";
+            insight = "配对符号检验使用 varname = exp 结构。左侧选择第一个变量，右侧填写第二个变量或合法 Stata 表达式。";
+            syntax = "signtest varname = exp [if] [in] [, options]";
+            firstLabel = "配对变量 1";
+            firstSubtitle = "左侧选择第一个配对变量；比较对象可直接填写第二个变量名或 Stata 表达式。";
+         }
+
+         this.commandTitle.setText(title);
+         this.commandTitle.setToolTipText(title);
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(example) + "</html>");
+         this.insightArea.setText(insight);
+         this.syntaxArea.setText(syntax);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153(firstStep, "样本与选项", "检查运行"), c);
+
+         JPanel coreCard = this.xtregWizardCardV130(1, firstStep, firstSubtitle);
+         JPanel coreBody = this.genericCardBody();
+         this.addGenericBodyField(coreBody, firstLabel, this.depvar);
+         if (!secondLabel.isBlank()) {
+            this.addGenericBodyField(coreBody, secondLabel, this.panel);
+         }
+         if (Arrays.asList("signrank", "signtest").contains(command)) {
+            this.addGenericBodyField(coreBody, "比较对象（第二变量或表达式）", this.expression);
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         JPanel sampleCard = this.xtregWizardCardV130(2, "样本与选项", "if / in 与命令特有 options 集中在这里；默认不替你猜检验方向或报告选项。");
+         JPanel sampleBody = this.genericCardBody();
+         JPanel sampleRow = new JPanel(new GridLayout(1, 2, 10, 0));
+         sampleRow.setOpaque(false);
+         sampleRow.add(this.fieldBlock("样本条件 if（可选）", this.ifCondition));
+         sampleRow.add(this.fieldBlock("观测范围 in（可选）", this.inCondition));
+         this.addGenericBodyField(sampleBody, "样本范围", sampleRow);
+         this.addGenericBodyField(sampleBody, "其他 Stata options（可选）", this.options);
+         sampleCard.add(sampleBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(sampleCard, c);
+
+         JPanel checkCard = this.xtregWizardCardV130(3, "检查运行", "下方命令预览始终使用真实 Stata 语法；运行前核对变量角色、样本条件和 options。");
+         JPanel checkBody = this.genericCardBody();
+         JLabel checkHint = new JLabel("<html>复杂多因素 ANOVA 使用 <b>anova</b>；新版多维报表使用 <b>table / dtable</b>。这些命令继续保留原生主体，不在本页强行简化。</html>");
+         checkHint.setForeground(MUTED);
+         checkHint.setFont(checkHint.getFont().deriveFont(9.8F));
+         checkHint.setAlignmentX(0.0F);
+         checkBody.add(checkHint);
+         checkCard.add(checkBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(checkCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.formScroll.getVerticalScrollBar().setValue(0);
+         this.rebuilding = false;
+         this.statusLabel.setText(command + "：变量角色已按官方语法拆开；下方实时生成真实 Stata 命令。");
+      }
+
+      private void updateStructuredSummaryTestPreview() {
+         String command = this.currentCommand;
+         String first = selected(this.depvar);
+         String second = selected(this.panel);
+         String comparison = this.expression.getText().trim();
+         StringBuilder preview = new StringBuilder(command);
+
+         if (!first.isBlank()) preview.append(" ").append(first);
+         if ("tabulate".equals(command) && !second.isBlank()) preview.append(" ").append(second);
+         else if ("oneway".equals(command) && !second.isBlank()) preview.append(" ").append(second);
+         else if (Arrays.asList("signrank", "signtest").contains(command) && !comparison.isBlank()) preview.append(" = ").append(comparison);
+
+         if (!this.ifCondition.getText().trim().isBlank()) preview.append(" if ").append(this.ifCondition.getText().trim());
+         if (!this.inCondition.getText().trim().isBlank()) preview.append(" in ").append(this.inCondition.getText().trim());
+
+         ArrayList<String> opts = new ArrayList<>();
+         if (Arrays.asList("ranksum", "median").contains(command) && !second.isBlank()) opts.add("by(" + second + ")");
+         if (!this.options.getText().trim().isBlank()) opts.add(this.options.getText().trim());
+         if (!opts.isEmpty()) preview.append(", ").append(String.join(" ", opts));
+
+         this.rebuilding = true;
+         this.previewArea.setText(preview.toString());
+         this.previewArea.setCaretPosition(0);
+         this.rebuilding = false;
+         this.flashCommandPreview();
+      }
+
       private void rebuildForm() {
          this.rebuilding = true;
          this.formPanel.removeAll();
@@ -10394,91 +14510,302 @@ public final class HxWorkbench {
          this.options.setText("");
          this.refreshVariableControls();
          this.absorb.setSelectionMode("areg".equals(this.currentCommand) ? 0 : 2);
+
          String defaultExpression = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_sem_default_expression"));
-         if (!defaultExpression.isBlank()) {
-            this.expression.setText(defaultExpression);
-         }
+         if (!defaultExpression.isBlank()) this.expression.setText(defaultExpression);
+
          this.model.removeAllItems();
-
-         for (String var2 : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_models"))) {
-            this.model.addItem(var2);
+         for (String value : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_models"))) {
+            this.model.addItem(value);
          }
-
-         String var3 = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_default_model"));
-         if (!var3.isBlank() && comboContains(this.model, var3)) {
-            this.model.setSelectedItem(var3);
-         }
+         String defaultModel = visibleText(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_default_model"));
+         if (!defaultModel.isBlank() && comboContains(this.model, defaultModel)) this.model.setSelectedItem(defaultModel);
 
          this.vce.removeAllItems();
          this.vce.addItem("default");
+         for (String value : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_vces"))) {
+            if (!"default".equals(value)) this.vce.addItem(value);
+         }
+         if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) this.vce.addItem("cluster");
 
-         for (String var8 : HxWorkbench.StataBridge.words(HxWorkbench.StataBridge.characteristic("hxtoolbox_schema_vces"))) {
-            if (!"default".equals(var8)) {
-               this.vce.addItem(var8);
-            }
+         if (isStructuredGlmCommand(this.currentCommand)) {
+            this.rebuildStructuredGlmForm();
+            return;
          }
 
-         if (this.flag("has_cluster") && !comboContains(this.vce, "cluster")) {
-            this.vce.addItem("cluster");
+         if (isStructuredFractionalOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredFractionalOutcomeForm();
+            return;
          }
 
-         int var4 = 0;
+         if (isStructuredCountOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredCountOutcomeForm();
+            return;
+         }
+
+         if (isStructuredCategoricalOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredCategoricalOutcomeForm();
+            return;
+         }
+
+         if (isStructuredOrdinalOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredOrdinalOutcomeForm();
+            return;
+         }
+
+         if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+            this.rebuildStructuredBinaryOutcomeForm();
+            return;
+         }
+
+         if (isStructuredLinearRelatedCommand(this.currentCommand)) {
+            this.rebuildStructuredLinearRelatedForm();
+            return;
+         }
+
+         if (isStructuredPrSdTestCommand(this.currentCommand)) {
+            this.rebuildStructuredPrSdTestForm();
+            return;
+         }
+
+         if (isStructuredSummaryTestCommand(this.currentCommand)) {
+            this.rebuildStructuredSummaryTestForm();
+            return;
+         }
+
+         boolean rawCommandBody = "command_body".equals(this.sem("template"));
+         boolean modelIsCore = this.model.getItemCount() > 0 && isCoreModelCommand(this.currentCommand);
+         boolean absorbIsCore = this.flag("has_absorb")
+            && Arrays.asList("collapse", "didregress", "xtdidregress").contains(this.currentCommand);
+         boolean hasMethodSettings = (this.model.getItemCount() > 0 && !modelIsCore)
+            || (this.flag("has_absorb") && !absorbIsCore) || this.flag("has_vce") || this.flag("has_cluster");
+
+         this.enableVariableDrop(this.depvar, "因变量");
+         this.enableVariableDrop(this.variables, "变量 / 解释变量");
+         this.enableVariableDrop(this.panel, "个体 / 面板变量");
+         this.enableVariableDrop(this.time, "时间变量");
+         this.enableVariableDrop(this.absorb, "固定效应");
+         this.enableVariableDrop(this.endog, "内生变量");
+         this.enableVariableDrop(this.instruments, "工具变量");
+         this.enableVariableDrop(this.cluster, "聚类变量");
+         if (rawCommandBody) this.enableVariableDrop(this.expression, "命令主体");
+
+         String coreTitle = genericCoreTitle(this.currentCommand);
+         String coreSubtitle = rawCommandBody
+            ? "这个命令包含子命令、前缀、冒号或多方程结构。第一步直接填写命令名后面的完整主体；右侧变量可拖到光标位置。"
+            : genericCoreSubtitle(this.currentCommand);
+         String methodTitle;
+         if (Arrays.asList("ivregress", "ivreghdfe").contains(this.currentCommand)) {
+            methodTitle = "估计方法";
+         } else if ((this.flag("has_absorb") && !absorbIsCore) && (this.flag("has_vce") || this.flag("has_cluster"))) {
+            methodTitle = "固定效应与推断";
+         } else if (this.flag("has_vce") || this.flag("has_cluster")) {
+            methodTitle = (this.model.getItemCount() > 0 && !modelIsCore) ? "估计与推断" : "推断设置";
+         } else {
+            methodTitle = "方法与设置";
+         }
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.genericStepStripV152(hasMethodSettings, coreTitle, methodTitle), c);
+         JPanel coreCard = this.xtregWizardCardV130(1, coreTitle, coreSubtitle);
+         JPanel coreBody = this.genericCardBody();
+         boolean hasCore = false;
+
+         if (modelIsCore) {
+            this.addGenericBodyField(coreBody, this.sem("model_label"), this.model);
+            hasCore = true;
+         }
+
          if (this.flag("has_depvar")) {
-            this.addField(var4++, this.sem("dep_label"), this.depvar);
+            this.addGenericBodyField(coreBody, this.sem("dep_label"), this.depvar);
+            hasCore = true;
          }
-
          if (this.flag("has_varlist")) {
-            this.addField(var4++, this.sem("vars_label"), this.listPane(this.variables));
+            this.addGenericBodyField(coreBody, this.sem("vars_label"), this.listPane(this.variables));
+            hasCore = true;
          }
-
          if (this.flag("has_newvar")) {
-            this.addField(var4++, this.sem("newvar_label"), this.newvar);
+            this.addGenericBodyField(coreBody, this.sem("newvar_label"), this.newvar);
+            hasCore = true;
          }
-
          if (this.flag("has_expression")) {
-            this.addField(var4++, this.sem("expr_label"), this.expression);
+            this.addGenericBodyField(coreBody, this.sem("expr_label"), this.expression);
+            hasCore = true;
          }
-
-         if (this.flag("has_iv")) {
-            this.addField(var4++, this.sem("endog_label"), this.listPane(this.endog));
-            this.addField(var4++, this.sem("inst_label"), this.listPane(this.instruments));
-         }
-
-         if (this.model.getItemCount() > 0) {
-            this.addField(var4++, this.sem("model_label"), this.model);
-         }
-
          if (this.flag("has_using")) {
             this.usingLabel.setText(this.sem("using_label"));
-            this.addField(var4++, this.usingLabel.getText(), this.usingChooser());
+            this.addGenericBodyField(coreBody, this.usingLabel.getText(), this.usingChooser());
+            hasCore = true;
+         }
+         if (this.flag("has_iv")) {
+            JPanel ivGrid = new JPanel(new GridLayout(1, 2, 12, 0));
+            ivGrid.setOpaque(false);
+            ivGrid.add(this.fieldBlock(this.sem("endog_label"), this.listPane(this.endog)));
+            ivGrid.add(this.fieldBlock(this.sem("inst_label"), this.listPane(this.instruments)));
+            this.addGenericBodyField(coreBody, "工具变量设定", ivGrid);
+            hasCore = true;
          }
 
-         if (this.flag("needs_panel") && !Arrays.asList(
-            "reghdfe", "ppmlhdfe", "ivreghdfe", "xtreg", "xtlogit", "xtprobit", "xtpoisson"
-         ).contains(this.currentCommand)) {
-            this.addField(var4++, this.sem("panel_label"), this.panel);
-            this.addField(var4++, this.sem("time_label"), this.time);
+         boolean showPanelStructure = (this.flag("needs_panel") || isGenericPanelEstimator(this.currentCommand))
+            && !Arrays.asList("reghdfe", "ppmlhdfe", "ivreghdfe").contains(this.currentCommand);
+         if (showPanelStructure) {
+            JPanel panelGrid = new JPanel(new GridLayout(1, 2, 12, 0));
+            panelGrid.setOpaque(false);
+            panelGrid.add(this.fieldBlock(this.sem("panel_label"), this.panel));
+            panelGrid.add(this.fieldBlock(this.sem("time_label"), this.time));
+            String panelGroupTitle = Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)
+               ? "处理与时间设定" : "数据结构";
+            this.addGenericBodyField(coreBody, panelGroupTitle, panelGrid);
+            if (isGenericPanelEstimator(this.currentCommand)) {
+               String setupHintText = isGenericPanelTimeRequired(this.currentCommand)
+                  ? "运行时会先执行 xtset；当前命令必须同时指定面板变量和时间变量。"
+                  : "运行时会先按这里执行 xtset，再运行当前面板模型；时间变量可按数据结构留空。";
+               JLabel setupHint = new JLabel(setupHintText);
+               setupHint.setForeground(MUTED);
+               setupHint.setFont(setupHint.getFont().deriveFont(9.8F));
+               setupHint.setAlignmentX(0.0F);
+               coreBody.add(setupHint);
+               coreBody.add(Box.createVerticalStrut(4));
+            }
+            hasCore = true;
          }
 
-         if (this.flag("has_absorb")) {
-            this.addField(var4++, this.sem("absorb_label"), this.listPane(this.absorb));
+         if (absorbIsCore) {
+            this.addGenericBodyField(coreBody, this.sem("absorb_label"), this.listPane(this.absorb));
+            hasCore = true;
          }
 
-         if (this.flag("has_vce")) {
-            this.addField(var4++, "标准误方式", this.vce);
+         if (Arrays.asList("keep", "drop", "merge", "append", "reshape", "collapse", "replace").contains(this.currentCommand)) {
+            JLabel mutationHint = new JLabel("<html>提示：该操作会改变当前内存中的数据。正式数据建议先保存，再执行并检查结果。</html>");
+            mutationHint.setForeground(MUTED);
+            mutationHint.setFont(mutationHint.getFont().deriveFont(9.8F));
+            mutationHint.setAlignmentX(0.0F);
+            coreBody.add(mutationHint);
+            coreBody.add(Box.createVerticalStrut(4));
          }
 
-         this.clusterFieldBlock = this.flag("has_cluster") ? this.addField(var4++, "聚类变量（仅 Cluster 时需要）", this.cluster) : null;
-         this.addAdvancedSettings(var4++, this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
-         GridBagConstraints var9 = this.constraints(0, var4);
-         var9.gridwidth = 2;
-         var9.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var9);
+         if (!hasCore) {
+            JLabel noCore = new JLabel("这个命令没有必填变量角色，可直接进入下一步设置参数。");
+            noCore.setForeground(MUTED);
+            coreBody.add(noCore);
+         }
+         coreCard.add(coreBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(coreCard, c);
+
+         this.clusterFieldBlock = null;
+         if (hasMethodSettings) {
+            JPanel methodCard = this.xtregWizardCardV130(2, methodTitle, "当前任务支持的方法、模型、固定效应与标准误集中在这里；只显示实际可用的项目。");
+            JPanel methodBody = this.genericCardBody();
+
+            if (this.model.getItemCount() > 0 && !modelIsCore) {
+               this.addGenericBodyField(methodBody, this.sem("model_label"), this.model);
+            }
+            if (this.flag("has_absorb") && !absorbIsCore) {
+               this.addGenericBodyField(methodBody, this.sem("absorb_label"), this.listPane(this.absorb));
+            }
+            if (this.flag("has_vce")) {
+               this.addGenericBodyField(methodBody, "标准误方式", this.vce);
+            }
+            if (this.flag("has_cluster")) {
+               this.clusterFieldBlock = (JPanel)this.fieldBlock("聚类变量（仅 Cluster 时需要）", this.cluster);
+               this.clusterFieldBlock.setAlignmentX(0.0F);
+               this.clusterFieldBlock.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(54, this.clusterFieldBlock.getPreferredSize().height)));
+               methodBody.add(this.clusterFieldBlock);
+               methodBody.add(Box.createVerticalStrut(10));
+            }
+            methodCard.add(methodBody, BorderLayout.CENTER);
+            c.gridy++;
+            this.formPanel.add(methodCard, c);
+         }
+
+         int advancedStep = hasMethodSettings ? 3 : 2;
+         boolean advancedExpandedByDefault = Arrays.asList("keep", "drop", "replace").contains(this.currentCommand);
+         String advancedSubtitle = rawCommandBody
+            ? "复杂语法已经完整写在第一步；这里仅核对下方实时 Stata 命令，确认子命令、冒号、括号和 options 的位置。"
+            : (advancedExpandedByDefault
+               ? "当前任务的样本条件直接展开；其余低频参数也在这里。运行前可在下方检查真实 Stata 命令。"
+               : "样本条件、观测范围、权重和原生 options 放在这里，默认收起。运行前可在下方检查真实 Stata 命令。");
+         String advancedTitle = rawCommandBody ? "检查运行"
+            : ((this.flag("has_if") || this.flag("has_in") || this.flag("has_weight")) ? "样本与更多设置" : "检查与更多设置");
+         JPanel advancedCard = this.xtregWizardCardV130(advancedStep, advancedTitle, advancedSubtitle);
+         JPanel advancedBody = this.genericCardBody();
+         if (rawCommandBody) {
+            JLabel rawHint = new JLabel("<html>命令主体按原生 Stata 语法直接拼接。运行前请在下方确认完整命令；复杂前缀自身的 options 也应写在第一步主体中。</html>");
+            rawHint.setForeground(MUTED);
+            rawHint.setFont(rawHint.getFont().deriveFont(9.8F));
+            rawHint.setAlignmentX(0.0F);
+            advancedBody.add(rawHint);
+         } else {
+            this.rebuildGenericAdvancedContent(this.flag("has_if"), this.flag("has_in"), this.flag("has_weight"));
+            this.advancedContent.setVisible(advancedExpandedByDefault);
+            JToggleButton advancedToggle = new JToggleButton(advancedExpandedByDefault ? "收起更多设置  −" : "展开更多设置  +", advancedExpandedByDefault);
+            styleSecondaryButton(advancedToggle);
+            advancedToggle.setAlignmentX(0.0F);
+            this.advancedContent.setAlignmentX(0.0F);
+            advancedToggle.addActionListener(event -> {
+               boolean expanded = advancedToggle.isSelected();
+               advancedToggle.setText(expanded ? "收起更多设置  −" : "展开更多设置  +");
+               this.advancedContent.setVisible(expanded);
+               this.formPanel.revalidate();
+               this.formPanel.repaint();
+            });
+            advancedBody.add(advancedToggle);
+            advancedBody.add(Box.createVerticalStrut(8));
+            advancedBody.add(this.advancedContent);
+         }
+         advancedCard.add(advancedBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(advancedCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
          this.formScroll.getVerticalScrollBar().setValue(0);
          this.rebuilding = false;
          this.updateConditionalFields();
+         this.statusLabel.setText(rawCommandBody
+            ? this.currentCommand + "：复杂语法使用原生命令主体输入；运行前请核对下方完整 Stata 命令。"
+            : this.currentCommand + "：核心操作已按任务顺序整理；低频设置集中在最后一步，可从右侧直接拖入变量。");
+      }
+
+      private JComponent specialStepStripV153(String step1, String tip1, String step2, String tip2) {
+         JPanel strip = cardPanel();
+         strip.setBackground(SURFACE);
+         strip.setBorder(BorderFactory.createCompoundBorder(
+            new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(218, 225, 236), 11),
+            new EmptyBorder(9, 10, 9, 10)
+         ));
+         String[][] steps = new String[][]{
+            {"1", step1, tip1},
+            {"2", step2, tip2}
+         };
+         strip.setLayout(new GridLayout(1, 2, 8, 0));
+         for (int i = 0; i < steps.length; i++) {
+            JPanel p = new JPanel(new BorderLayout(6, 0));
+            p.setOpaque(false);
+            p.setMinimumSize(new Dimension(0, 0));
+            p.add(this.xtregCircleBadge(steps[i][0], i == 0, 24), BorderLayout.WEST);
+            JLabel label = new JLabel("<html><b>" + html(steps[i][1]) + "</b></html>");
+            label.setForeground(TEXT);
+            label.setFont(label.getFont().deriveFont(10.5F));
+            label.setToolTipText(steps[i][2]);
+            label.setMinimumSize(new Dimension(0, 0));
+            p.add(label, BorderLayout.CENTER);
+            strip.add(p);
+         }
+         strip.setPreferredSize(new Dimension(0, 52));
+         strip.setMinimumSize(new Dimension(0, 52));
+         strip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+         return strip;
       }
 
       private void showSpecialPage(String var1) {
@@ -10499,48 +14826,138 @@ public final class HxWorkbench {
          this.previewArea.setText("");
          this.runButton.setEnabled(false);
          int var2 = 0;
+         GridBagConstraints specialC = new GridBagConstraints();
+         specialC.gridx = 0;
+         specialC.gridy = 0;
+         specialC.weightx = 1.0;
+         specialC.fill = GridBagConstraints.HORIZONTAL;
+         specialC.insets = new Insets(0, 0, 10, 0);
+
          if (var1.equals("test")) {
             this.setWorkspaceBreadcrumb("测试数据");
-            this.commandTitle.setText("测试数据 - 载入或创建练习数据");
-            this.exampleLabel.setText("选择一份练习数据，载入后右侧立即显示真实数据网格。");
-            this.insightArea.setText("载入练习数据后，右侧数据表会自动刷新。载入操作会清除当前内存数据；请先保存正式数据。");
-            JPanel var3 = new JPanel(new GridLayout(0, 2, 8, 8));
+            this.commandTitle.setText("测试数据 · 选择一份练习数据开始");
+            this.exampleLabel.setText("按用途选择数据；按钮点击后立即载入，并在右侧显示真实数据。");
+            this.insightArea.setText(
+               "测试数据用于熟悉工作台和 Stata 命令。横截面数据适合基础统计与回归；面板数据适合 xt 系列命令；merge / append 练习表用于数据合并。\n\n载入操作会替换当前内存数据，正式数据请先保存。"
+            );
+            this.formPanel.add(this.specialStepStripV153(
+               "选择练习数据", "按当前要练习的任务选择横截面、面板或合并数据",
+               "载入后检查", "右侧检查变量与观测，并在 Stata History 中确认执行命令"
+            ), specialC);
 
-            for (String[] var7 : new String[][]{
+            JPanel chooseCard = this.xtregWizardCardV130(1, "选择练习数据", "按研究任务分组；第一次使用建议从 auto 开始。");
+            JPanel chooseBody = this.genericCardBody();
+
+            JPanel crossSection = new JPanel(new GridLayout(1, 2, 8, 8));
+            crossSection.setOpaque(false);
+            String[][] crossData = new String[][]{
                {"汽车横截面 auto", "auto"},
-               {"劳动数据 nlsw88", "nlsw88"},
+               {"劳动数据 nlsw88", "nlsw88"}
+            };
+            for (String[] item : crossData) {
+               JButton button = new JButton(item[0]);
+               if ("auto".equals(item[1])) stylePrimaryButton(button); else styleSecondaryButton(button);
+               button.addActionListener(event -> this.runUtility("hxtestdata " + item[1], true));
+               crossSection.add(button);
+            }
+            this.addGenericBodyField(chooseBody, "横截面 / 常规练习", crossSection);
+
+            JPanel panelData = new JPanel(new GridLayout(1, 3, 8, 8));
+            panelData.setOpaque(false);
+            for (String[] item : new String[][]{
                {"长面板 nlswork", "nlswork"},
                {"企业面板 grunfeld", "grunfeld"},
-               {"工会面板 union", "union"},
+               {"工会面板 union", "union"}
+            }) {
+               JButton button = new JButton(item[0]);
+               styleSecondaryButton(button);
+               button.addActionListener(event -> this.runUtility("hxtestdata " + item[1], true));
+               panelData.add(button);
+            }
+            this.addGenericBodyField(chooseBody, "面板数据", panelData);
+
+            JPanel mergeData = new JPanel(new GridLayout(1, 2, 8, 8));
+            mergeData.setOpaque(false);
+            for (String[] item : new String[][]{
                {"创建 merge 练习表", "merge"},
                {"创建 append 练习表", "append"}
             }) {
-               JButton var8 = new JButton(var7[0]);
-               styleSecondaryButton(var8);
-               var8.addActionListener(var2x -> this.runUtility("hxtestdata " + var7[1], true));
-               var3.add(var8);
+               JButton button = new JButton(item[0]);
+               styleSecondaryButton(button);
+               button.addActionListener(event -> this.runUtility("hxtestdata " + item[1], true));
+               mergeData.add(button);
             }
+            this.addGenericBodyField(chooseBody, "数据合并练习", mergeData);
 
-            this.addField(var2++, "选择练习数据", var3);
+            JLabel overwriteHint = new JLabel("<html><b>数据安全：</b>载入练习数据会替换当前内存数据。正式数据请先保存；执行命令会写入 Stata History。</html>");
+            overwriteHint.setForeground(new Color(143, 91, 24));
+            overwriteHint.setFont(overwriteHint.getFont().deriveFont(9.8F));
+            overwriteHint.setAlignmentX(0.0F);
+            chooseBody.add(overwriteHint);
+            chooseCard.add(chooseBody, BorderLayout.CENTER);
+            specialC.gridy++;
+            this.formPanel.add(chooseCard, specialC);
+
+            JPanel checkCard = this.xtregWizardCardV130(2, "载入后的检查", "载入完成后只需要确认数据是否符合下一步任务。");
+            JPanel checkBody = this.genericCardBody();
+            JLabel checkText = new JLabel(
+               "<html>① 右侧“当前数据”确认变量名、观测数和数据结构；&nbsp;&nbsp;② 面板数据建议继续到 xtset / xtreg；&nbsp;&nbsp;③ merge / append 练习表继续到对应数据处理页面。</html>"
+            );
+            checkText.setForeground(MUTED);
+            checkText.setAlignmentX(0.0F);
+            checkBody.add(checkText);
+            checkCard.add(checkBody, BorderLayout.CENTER);
+            specialC.gridy++;
+            this.formPanel.add(checkCard, specialC);
+            var2 = specialC.gridy + 1;
          } else {
             this.setWorkspaceBreadcrumb("性能设置");
-            this.commandTitle.setText("性能设置 - 切换 Stata/MP 处理器");
-            this.exampleLabel.setText("开启时使用许可证允许的处理器上限；关闭时使用 1 个处理器。");
-            this.insightArea.setText("开启时动态使用当前许可证允许的最大处理器数；关闭时使用 1 个处理器。每次操作都会进入 Stata History。");
-            JPanel var10 = new JPanel(new GridLayout(0, 1, 8, 8));
-            JButton var12 = new JButton("开启多线程（许可证上限）");
-            JButton var13 = new JButton("关闭多线程（1 个处理器）");
-            JButton var14 = new JButton("查看当前线程状态");
-            stylePrimaryButton(var12);
-            styleSecondaryButton(var13);
-            styleSecondaryButton(var14);
-            var12.addActionListener(var1x -> this.runUtility("hxthreads on", false));
-            var13.addActionListener(var1x -> this.runUtility("hxthreads off", false));
-            var14.addActionListener(var1x -> this.runUtility("hxthreads status", false));
-            var10.add(var12);
-            var10.add(var13);
-            var10.add(var14);
-            this.addField(var2++, "性能操作", var10);
+            this.commandTitle.setText("性能设置 · Stata/MP 处理器");
+            this.exampleLabel.setText("通常保持许可证允许的处理器上限；需要单线程复现时临时切换为 1 个处理器。");
+            this.insightArea.setText(
+               "这里控制 Stata/MP 当前使用的处理器数量。开启会使用许可证允许的上限；关闭会设置为 1 个处理器。\n\n处理器数量只影响能够并行利用 CPU 的计算；每次切换都会进入 Stata History，便于复现。"
+            );
+            this.formPanel.add(this.specialStepStripV153(
+               "选择处理器策略", "在许可证上限和单线程之间切换",
+               "确认当前状态", "查看 Stata 当前处理器设置并核对 History"
+            ), specialC);
+
+            JPanel strategyCard = this.xtregWizardCardV130(1, "处理器策略", "常规估计建议保持许可证上限；单线程主要用于复现或排查性能差异。");
+            JPanel strategyBody = this.genericCardBody();
+            JPanel strategyButtons = new JPanel(new GridLayout(1, 2, 8, 8));
+            strategyButtons.setOpaque(false);
+            JButton maxButton = new JButton("使用许可证处理器上限");
+            JButton oneButton = new JButton("切换为 1 个处理器");
+            stylePrimaryButton(maxButton);
+            styleSecondaryButton(oneButton);
+            maxButton.addActionListener(event -> this.runUtility("hxthreads on", false));
+            oneButton.addActionListener(event -> this.runUtility("hxthreads off", false));
+            strategyButtons.add(maxButton);
+            strategyButtons.add(oneButton);
+            this.addGenericBodyField(strategyBody, "当前要采用的策略", strategyButtons);
+            JLabel perfHint = new JLabel("<html>提示：处理器更多并不保证每个命令都按相同比例提速；具体取决于 Stata 命令本身是否支持并行计算。</html>");
+            perfHint.setForeground(MUTED);
+            perfHint.setFont(perfHint.getFont().deriveFont(9.8F));
+            perfHint.setAlignmentX(0.0F);
+            strategyBody.add(perfHint);
+            strategyCard.add(strategyBody, BorderLayout.CENTER);
+            specialC.gridy++;
+            this.formPanel.add(strategyCard, specialC);
+
+            JPanel statusCard = this.xtregWizardCardV130(2, "确认当前状态", "切换后检查实际处理器设置；状态查询同样写入 Stata History。");
+            JPanel statusBody = this.genericCardBody();
+            JButton statusButton = new JButton("查看当前处理器状态");
+            styleSecondaryButton(statusButton);
+            statusButton.addActionListener(event -> this.runUtility("hxthreads status", false));
+            this.addGenericBodyField(statusBody, "状态检查", statusButton);
+            JLabel historyHint = new JLabel("<html>所有切换与状态查询都通过 HX 命令执行，可在 Stata History 中复查。</html>");
+            historyHint.setForeground(MUTED);
+            historyHint.setAlignmentX(0.0F);
+            statusBody.add(historyHint);
+            statusCard.add(statusBody, BorderLayout.CENTER);
+            specialC.gridy++;
+            this.formPanel.add(statusCard, specialC);
+            var2 = specialC.gridy + 1;
          }
 
          GridBagConstraints var11 = this.constraints(0, var2);
@@ -10574,17 +14991,47 @@ public final class HxWorkbench {
             this.initializeConvertCards();
          }
 
-         JPanel var1 = new JPanel(new FlowLayout(0, 12, 0));
-         var1.setOpaque(false);
-         var1.add(this.convertSingleMode);
-         var1.add(this.convertBatchMode);
-         int var2 = 0;
-         this.addField(var2++, "转换方式", var1);
-         this.addField(var2++, "文件与读取设置", this.convertModeCards);
-         GridBagConstraints var3 = this.constraints(0, var2);
-         var3.gridwidth = 2;
-         var3.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var3);
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("转换方式", "文件与读取", "检查并转换"), c);
+
+         JPanel modeCard = this.xtregWizardCardV130(1, "转换方式", "单个文件适合日常导入；批量转换适合同一目录中的多份原始表。");
+         JPanel modeBody = this.genericCardBody();
+         JPanel modeRow = new JPanel(new FlowLayout(0, 12, 0));
+         modeRow.setOpaque(false);
+         modeRow.add(this.convertSingleMode);
+         modeRow.add(this.convertBatchMode);
+         this.addGenericBodyField(modeBody, "选择处理方式", modeRow);
+         modeCard.add(modeBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(modeCard, c);
+
+         JPanel fileCard = this.xtregWizardCardV130(2, "文件与读取", "选择输入文件或文件夹，并设置读取规则与输出位置；右侧会同步显示预览和风险提示。");
+         JPanel fileBody = this.genericCardBody();
+         this.addGenericBodyField(fileBody, "当前模式设置", this.convertModeCards);
+         fileCard.add(fileBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(fileCard, c);
+
+         JPanel runCard = this.xtregWizardCardV130(3, "检查并转换", "运行前核对下方生成的真实 Stata 命令；原始文件保持只读，目标冲突会再次询问。");
+         JPanel runBody = this.genericCardBody();
+         JLabel safety = new JLabel("<html>单文件会在独立 frame 中读取并保存为 DTA；批量模式逐个处理文件。当前 Stata 数据不会因转换过程被替换。</html>");
+         safety.setForeground(MUTED);
+         safety.setFont(safety.getFont().deriveFont(9.8F));
+         safety.setAlignmentX(0.0F);
+         runBody.add(safety);
+         runCard.add(runBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(runCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
          this.formScroll.getVerticalScrollBar().setValue(0);
@@ -10592,7 +15039,7 @@ public final class HxWorkbench {
          this.runButton.setEnabled(true);
          this.rebuilding = false;
          this.updateConversionPreview();
-         this.statusLabel.setText("选择原始文件后会自动识别格式并在右侧显示只读预览。");
+         this.statusLabel.setText("按 3 步完成转换：选择方式 → 设置文件与读取规则 → 核对命令并运行。");
       }
 
       private void initializeConvertCards() {
@@ -10602,7 +15049,7 @@ public final class HxWorkbench {
          JPanel var1 = new JPanel();
          var1.setOpaque(false);
          var1.setLayout(new BoxLayout(var1, 1));
-         var1.add(this.fieldBlock("1. 选择原始文件", this.pathChooser(this.convertInputFile, "浏览…", this::chooseConvertInput)));
+         var1.add(this.fieldBlock("原始文件", this.pathChooser(this.convertInputFile, "浏览…", this::chooseConvertInput)));
          this.convertDetected.setForeground(MUTED);
          this.convertDetected.setBorder(new EmptyBorder(3, 2, 9, 2));
          var1.add(this.convertDetected);
@@ -10633,7 +15080,7 @@ public final class HxWorkbench {
          this.convertFormatCards.add(var5, "unknown");
          this.convertFormatCards.add(var2, "excel");
          this.convertFormatCards.add(var3, "delimited");
-         var1.add(this.fieldBlock("2. 数据读取设置", this.convertFormatCards));
+         var1.add(this.fieldBlock("数据读取设置", this.convertFormatCards));
          JButton var6 = new JButton("重新读取预览");
          styleSecondaryButton(var6);
          var6.addActionListener(var1x -> this.previewSelectedExternalFile());
@@ -10642,7 +15089,7 @@ public final class HxWorkbench {
          var7.add(var6);
          var1.add(var7);
          var1.add(Box.createVerticalStrut(8));
-         var1.add(this.fieldBlock("3. 保存位置", this.pathChooser(this.convertOutputFile, "浏览…", this::chooseConvertOutput)));
+         var1.add(this.fieldBlock("DTA 保存位置", this.pathChooser(this.convertOutputFile, "浏览…", this::chooseConvertOutput)));
          var1.add(Box.createVerticalStrut(6));
          var1.add(this.convertLoadAfter);
          JPanel var8 = new JPanel();
@@ -11435,7 +15882,7 @@ public final class HxWorkbench {
          this.exampleLabel.setText("最简单操作：选择检查变量；面板数据可再选择 firm 和 year 分类查看。");
          this.insightArea
             .setText(
-               "主要用途\n检查当前数据中哪些变量存在缺失，并按企业、年份、企业×年份或其他分类变量汇总。\n\n推荐数据\n横截面、面板、重复横截面和企业-年份数据。面板数据建议同时选择企业标识与年份。\n\n优点\n同时提供总体、分类汇总、联合明细、具体缺失记录和图形；结果直接联动右侧只读数据表。\n\n局限\n超大型数据的完整扫描需要一定时间；高基数联合分类可能产生较多结果行。"
+               "主要用途\n检查当前数据中哪些变量存在缺失，并按企业、年份、企业×年份或其他分类变量汇总。\n\n推荐数据\n横截面、面板、重复横截面和企业-年份数据。面板数据建议同时选择企业标识与年份。\n\n优点\n同时提供总体、分类汇总、联合明细、具体缺失记录和图形；结果直接联动右侧当前数据表。\n\n局限\n超大型数据的完整扫描需要一定时间；高基数联合分类可能产生较多结果行。"
             );
          this.syntaxArea.setText("只读分析：底层执行并记录 misstable summarize；分类结果由工作台直接读取当前 Stata 数据计算，不修改数据。");
          List var1 = HxWorkbench.StataBridge.variableNames();
@@ -11448,35 +15895,68 @@ public final class HxWorkbench {
          this.missingMode.setSelectedIndex(0);
          this.missingGroups.setEnabled(false);
          this.missingSeparateSummary.setEnabled(false);
-         int var2 = 0;
-         JPanel var3 = new JPanel(new FlowLayout(0, 12, 0));
-         var3.setOpaque(false);
-         var3.add(this.missingAllVariables);
-         var3.add(this.missingChooseVariables);
-         JPanel var4 = new JPanel(new BorderLayout(0, 7));
-         var4.setOpaque(false);
-         var4.add(var3, "North");
-         var4.add(this.listPane(this.missingVariables), "Center");
-         this.addField(var2++, "检查变量", var4);
-         this.addField(var2++, "如何查看缺失值", this.missingMode);
-         this.addField(var2++, "分类变量（可多选）", this.listPane(this.missingGroups));
-         JPanel var5 = new JPanel(new GridLayout(0, 1, 5, 5));
-         var5.setOpaque(false);
-         var5.add(this.missingSeparateSummary);
-         var5.add(this.missingOnly);
-         this.addField(var2++, "结果范围", var5);
-         JPanel var6 = new JPanel(new GridLayout(1, 4, 7, 0));
-         var6.setOpaque(false);
-         var6.add(new JLabel("缺失变量数 ≥"));
-         var6.add(this.missingMinCount);
-         var6.add(new JLabel("缺失比例 ≥ (%)"));
-         var6.add(this.missingMinRate);
-         this.addField(var2++, "筛选阈值", var6);
-         this.addField(var2++, "排序", this.missingSort);
-         GridBagConstraints var7 = this.constraints(0, var2);
-         var7.gridwidth = 2;
-         var7.weighty = 1.0;
-         this.formPanel.add(Box.createVerticalGlue(), var7);
+         JPanel scopeRow = new JPanel(new FlowLayout(0, 12, 0));
+         scopeRow.setOpaque(false);
+         scopeRow.add(this.missingAllVariables);
+         scopeRow.add(this.missingChooseVariables);
+         JPanel scopeChooser = new JPanel(new BorderLayout(0, 7));
+         scopeChooser.setOpaque(false);
+         scopeChooser.add(scopeRow, BorderLayout.NORTH);
+         scopeChooser.add(this.listPane(this.missingVariables), BorderLayout.CENTER);
+
+         JPanel resultRange = new JPanel(new GridLayout(0, 1, 5, 5));
+         resultRange.setOpaque(false);
+         resultRange.add(this.missingSeparateSummary);
+         resultRange.add(this.missingOnly);
+
+         JPanel thresholds = new JPanel(new GridLayout(1, 4, 7, 0));
+         thresholds.setOpaque(false);
+         thresholds.add(new JLabel("缺失变量数 ≥"));
+         thresholds.add(this.missingMinCount);
+         thresholds.add(new JLabel("缺失比例 ≥ (%)"));
+         thresholds.add(this.missingMinRate);
+
+         GridBagConstraints c = new GridBagConstraints();
+         c.gridx = 0;
+         c.gridy = 0;
+         c.weightx = 1.0;
+         c.fill = GridBagConstraints.HORIZONTAL;
+         c.insets = new Insets(0, 0, 10, 0);
+         this.formPanel.add(this.taskStepStripV153("检查范围", "分类方式", "筛选与排序"), c);
+
+         JPanel scopeCard = this.xtregWizardCardV130(1, "检查范围", "默认检查当前数据全部变量；也可以只选择论文中需要核对的一组变量。");
+         JPanel scopeBody = this.genericCardBody();
+         this.addGenericBodyField(scopeBody, "检查变量", scopeChooser);
+         scopeCard.add(scopeBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(scopeCard, c);
+
+         JPanel groupCard = this.xtregWizardCardV130(2, "分类方式", "先决定总体查看还是按企业、年份等分类，再选择分类变量与结果范围。");
+         JPanel groupBody = this.genericCardBody();
+         this.addGenericBodyField(groupBody, "如何查看缺失值", this.missingMode);
+         this.addGenericBodyField(groupBody, "分类变量（可多选）", this.listPane(this.missingGroups));
+         this.addGenericBodyField(groupBody, "结果范围", resultRange);
+         groupCard.add(groupBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(groupCard, c);
+
+         JPanel filterCard = this.xtregWizardCardV130(3, "筛选与排序", "用阈值压缩结果量，再选择最适合排查问题的排序方式。");
+         JPanel filterBody = this.genericCardBody();
+         this.addGenericBodyField(filterBody, "筛选阈值", thresholds);
+         this.addGenericBodyField(filterBody, "排序", this.missingSort);
+         JLabel readOnlyHint = new JLabel("<html>分析过程只读：不会修改当前数据；运行后可从结果表定位具体缺失记录。</html>");
+         readOnlyHint.setForeground(MUTED);
+         readOnlyHint.setFont(readOnlyHint.getFont().deriveFont(9.8F));
+         readOnlyHint.setAlignmentX(0.0F);
+         filterBody.add(readOnlyHint);
+         filterCard.add(filterBody, BorderLayout.CENTER);
+         c.gridy++;
+         this.formPanel.add(filterCard, c);
+
+         GridBagConstraints filler = this.constraints(0, c.gridy + 1);
+         filler.gridwidth = 2;
+         filler.weighty = 1.0;
+         this.formPanel.add(Box.createVerticalGlue(), filler);
          this.formPanel.revalidate();
          this.formPanel.repaint();
          this.formScroll.getVerticalScrollBar().setValue(0);
@@ -11484,7 +15964,7 @@ public final class HxWorkbench {
          this.runButton.setEnabled(Data.getVarCount() > 0);
          this.rebuilding = false;
          this.updateMissingPreview();
-         this.statusLabel.setText("请选择检查变量和分类方式，然后开始分析。分析过程只读。");
+         this.statusLabel.setText("按 3 步完成缺失值检查：选择范围 → 分类方式 → 筛选与排序。分析过程只读。");
       }
 
       private List<String> selectedMissingVariables() {
@@ -11741,7 +16221,25 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(this.currentCommand)) {
                this.updateDidBuilderPreview();
-            } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway").contains(this.currentCommand)) {
+            } else if (isStructuredGlmCommand(this.currentCommand)) {
+               this.updateStructuredGlmPreview();
+            } else if (isStructuredFractionalOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredFractionalOutcomePreview();
+            } else if (isStructuredCountOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredCountOutcomePreview();
+            } else if (isStructuredCategoricalOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredCategoricalOutcomePreview();
+            } else if (isStructuredOrdinalOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredOrdinalOutcomePreview();
+            } else if (isStructuredBinaryOutcomeCommand(this.currentCommand)) {
+               this.updateStructuredBinaryOutcomePreview();
+            } else if (isStructuredLinearRelatedCommand(this.currentCommand)) {
+               this.updateStructuredLinearRelatedPreview();
+            } else if (isStructuredPrSdTestCommand(this.currentCommand)) {
+               this.updateStructuredPrSdTestPreview();
+            } else if (isStructuredSummaryTestCommand(this.currentCommand)) {
+               this.updateStructuredSummaryTestPreview();
+            } else if (Arrays.asList("histogram", "kdensity", "scatter", "line", "connected", "lfit", "qfit", "lowess", "lpoly", "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "graph_bar", "graph_dot", "graph_pie", "graph_box", "graph_matrix", "twoway_contour", "tsline", "xtline", "sts_graph", "roctab", "roccomp", "rocgold", "rocregplot", "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar", "marginsplot", "coefplot", "event_plot", "graph_combine", "graph", "did_trends", "twoway").contains(this.currentCommand)) {
                this.updateSpecialGraphPreview();
             } else {
                HxWorkbench.StataBridge.execute("quietly hxpick, target(all) action(clear)", false);
@@ -11799,6 +16297,196 @@ public final class HxWorkbench {
             if (!this.options.getText().trim().isBlank()) {
                var1 = var1 + ", " + this.options.getText().trim();
             }
+         } else if (Arrays.asList("line", "connected").contains(this.currentCommand)) {
+            List<String> ySeries = this.variables.getSelectedValuesList();
+            var1 = "twoway " + this.currentCommand + (ySeries.isEmpty() ? "" : " " + String.join(" ", ySeries)) + " " + selected(this.panel);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("qfit".equals(this.currentCommand)) {
+            var1 = "twoway qfit " + selected(this.depvar) + " " + selected(this.panel);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("lowess", "lpoly").contains(this.currentCommand)) {
+            var1 = this.currentCommand + " " + selected(this.depvar) + " " + selected(this.panel);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(this.currentCommand)) {
+            var1 = this.currentCommand + " " + selected(this.depvar);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("rvfplot", "avplots", "lvr2plot").contains(this.currentCommand)) {
+            var1 = this.currentCommand;
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("graph_bar", "graph_dot").contains(this.currentCommand)) {
+            String nativeCommand = "graph_bar".equals(this.currentCommand) ? "graph bar" : "graph dot";
+            List<String> measures = this.variables.getSelectedValuesList();
+            var1 = nativeCommand + (measures.isEmpty() ? "" : " " + String.join(" ", measures));
+            if (!this.ifCondition.getText().trim().isBlank()) {
+               var1 = var1 + " if " + this.ifCondition.getText().trim();
+            }
+            ArrayList<String> graphOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) graphOpts.add("over(" + selected(this.panel) + ")");
+            if (!this.options.getText().trim().isBlank()) graphOpts.add(this.options.getText().trim());
+            if (!graphOpts.isEmpty()) var1 = var1 + ", " + String.join(" ", graphOpts);
+         } else if ("graph_pie".equals(this.currentCommand)) {
+            String measure = selected(this.depvar);
+            var1 = "graph pie" + (measure.isBlank() ? "" : " " + measure);
+            if (!this.ifCondition.getText().trim().isBlank()) {
+               var1 = var1 + " if " + this.ifCondition.getText().trim();
+            }
+            ArrayList<String> pieOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) pieOpts.add("over(" + selected(this.panel) + ")");
+            if (!this.options.getText().trim().isBlank()) pieOpts.add(this.options.getText().trim());
+            if (!pieOpts.isEmpty()) var1 = var1 + ", " + String.join(" ", pieOpts);
+         } else if ("graph_matrix".equals(this.currentCommand)) {
+            List<String> matrixVars = this.variables.getSelectedValuesList();
+            var1 = "graph matrix" + (matrixVars.isEmpty() ? "" : " " + String.join(" ", matrixVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("twoway_contour".equals(this.currentCommand)) {
+            var1 = "twoway contour " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("tsline", "xtline").contains(this.currentCommand)) {
+            List<String> lineVars = this.variables.getSelectedValuesList();
+            var1 = this.currentCommand + (lineVars.isEmpty() ? "" : " " + String.join(" ", lineVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> lineOpts = new ArrayList<>();
+            if ("xtline".equals(this.currentCommand) && selected(this.model).startsWith("叠加")) lineOpts.add("overlay");
+            if (!this.options.getText().trim().isBlank()) lineOpts.add(this.options.getText().trim());
+            if (!lineOpts.isEmpty()) var1 += ", " + String.join(" ", lineOpts);
+         } else if ("sts_graph".equals(this.currentCommand)) {
+            var1 = "sts graph";
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> survivalOpts = new ArrayList<>();
+            if (!selected(this.panel).isBlank()) survivalOpts.add("by(" + selected(this.panel) + ")");
+            String curve = selected(this.model);
+            if (curve.startsWith("失败")) survivalOpts.add("failure");
+            else if (curve.startsWith("累计风险")) survivalOpts.add("cumhaz");
+            else if (curve.startsWith("风险函数")) survivalOpts.add("hazard");
+            if (this.specialGraphRiskTable.isSelected()) survivalOpts.add("risktable");
+            if (!this.options.getText().trim().isBlank()) survivalOpts.add(this.options.getText().trim());
+            if (!survivalOpts.isEmpty()) var1 += ", " + String.join(" ", survivalOpts);
+         } else if ("rocgold".equals(this.currentCommand)) {
+            List<String> compareScores = this.variables.getSelectedValuesList();
+            var1 = "rocgold " + selected(this.depvar) + " " + selected(this.panel) + (compareScores.isEmpty() ? "" : " " + String.join(" ", compareScores));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> goldOpts = new ArrayList<>();
+            goldOpts.add("graph");
+            if (!this.options.getText().trim().isBlank()) goldOpts.add(this.options.getText().trim());
+            var1 += ", " + String.join(" ", goldOpts);
+         } else if (Arrays.asList("roctab", "roccomp").contains(this.currentCommand)) {
+            List<String> scores = this.variables.getSelectedValuesList();
+            var1 = this.currentCommand + " " + selected(this.depvar) + (scores.isEmpty() ? "" : " " + String.join(" ", scores));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> rocOpts = new ArrayList<>();
+            rocOpts.add("graph");
+            if (!this.options.getText().trim().isBlank()) rocOpts.add(this.options.getText().trim());
+            var1 += ", " + String.join(" ", rocOpts);
+         } else if ("rocregplot".equals(this.currentCommand)) {
+            var1 = "rocregplot";
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("biplot".equals(this.currentCommand)) {
+            List<String> biplotVars = this.variables.getSelectedValuesList();
+            var1 = "biplot" + (biplotVars.isEmpty() ? "" : " " + String.join(" ", biplotVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(this.currentCommand)) {
+            var1 = this.currentCommand;
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("cluster_dendrogram".equals(this.currentCommand)) {
+            String clusterName = this.expression.getText().trim();
+            var1 = "cluster dendrogram" + (clusterName.isBlank() ? "" : " " + clusterName);
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "gladder", "qladder", "spikeplot").contains(this.currentCommand)) {
+            var1 = this.currentCommand + " " + selected(this.depvar);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if (Arrays.asList("qchi", "pchi").contains(this.currentCommand)) {
+            var1 = this.currentCommand + " " + selected(this.depvar);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            ArrayList<String> chiOpts = new ArrayList<>();
+            if (!this.expression.getText().trim().isBlank()) chiOpts.add("df(" + this.expression.getText().trim() + ")");
+            if (!this.options.getText().trim().isBlank()) chiOpts.add(this.options.getText().trim());
+            if (!chiOpts.isEmpty()) var1 += ", " + String.join(" ", chiOpts);
+         } else if (Arrays.asList("qqplot", "sunflower").contains(this.currentCommand)) {
+            var1 = this.currentCommand + " " + selected(this.depvar) + " " + selected(this.panel);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("dotplot".equals(this.currentCommand)) {
+            List<String> dotVars = this.variables.getSelectedValuesList();
+            var1 = "dotplot" + (dotVars.isEmpty() ? "" : " " + String.join(" ", dotVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("cchart".equals(this.currentCommand)) {
+            var1 = "cchart " + selected(this.depvar) + " " + selected(this.panel);
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("pchart".equals(this.currentCommand)) {
+            var1 = "pchart " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time);
+            ArrayList<String> pOpts = new ArrayList<>();
+            if (this.specialGraphQcStabilized.isSelected()) pOpts.add("stabilized");
+            if (!this.options.getText().trim().isBlank()) pOpts.add(this.options.getText().trim());
+            if (!pOpts.isEmpty()) var1 += ", " + String.join(" ", pOpts);
+         } else if (Arrays.asList("rchart", "xchart", "shewhart").contains(this.currentCommand)) {
+            List<String> qcVars = this.variables.getSelectedValuesList();
+            var1 = this.currentCommand + (qcVars.isEmpty() ? "" : " " + String.join(" ", qcVars));
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.inCondition.getText().trim().isBlank()) var1 += " in " + this.inCondition.getText().trim();
+            ArrayList<String> qcOpts = new ArrayList<>();
+            String qcStd = this.specialGraphQcStd.getText().trim();
+            String qcMean = this.specialGraphQcMean.getText().trim();
+            String qcLower = this.specialGraphQcLower.getText().trim();
+            String qcUpper = this.specialGraphQcUpper.getText().trim();
+            if (!qcStd.isBlank()) qcOpts.add("std(" + qcStd + ")");
+            if (("xchart".equals(this.currentCommand) || "shewhart".equals(this.currentCommand)) && !qcMean.isBlank()) qcOpts.add("mean(" + qcMean + ")");
+            if ("xchart".equals(this.currentCommand) && !qcLower.isBlank() && !qcUpper.isBlank()) {
+               qcOpts.add("lower(" + qcLower + ")");
+               qcOpts.add("upper(" + qcUpper + ")");
+            }
+            if (!this.options.getText().trim().isBlank()) qcOpts.add(this.options.getText().trim());
+            if (!qcOpts.isEmpty()) var1 += ", " + String.join(" ", qcOpts);
+         } else if ("serrbar".equals(this.currentCommand)) {
+            var1 = "serrbar " + selected(this.depvar) + " " + selected(this.panel) + " " + selected(this.time);
+            if (!this.ifCondition.getText().trim().isBlank()) var1 += " if " + this.ifCondition.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("marginsplot".equals(this.currentCommand)) {
+            var1 = "marginsplot";
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("coefplot".equals(this.currentCommand)) {
+            String resultSpec = this.expression.getText().trim();
+            var1 = "coefplot" + (resultSpec.isBlank() ? "" : " " + resultSpec);
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("event_plot".equals(this.currentCommand)) {
+            String resultSpec = this.expression.getText().trim();
+            ArrayList<String> eventOpts = new ArrayList<>();
+            String stubLag = this.specialGraphEventStubLag.getText().trim();
+            String stubLead = this.specialGraphEventStubLead.getText().trim();
+            if (!stubLag.isBlank()) eventOpts.add("stub_lag(" + stubLag + ")");
+            if (!stubLead.isBlank()) eventOpts.add("stub_lead(" + stubLead + ")");
+            if (!this.options.getText().trim().isBlank()) eventOpts.add(this.options.getText().trim());
+            var1 = "event_plot" + (resultSpec.isBlank() ? "" : " " + resultSpec);
+            if (!eventOpts.isEmpty()) var1 += ", " + String.join(" ", eventOpts);
+         } else if ("graph_combine".equals(this.currentCommand)) {
+            var1 = "graph combine " + this.expression.getText().trim();
+            if (!this.options.getText().trim().isBlank()) var1 += ", " + this.options.getText().trim();
+         } else if ("graph".equals(this.currentCommand)) {
+            String action = selected(this.model);
+            String args = this.expression.getText().trim();
+            if (action.startsWith("列出")) var1 = "graph dir";
+            else if (action.startsWith("显示")) var1 = "graph display" + (args.isBlank() ? "" : " " + args);
+            else if (action.startsWith("保存")) var1 = "graph save" + (args.isBlank() ? "" : " " + args);
+            else if (action.startsWith("导出")) var1 = "graph export" + (args.isBlank() ? "" : " " + args);
+            else if (action.startsWith("重命名")) var1 = "graph rename" + (args.isBlank() ? "" : " " + args);
+            else var1 = "graph close" + (args.isBlank() ? "" : " " + args);
+            if (!this.options.getText().trim().isBlank() && (action.startsWith("显示") || action.startsWith("保存") || action.startsWith("导出"))) {
+               var1 += ", " + this.options.getText().trim();
+            }
          } else if ("graph_box".equals(this.currentCommand)) {
             String var6 = selected(this.depvar);
             var1 = var6.isBlank() ? "graph box" : "graph box " + var6;
@@ -11851,8 +16539,10 @@ public final class HxWorkbench {
                this.graphPreview.loadTrend(var1, selected(this.time), selected(this.panel));
             } else if (Arrays.asList("scatter", "lfit").contains(this.currentCommand)) {
                this.graphPreview.loadXY(var1, var2, "lfit".equals(this.currentCommand));
-            } else if (Arrays.asList("histogram", "kdensity", "graph_box").contains(this.currentCommand)) {
+            } else if (Arrays.asList("histogram", "kdensity", "graph_box", "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "gladder", "qladder", "spikeplot").contains(this.currentCommand)) {
                this.graphPreview.loadDistribution(var1, this.currentCommand);
+            } else if (Arrays.asList("qqplot", "sunflower").contains(this.currentCommand)) {
+               this.graphPreview.loadXY(var1, selected(this.panel), false);
             } else {
                this.graphPreview.showMessage("运行图形命令后，Stata 正式图形会在 Graph 窗口显示。\n当前预览用于核对变量与大致关系。");
             }
@@ -12161,6 +16851,9 @@ public final class HxWorkbench {
                && (!this.baselineTaskActive || this.validateBaselineBeforeRun())
                && this.validateFocusedEstimationBeforeRun()
                && (!"regress".equals(this.currentCommand) || !this.regressWorkspaceActive || this.validateRegressBeforeRun())) {
+               if (!this.ensureGenericPanelDeclarationBeforeRun()) {
+                  return;
+               }
                String var1 = this.previewArea.getText().trim();
                if (var1.isEmpty()) {
                   JOptionPane.showMessageDialog(this, "请先完整选择命令需要的变量或参数。", "命令尚未完整", 1);
@@ -12190,15 +16883,24 @@ public final class HxWorkbench {
       private boolean validateFocusedEstimationBeforeRun() {
          List<String> estimators = Arrays.asList(
             "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais",
-            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
+            "xtreg", "xtlogit", "xtprobit", "logit", "probit", "ologit", "oprobit", "mlogit", "mprobit", "poisson", "nbreg", "ppmlhdfe", "ivregress", "ivreghdfe",
             "didregress", "xtdidregress"
          );
-         if (!estimators.contains(this.currentCommand)) {
+         if (!estimators.contains(this.currentCommand) && !isGenericPanelEstimator(this.currentCommand)) {
             return true;
          }
 
          if (this.flag("has_depvar") && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择因变量。", "因变量缺失", 1);
+            return false;
+         }
+
+         if (isGenericPanelEstimator(this.currentCommand) && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择个体 / 面板变量。", "面板结构尚未完整", 1);
+            return false;
+         }
+         if (isGenericPanelTimeRequired(this.currentCommand) && selected(this.time).isBlank()) {
+            JOptionPane.showMessageDialog(this, "当前命令需要时间变量；动态面板、单位根/协整检验或异质 DID 都依赖明确的 panel-time 结构。", "时间变量尚未选择", 1);
             return false;
          }
 
@@ -12250,11 +16952,12 @@ public final class HxWorkbench {
          if ("qreg".equals(this.currentCommand) && !structured.isBlank()) {
             try {
                double q = Double.parseDouble(structured);
-               if (!(q > 0.0 && q < 1.0)) {
+               boolean valid = (q > 0.0 && q < 1.0) || (q > 1.0 && q < 100.0);
+               if (!valid) {
                   throw new NumberFormatException();
                }
             } catch (NumberFormatException ex) {
-               JOptionPane.showMessageDialog(this, "quantile() 请填写 0 到 1 之间的数值，例如 0.25。", "分位点无效", 1);
+               JOptionPane.showMessageDialog(this, "quantile() 请填写 0–1 之间的小数，或 1–100 之间的百分数，例如 0.25 或 25。", "分位点无效", 1);
                return false;
             }
          }
@@ -12312,15 +17015,313 @@ public final class HxWorkbench {
 
       private boolean validateOrdinaryCommandBeforeRun() {
          String command = this.currentCommand;
+         if (isStructuredGlmCommand(command) && !this.validateStructuredGlmBeforeRun()) return false;
+         if (isStructuredFractionalOutcomeCommand(command) && !this.validateStructuredFractionalOutcomeBeforeRun()) return false;
+         if (isStructuredCountOutcomeCommand(command) && !this.validateStructuredCountOutcomeBeforeRun()) return false;
+         if (isStructuredCategoricalOutcomeCommand(command) && !this.validateStructuredCategoricalOutcomeBeforeRun()) return false;
+         if (isStructuredOrdinalOutcomeCommand(command) && !this.validateStructuredOrdinalOutcomeBeforeRun()) return false;
+         if (isStructuredBinaryOutcomeCommand(command) && !this.validateStructuredBinaryOutcomeBeforeRun()) return false;
+         if (isStructuredLinearRelatedCommand(command) && !this.validateStructuredLinearRelatedBeforeRun()) return false;
+         if (isStructuredPrSdTestCommand(command)) {
+            String first = selected(this.depvar);
+            String second = selected(this.panel);
+            int mode = this.model.getSelectedIndex();
+            if (first.isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 需要选择第一个检验变量。", "检验设置尚未完整", 1);
+               return false;
+            }
+            if (mode == 0) {
+               String valueText = this.expression.getText().trim();
+               try {
+                  double value = Double.parseDouble(valueText);
+                  if ("prtest".equals(command) && (value < 0.0 || value > 1.0)) throw new NumberFormatException();
+                  if ("sdtest".equals(command) && !(value > 0.0)) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this,
+                     "prtest".equals(command) ? "单样本 prtest 的假设比例必须是 0 到 1 之间的数值。" : "单样本 sdtest 的假设标准差必须是正数。",
+                     "假设值无效", 1);
+                  return false;
+               }
+            } else {
+               if (second.isBlank()) {
+                  JOptionPane.showMessageDialog(this, mode == 1 ? "两组模式需要选择 by() 分组变量。" : "双变量模式需要选择第二个比较变量。", "检验设置尚未完整", 1);
+                  return false;
+               }
+               if (first.equals(second)) {
+                  JOptionPane.showMessageDialog(this, "第一个检验变量与分组 / 第二变量不能相同。", "检验变量角色重复", 2);
+                  return false;
+               }
+            }
+         }
+         if ("tabulate".equals(command)) {
+            String first = selected(this.depvar), second = selected(this.panel);
+            if (first.isBlank()) {
+               JOptionPane.showMessageDialog(this, "tabulate 至少需要选择第 1 个分类变量。", "列联表设置尚未完整", 1);
+               return false;
+            }
+            if (!second.isBlank() && first.equals(second)) {
+               JOptionPane.showMessageDialog(this, "两个分类变量不能是同一个变量。", "列联表变量重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("oneway", "ranksum", "median").contains(command)) {
+            String first = selected(this.depvar), group = selected(this.panel);
+            if (first.isBlank() || group.isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 需要分别选择检验 / 结果变量和分组变量。", "检验设置尚未完整", 1);
+               return false;
+            }
+            if (first.equals(group)) {
+               JOptionPane.showMessageDialog(this, "检验 / 结果变量与分组变量必须不同。", "检验变量角色重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("signrank", "signtest").contains(command)) {
+            String first = selected(this.depvar), comparison = this.expression.getText().trim();
+            if (first.isBlank() || comparison.isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 需要选择第一个配对变量，并填写等号右侧的第二变量或表达式。", "配对检验设置尚未完整", 1);
+               return false;
+            }
+            if (first.equals(comparison)) {
+               JOptionPane.showMessageDialog(this, "等号左右不能填写完全相同的变量。", "配对变量重复", 2);
+               return false;
+            }
+         }
          if (Arrays.asList("histogram", "kdensity", "graph_box").contains(command) && selected(this.depvar).isBlank()) {
             JOptionPane.showMessageDialog(this, "请选择要绘制的变量。", "图形设置尚未完整", 1);
             return false;
+         }
+         if (Arrays.asList("graph_bar", "graph_dot").contains(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请选择至少 1 个数值变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("graph_pie".equals(command) && selected(this.panel).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择饼图的分类变量 over()。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("graph_matrix".equals(command) && this.variables.getSelectedValuesList().size() < 2) {
+            JOptionPane.showMessageDialog(this, "graph matrix 至少选择 2 个变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("twoway_contour".equals(command)) {
+            String z = selected(this.depvar), y = selected(this.panel), x = selected(this.time);
+            if (z.isBlank() || y.isBlank() || x.isBlank()) {
+               JOptionPane.showMessageDialog(this, "等高线图需要分别选择 Z、Y、X 三个变量。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (new LinkedHashSet<>(Arrays.asList(z, y, x)).size() < 3) {
+               JOptionPane.showMessageDialog(this, "Z、Y、X 必须使用三个不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("tsline", "xtline").contains(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请选择至少 1 个要绘制的序列变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("roctab".equals(command)) {
+            if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() != 1) {
+               JOptionPane.showMessageDialog(this, "roctab 需要 1 个真实二元结局和且仅 1 个预测评分。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (this.variables.getSelectedValuesList().contains(selected(this.depvar))) {
+               JOptionPane.showMessageDialog(this, "真实结局和预测评分不能是同一个变量。", "ROC 变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("roccomp".equals(command)) {
+            if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() < 2) {
+               JOptionPane.showMessageDialog(this, "roccomp 需要 1 个真实二元结局和至少 2 个预测评分。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (this.variables.getSelectedValuesList().contains(selected(this.depvar))) {
+               JOptionPane.showMessageDialog(this, "真实结局不能同时作为待比较的预测评分。", "ROC 变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("rocgold".equals(command)) {
+            String truth = selected(this.depvar);
+            String gold = selected(this.panel);
+            List<String> comparisons = this.variables.getSelectedValuesList();
+            if (truth.isBlank() || gold.isBlank() || comparisons.isEmpty()) {
+               JOptionPane.showMessageDialog(this, "rocgold 需要真实二元结局、1 个 Gold-standard classifier 和至少 1 个待比较 classifier。", "ROC 设置尚未完整", 1);
+               return false;
+            }
+            if (truth.equals(gold) || comparisons.contains(truth) || comparisons.contains(gold)) {
+               JOptionPane.showMessageDialog(this, "真实结局、Gold standard 与待比较 classifier 必须使用不同变量。", "ROC 变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("biplot".equals(command) && this.variables.getSelectedValuesList().size() < 2) {
+            JOptionPane.showMessageDialog(this, "biplot 至少选择 2 个参与分析的变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "gladder", "qladder", "spikeplot", "qchi", "pchi").contains(command)
+            && selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, "请选择要进行分布诊断的变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if (Arrays.asList("qchi", "pchi").contains(command)) {
+            String df = this.expression.getText().trim();
+            try {
+               double value = Double.parseDouble(df);
+               if (!(value > 0.0)) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+               JOptionPane.showMessageDialog(this, command + " 需要填写正的自由度 df，例如 2。", "自由度设置无效", 1);
+               return false;
+            }
+         }
+         if (Arrays.asList("qqplot", "sunflower").contains(command)) {
+            String first = selected(this.depvar), second = selected(this.panel);
+            if (first.isBlank() || second.isBlank()) {
+               JOptionPane.showMessageDialog(this, command + " 需要分别选择两个变量角色。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (first.equals(second)) {
+               JOptionPane.showMessageDialog(this, "两个图形角色必须使用不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("dotplot".equals(command) && this.variables.getSelectedValuesList().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "dotplot 至少选择 1 个分布变量。", "图形设置尚未完整", 1);
+            return false;
+         }
+         if ("cchart".equals(command)) {
+            String defects = selected(this.depvar), unit = selected(this.panel);
+            if (defects.isBlank() || unit.isBlank()) {
+               JOptionPane.showMessageDialog(this, "cchart 需要分别选择缺陷数变量和检查单位编号。", "质量控制图设置尚未完整", 1);
+               return false;
+            }
+            if (defects.equals(unit)) {
+               JOptionPane.showMessageDialog(this, "缺陷数和检查单位编号必须使用不同变量。", "质量控制图变量重复", 2);
+               return false;
+            }
+         }
+         if ("pchart".equals(command)) {
+            String rejects = selected(this.depvar), unit = selected(this.panel), ssize = selected(this.time);
+            if (rejects.isBlank() || unit.isBlank() || ssize.isBlank()) {
+               JOptionPane.showMessageDialog(this, "pchart 需要不合格数、检查单位编号和检查样本量三个变量。", "质量控制图设置尚未完整", 1);
+               return false;
+            }
+            if (new LinkedHashSet<>(Arrays.asList(rejects, unit, ssize)).size() < 3) {
+               JOptionPane.showMessageDialog(this, "pchart 的三个变量角色必须使用不同变量。", "质量控制图变量重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("rchart", "xchart", "shewhart").contains(command)) {
+            if (this.variables.getSelectedValuesList().isEmpty()) {
+               JOptionPane.showMessageDialog(this, command + " 至少选择 1 个样本内测量变量；通常应选择同一批样本的多次测量列。", "质量控制图设置尚未完整", 1);
+               return false;
+            }
+            String stdText = this.specialGraphQcStd.getText().trim();
+            if (!stdText.isBlank()) {
+               try {
+                  double stdValue = Double.parseDouble(stdText);
+                  if (!(stdValue > 0.0)) throw new NumberFormatException();
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "std() 请填写正数，例如 0.5。", "过程标准差无效", 1);
+                  return false;
+               }
+            }
+            if (Arrays.asList("xchart", "shewhart").contains(command)) {
+               String meanText = this.specialGraphQcMean.getText().trim();
+               if (!meanText.isBlank()) {
+                  try { Double.parseDouble(meanText); }
+                  catch (NumberFormatException ex) {
+                     JOptionPane.showMessageDialog(this, "mean() 请填写数值，例如 10。", "过程均值无效", 1);
+                     return false;
+                  }
+               }
+            }
+         }
+         if ("xchart".equals(command)) {
+            String lowerText = this.specialGraphQcLower.getText().trim();
+            String upperText = this.specialGraphQcUpper.getText().trim();
+            if (lowerText.isBlank() != upperText.isBlank()) {
+               JOptionPane.showMessageDialog(this, "xchart 的 lower() 与 upper() 必须同时填写或同时留空。", "控制限设置不完整", 1);
+               return false;
+            }
+            if (!lowerText.isBlank()) {
+               try {
+                  double lowerValue = Double.parseDouble(lowerText);
+                  double upperValue = Double.parseDouble(upperText);
+                  if (!(lowerValue < upperValue)) {
+                     JOptionPane.showMessageDialog(this, "下控制限 lower() 必须小于上控制限 upper()。", "控制限顺序无效", 1);
+                     return false;
+                  }
+               } catch (NumberFormatException ex) {
+                  JOptionPane.showMessageDialog(this, "lower() / upper() 请填写数值。", "控制限格式无效", 1);
+                  return false;
+               }
+            }
+         }
+         if ("serrbar".equals(command)) {
+            String mean = selected(this.depvar), error = selected(this.panel), axis = selected(this.time);
+            if (mean.isBlank() || error.isBlank() || axis.isBlank()) {
+               JOptionPane.showMessageDialog(this, "serrbar 需要均值变量、误差变量和横轴 / 组序变量。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (new LinkedHashSet<>(Arrays.asList(mean, error, axis)).size() < 3) {
+               JOptionPane.showMessageDialog(this, "serrbar 的三个变量角色必须使用不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if ("event_plot".equals(command)) {
+            String lagStub = this.specialGraphEventStubLag.getText().trim();
+            String leadStub = this.specialGraphEventStubLead.getText().trim();
+            if (!lagStub.isBlank() && !lagStub.contains("#")) {
+               JOptionPane.showMessageDialog(this, "event_plot 的 stub_lag() 需要用 # 标记相对期数字，例如 tau#。", "stub_lag() 格式错误", 1);
+               return false;
+            }
+            if (!leadStub.isBlank() && !leadStub.contains("#")) {
+               JOptionPane.showMessageDialog(this, "event_plot 的 stub_lead() 需要用 # 标记相对期数字，例如 pre#。", "stub_lead() 格式错误", 1);
+               return false;
+            }
+         }
+         if ("graph_combine".equals(command)) {
+            String[] graphNames = this.expression.getText().trim().split("\\s+");
+            if (this.expression.getText().trim().isBlank() || graphNames.length < 2) {
+               JOptionPane.showMessageDialog(this, "graph combine 至少填写两个图形名或 .gph 文件名，例如 g1 g2。", "组合图形尚未完整", 1);
+               return false;
+            }
+         }
+         if ("graph".equals(command)) {
+            String action = selected(this.model), args = this.expression.getText().trim();
+            if ((action.startsWith("保存") || action.startsWith("导出") || action.startsWith("重命名")) && args.isBlank()) {
+               JOptionPane.showMessageDialog(this, "当前 graph 操作需要填写图形名或文件参数。", "图形管理参数缺失", 1);
+               return false;
+            }
          }
          if (Arrays.asList("scatter", "lfit").contains(command)) {
             if (selected(this.depvar).isBlank() || this.variables.getSelectedValuesList().size() != 1) {
                JOptionPane.showMessageDialog(this, "请选择纵轴 Y，并且只选择 1 个横轴 X。", "图形设置尚未完整", 1);
                return false;
             }
+         }
+         if (Arrays.asList("line", "connected").contains(command)) {
+            String x = selected(this.panel);
+            List<String> ys = this.variables.getSelectedValuesList();
+            if (ys.isEmpty() || x.isBlank()) {
+               JOptionPane.showMessageDialog(this, "line/connected 至少选择 1 个纵轴 Y 系列并指定横轴 X。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (ys.contains(x)) {
+               JOptionPane.showMessageDialog(this, "Y 系列不能同时作为横轴 X。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("qfit", "lowess", "lpoly").contains(command)) {
+            String y = selected(this.depvar), x = selected(this.panel);
+            if (y.isBlank() || x.isBlank()) {
+               JOptionPane.showMessageDialog(this, "qfit/lowess/lpoly 需要分别选择 Y 和 X。", "图形设置尚未完整", 1);
+               return false;
+            }
+            if (y.equals(x)) {
+               JOptionPane.showMessageDialog(this, "Y 和 X 必须使用不同变量。", "图形变量角色重复", 2);
+               return false;
+            }
+         }
+         if (Arrays.asList("rvpplot", "avplot", "cprplot", "acprplot").contains(command) && selected(this.depvar).isBlank()) {
+            JOptionPane.showMessageDialog(this, command + " 需要选择 1 个诊断变量 / predictor。", "回归诊断图设置尚未完整", 1);
+            return false;
          }
          if ("twoway".equals(command) && this.expression.getText().trim().isBlank()) {
             JOptionPane.showMessageDialog(this, "请填写 twoway 图层表达式。", "图形设置尚未完整", 1);
@@ -13005,8 +18006,16 @@ public final class HxWorkbench {
             this.selectResultView("missing", true);
          } else if (this.currentCommand.startsWith("oneclick")) {
             this.selectResultView("oneclick", true);
-         } else if (Arrays.asList("histogram", "kdensity", "scatter", "lfit", "graph_box", "did_trends", "twoway", "marginsplot", "coefplot", "event_plot")
-            .contains(this.currentCommand)) {
+         } else if (Arrays.asList(
+               "twoway", "scatter", "line", "connected", "lfit", "qfit", "histogram", "kdensity",
+               "graph_bar", "graph_dot", "graph_pie", "graph_box", "twoway_contour", "graph_matrix", "lowess", "lpoly",
+               "rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot", "tsline", "xtline", "sts_graph",
+               "roctab", "roccomp", "rocgold", "rocregplot",
+               "screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay",
+               "cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar",
+               "symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower",
+               "marginsplot", "coefplot", "graph_combine", "did_trends", "event_plot"
+            ).contains(this.currentCommand)) {
             this.selectResultView("graph", true);
          } else if ("data".equals(this.activeCategoryCode)) {
             this.selectResultView("changes", true);
@@ -13270,6 +18279,14 @@ public final class HxWorkbench {
                      )
                      : ("graph_box".equals(this.currentCommand) ? "graph box" : ("did_trends".equals(this.currentCommand) ? "hxtrendplot" : this.currentCommand))
                );
+            if ("graph_bar".equals(var1)) var1 = "graph bar";
+            else if ("graph_dot".equals(var1)) var1 = "graph dot";
+            else if ("graph_pie".equals(var1)) var1 = "graph pie";
+            else if ("graph_matrix".equals(var1)) var1 = "graph matrix";
+            else if ("twoway_contour".equals(var1)) var1 = "twoway contour";
+            else if ("graph_combine".equals(var1)) var1 = "graph combine";
+            else if ("cluster_dendrogram".equals(var1)) var1 = "cluster dendrogram";
+            else if ("sts_graph".equals(var1)) var1 = "sts graph";
             int var2 = HxWorkbench.StataBridge.execute("help " + var1, true);
             if (var2 == 0) {
                HxWorkbench.StataBridge.execute("capture window manage forward viewer", false);
@@ -13363,7 +18380,19 @@ public final class HxWorkbench {
       private void configureGenericWeightTypes() {
          String var1 = selected(this.genericWeightType);
          List<String> var2;
-         if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
+         if (Arrays.asList("fracreg", "betareg").contains(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "iweight", "pweight");
+         } else if (Arrays.asList("poisson", "nbreg", "gnbreg", "cpoisson", "zip", "zinb", "tpoisson", "tnbreg").contains(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "iweight", "pweight");
+         } else if ("ppmlhdfe".equals(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "pweight");
+         } else if (Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog", "ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit", "mlogit", "mprobit", "clogit", "slogit", "cmclogit", "cmsample").contains(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "iweight", "pweight");
+         } else if ("cmsummarize".equals(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight");
+         } else if ("cmtab".equals(this.currentCommand)) {
+            var2 = Arrays.asList("无", "fweight", "iweight");
+         } else if (Arrays.asList("didregress", "xtdidregress").contains(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "aweight", "pweight");
          } else if ("ppmlhdfe".equals(this.currentCommand)) {
             var2 = Arrays.asList("无", "fweight", "pweight");
@@ -13405,7 +18434,7 @@ public final class HxWorkbench {
 
       private void navigateTo(String var1, String var2, String var3) {
          this.browseMethod(var1, var2);
-         this.openCommandPage(var3);
+         this.openCommandPageFromChooser(var3);
       }
 
       private void chooseAndLoadDta() {
@@ -13429,6 +18458,44 @@ public final class HxWorkbench {
          }
       }
 
+      private void enableVariableDrop(JTextField target, String role) {
+         target.setToolTipText("可从右侧数据表表头拖入变量：" + role);
+         target.setTransferHandler(new TransferHandler() {
+            @Override
+            public boolean canImport(TransferSupport support) {
+               return support.isDataFlavorSupported(DataFlavor.stringFlavor);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+               if (!this.canImport(support)) return false;
+               try {
+                  String value = ((String)support.getTransferable().getTransferData(DataFlavor.stringFlavor)).trim();
+                  if (value.isBlank()) return false;
+                  String current = target.getText();
+                  int pos = Math.max(0, Math.min(target.getCaretPosition(), current.length()));
+                  String before = current.substring(0, pos);
+                  String after = current.substring(pos);
+                  String insert = value;
+                  if (!before.isEmpty()) {
+                     char prev = before.charAt(before.length() - 1);
+                     if (!Character.isWhitespace(prev) && prev != '(' && prev != ':' && prev != ',') insert = " " + insert;
+                  }
+                  if (!after.isEmpty()) {
+                     char next = after.charAt(0);
+                     if (!Character.isWhitespace(next) && next != ')' && next != ',') insert = insert + " ";
+                  }
+                  target.setText(before + insert + after);
+                  target.setCaretPosition(Math.min((before + insert).length(), target.getText().length()));
+                  target.requestFocusInWindow();
+                  return true;
+               } catch (Exception ex) {
+                  return false;
+               }
+            }
+         });
+      }
+
       private void updateConditionalFields() {
          if (this.clusterFieldBlock != null) {
             boolean var1 = "cluster".equalsIgnoreCase(selected(this.vce));
@@ -13447,6 +18514,126 @@ public final class HxWorkbench {
          }
 
          return false;
+      }
+
+      private static Icon uiIcon(String kind, int size, Color color) {
+         return new WorkbenchIcon(kind, size, color);
+      }
+
+      private static String iconKindForTitle(String title) {
+         String value = title == null ? "" : title;
+         if (value.contains("OneClick")) return "oneclick";
+         if (value.contains("导入")) return "import";
+         if (value.contains("描述")) return "stats";
+         if (value.contains("基准")) return "regression";
+         if (value.contains("固定")) return "fixed";
+         if (value.contains("双重")) return "did";
+         if (value.contains("检查")) return "check";
+         if (value.contains("变量")) return "variable";
+         if (value.contains("样本")) return "sample";
+         if (value.contains("合并")) return "merge";
+         if (value.contains("结构")) return "structure";
+         if (value.contains("相关")) return "correlation";
+         if (value.contains("均值")) return "test";
+         if (value.contains("频数")) return "table";
+         if (value.contains("外部")) return "external";
+         return "data";
+      }
+
+      private static final class WorkbenchIcon implements Icon {
+         private final String kind;
+         private final int size;
+         private final Color color;
+
+         WorkbenchIcon(String kind, int size, Color color) {
+            this.kind = kind == null ? "data" : kind;
+            this.size = Math.max(12, size);
+            this.color = color == null ? TEXT : color;
+         }
+
+         @Override public int getIconWidth() { return this.size; }
+         @Override public int getIconHeight() { return this.size; }
+
+         @Override
+         public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g = (Graphics2D)graphics.create();
+            g.translate(x, y);
+            double scale = this.size / 20.0;
+            g.scale(scale, scale);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(this.color);
+            g.setStroke(new BasicStroke(1.7F, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            switch (this.kind) {
+               case "menu":
+                  g.drawLine(3, 5, 17, 5); g.drawLine(3, 10, 17, 10); g.drawLine(3, 15, 17, 15); break;
+               case "home":
+                  g.drawLine(3, 9, 10, 3); g.drawLine(10, 3, 17, 9); g.drawRoundRect(5, 8, 10, 9, 1, 1); g.drawLine(9, 17, 9, 12); break;
+               case "data": case "import":
+                  g.drawRoundRect(4, 2, 11, 15, 2, 2); g.drawLine(8, 6, 13, 6); g.drawLine(8, 9, 13, 9); g.drawLine(8, 12, 11, 12);
+                  if ("import".equals(this.kind)) { g.drawLine(2, 10, 7, 10); g.drawLine(5, 8, 7, 10); g.drawLine(5, 12, 7, 10); }
+                  break;
+               case "stats":
+                  g.drawLine(3, 17, 17, 17); g.drawRoundRect(4, 10, 2, 6, 1, 1); g.drawRoundRect(9, 6, 2, 10, 1, 1); g.drawRoundRect(14, 3, 2, 13, 1, 1); break;
+               case "graph": case "regression":
+                  g.drawLine(3, 3, 3, 17); g.drawLine(3, 17, 17, 17); g.drawLine(5, 14, 9, 10); g.drawLine(9, 10, 12, 12); g.drawLine(12, 12, 17, 5); break;
+               case "fixed": case "table":
+                  g.drawRoundRect(3, 3, 14, 14, 1, 1); g.drawLine(3, 8, 17, 8); g.drawLine(3, 13, 17, 13); g.drawLine(8, 3, 8, 17); g.drawLine(13, 3, 13, 17); break;
+               case "did": case "merge":
+                  g.drawLine(3, 6, 16, 6); g.drawLine(13, 3, 16, 6); g.drawLine(13, 9, 16, 6); g.drawLine(17, 14, 4, 14); g.drawLine(7, 11, 4, 14); g.drawLine(7, 17, 4, 14); break;
+               case "oneclick":
+                  g.fillPolygon(new int[]{10,12,17,12,10,8,3,8}, new int[]{2,8,10,12,18,12,10,8}, 8); break;
+               case "external":
+                  g.drawRoundRect(3, 5, 14, 10, 2, 2); g.drawLine(7, 5, 7, 3); g.drawLine(13, 5, 13, 3); g.drawLine(7, 15, 7, 17); g.drawLine(13, 15, 13, 17); break;
+               case "history":
+                  g.drawOval(3, 3, 14, 14); g.drawLine(10, 10, 10, 6); g.drawLine(10, 10, 14, 12); break;
+               case "settings":
+                  g.drawOval(6, 6, 8, 8); g.drawOval(9, 9, 2, 2); g.drawLine(10, 2, 10, 5); g.drawLine(10, 15, 10, 18); g.drawLine(2, 10, 5, 10); g.drawLine(15, 10, 18, 10); break;
+               case "check":
+                  g.drawOval(3, 3, 14, 14); g.drawLine(6, 10, 9, 13); g.drawLine(9, 13, 15, 7); break;
+               case "variable":
+                  g.drawOval(2, 8, 4, 4); g.drawOval(8, 2, 4, 4); g.drawOval(14, 8, 4, 4); g.drawOval(8, 14, 4, 4); g.drawLine(6, 9, 9, 6); g.drawLine(11, 6, 14, 9); g.drawLine(14, 11, 11, 14); g.drawLine(9, 14, 6, 11); break;
+               case "sample":
+                  g.drawLine(3, 4, 17, 4); g.drawLine(3, 4, 8, 10); g.drawLine(17, 4, 12, 10); g.drawLine(8, 10, 8, 16); g.drawLine(8, 16, 12, 18); g.drawLine(12, 18, 12, 10); break;
+               case "structure":
+                  g.drawRoundRect(3, 3, 14, 14, 1, 1); g.drawLine(6, 7, 14, 7); g.drawLine(6, 10, 14, 10); g.drawLine(6, 13, 14, 13); break;
+               case "correlation":
+                  g.drawOval(3, 5, 8, 8); g.drawOval(9, 7, 8, 8); g.drawLine(5, 16, 15, 4); break;
+               case "test":
+                  g.drawLine(4, 6, 16, 6); g.drawLine(7, 6, 4, 14); g.drawLine(13, 6, 16, 14); g.drawLine(2, 14, 6, 14); g.drawLine(14, 14, 18, 14); g.drawLine(10, 3, 10, 17); break;
+               case "search":
+                  g.drawOval(3, 3, 10, 10); g.drawLine(12, 12, 17, 17); break;
+               default:
+                  g.drawRoundRect(3, 3, 14, 14, 2, 2); g.drawLine(7, 7, 13, 7); g.drawLine(7, 11, 13, 11); break;
+            }
+            g.dispose();
+         }
+      }
+
+      private void showPreviewCommandPage(String command) {
+         CommandGuide guide = commandGuide(command);
+         this.regressWorkspaceActive = false;
+         this.showWorkspacePage();
+         this.currentCommand = command;
+         this.commandDock.setVisible(true);
+         this.commandTabs.setVisible(true);
+         this.runButton.setText("运行命令");
+         this.runButton.setEnabled(true);
+         this.previewArea.setEditable(true);
+         this.commandTitle.setText(command + " · " + guide.title);
+         this.commandTitle.setToolTipText(guide.title);
+         this.setWorkspaceBreadcrumb(commandPath(command));
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(guide.example) + "</html>");
+         this.insightArea.setText("主要意图：" + guide.purpose + "\n\n推荐数据：" + guide.bestFor + "\n\n优点、限制与注意：" + guide.difference);
+         this.syntaxArea.setText(command + " ...");
+         this.previewArea.setText(guide.example.isBlank() ? command : guide.example);
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new BorderLayout());
+         JLabel note = new JLabel("预览模式：参数区不连接 Stata。", SwingConstants.CENTER);
+         note.setForeground(MUTED);
+         this.formPanel.add(note, BorderLayout.CENTER);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.statusLabel.setText("预览模式已打开 " + command + " 命令页。");
       }
 
       private static String categoryLabel(String var0) {
@@ -13480,51 +18667,133 @@ public final class HxWorkbench {
 
       private static String commandMethod(String var0) {
          if ("hxconvert".equals(var0)) {
+            return "HX Workflow|数据转换";
+         } else if (Arrays.asList("use", "import", "export", "save").contains(var0)) {
             return "数据处理|导入与转换";
-         } else if (Arrays.asList("缺失值分析", "duplicates", "misstable").contains(var0)) {
+         } else if (Arrays.asList("缺失值分析", "describe", "codebook", "isid", "assert", "count", "compare", "duplicates", "misstable").contains(var0)) {
             return "数据处理|数据检查";
-         } else if (Arrays.asList("generate", "replace", "encode", "decode", "destring", "tostring", "winsor2").contains(var0)) {
+         } else if (Arrays.asList("generate", "egen", "replace", "recode", "clonevar", "split", "rename", "order", "label", "format", "compress", "encode", "decode", "destring", "tostring", "winsor2").contains(var0)) {
             return "数据处理|变量处理";
-         } else if (Arrays.asList("keep", "drop").contains(var0)) {
+         } else if (Arrays.asList("keep", "drop", "expand").contains(var0)) {
             return "数据处理|样本处理";
-         } else if (Arrays.asList("merge", "append").contains(var0)) {
+         } else if (Arrays.asList("merge", "append", "joinby", "cross", "frlink", "frget").contains(var0)) {
             return "数据处理|合并与追加";
-         } else if (Arrays.asList("reshape", "collapse", "xtset", "tsset").contains(var0)) {
+         } else if (Arrays.asList("reshape", "collapse", "contract", "fillin", "stack", "xpose", "sort", "gsort", "xtset", "tsset", "frame", "frames").contains(var0)) {
             return "数据处理|数据结构";
-         } else if (Arrays.asList("summarize", "tabstat").contains(var0)) {
+         } else if (Arrays.asList("summarize", "ameans", "centile", "ci", "mean", "proportion", "ratio", "total", "tabstat", "tabulate", "table", "dtable", "ttest", "prtest", "sdtest", "oneway", "anova", "ranksum", "median", "signrank", "signtest").contains(var0)) {
             return "统计|汇总，表格和假设检验";
-         } else if (Arrays.asList("correlate", "pwcorr").contains(var0)) {
+         } else if (Arrays.asList("regress", "areg", "reghdfe", "cnsreg", "rreg", "hetregress", "qreg", "iqreg", "bsqreg", "sqreg", "vwls", "eivreg", "intreg", "tobit", "truncreg", "churdle", "boxcox", "fp", "nl", "nlsur", "gmm", "sureg", "reg3", "mvreg", "frontier", "correlate", "pwcorr").contains(var0)) {
             return "统计|线性模型及相关";
-         } else if ("ttest".equals(var0)) {
-            return "统计|汇总，表格和假设检验";
-         } else if ("tabulate".equals(var0)) {
-            return "统计|汇总，表格和假设检验";
-         } else if (Arrays.asList("regress", "areg", "reghdfe", "qreg", "rreg", "cnsreg", "vwls", "eivreg", "newey", "prais").contains(var0)) {
-            return "统计|线性模型及相关";
-         } else if (Arrays.asList("didregress", "xtdidregress").contains(var0)) {
-            return "统计|因果推断/处理效应";
-         } else if (Arrays.asList("xtreg", "xtlogit", "xtprobit").contains(var0)) {
-            return "统计|纵向/面板数据";
-         } else if (Arrays.asList("logit", "probit").contains(var0)) {
+         } else if (Arrays.asList("logit", "logistic", "binreg", "probit", "biprobit", "hetprobit", "scobit", "cloglog").contains(var0)) {
             return "统计|二元结果";
-         } else if (Arrays.asList("poisson", "nbreg", "ppmlhdfe").contains(var0)) {
+         } else if (Arrays.asList("ologit", "oprobit", "hetoprobit", "zioprobit", "ziologit").contains(var0)) {
+            return "统计|序数结果";
+         } else if (Arrays.asList("mlogit", "mprobit", "clogit", "slogit", "cmset", "cmsummarize", "cmchoiceset", "cmtab", "cmsample", "cmclogit", "cmmixlogit", "cmxtmixlogit", "cmmprobit", "cmroprobit", "cmrologit", "nlogit", "asclogit", "asmprobit").contains(var0)) {
+            return "统计|分类结果";
+         } else if (Arrays.asList("poisson", "nbreg", "gnbreg", "cpoisson", "ppmlhdfe", "zip", "zinb", "tpoisson", "tnbreg").contains(var0)) {
             return "统计|计数结果";
-         } else if (Arrays.asList("ivregress", "ivreghdfe").contains(var0)) {
-            return "回归模型|工具变量";
+         } else if (Arrays.asList("fracreg", "betareg").contains(var0)) {
+            return "统计|分数结果";
+         } else if ("glm".equals(var0)) {
+            return "统计|广义线性模型";
+         } else if (Arrays.asList("heckman", "heckprobit", "heckoprobit", "heckpoisson").contains(var0)) {
+            return "统计|选择模型";
+         } else if (Arrays.asList("arima", "arfima", "arimasoc", "arfimasoc", "newey", "prais", "arch", "ucm", "mswitch", "threshold", "dfgls", "dfuller", "pperron", "corrgram", "cumsp", "pergram", "wntestb", "wntestq", "psdensity", "rolling", "forecast", "tsappend", "tsfill", "tsfilter", "tsreport", "tssmooth").contains(var0)) {
+            return "统计|时间序列";
+         } else if (Arrays.asList("var", "svar", "vec", "varbasic", "varsoc", "vargranger", "varlmar", "varnorm", "varstable", "varwle", "vecrank", "veclmar", "vecnorm", "vecstable", "irf", "lpirf", "mgarch", "dfactor", "sspace", "xcorr").contains(var0)) {
+            return "统计|多元时间序列";
+         } else if (Arrays.asList("spregress", "spivregress", "spxtregress").contains(var0)) {
+            return "统计|空间自回归模型";
+         } else if (Arrays.asList("xtreg", "xtlogit", "xtprobit", "xtologit", "xtpoisson", "xtnbreg", "xtgee", "xttobit", "xtcloglog", "xtintreg", "xtoprobit", "xtmlogit", "xtfrontier", "xtivreg", "xtpcse", "xtgls", "xtregar", "xtrc", "xtstreg", "xteregress", "xteprobit", "xteoprobit", "xteintreg", "xtheckman", "xthtaylor", "xtabond", "xtdpdsys", "xtdpd", "xtunitroot", "xtcointtest", "xtdescribe", "xtsum", "xttab", "xtdata").contains(var0)) {
+            return "统计|纵向/面板数据";
+         } else if (Arrays.asList("mixed", "mecloglog", "melogit", "meprobit", "mepoisson", "menbreg", "meologit", "meoprobit", "meintreg", "menl", "mestreg", "metobit", "meglm").contains(var0)) {
+            return "统计|多层混合效应模型";
+         } else if (Arrays.asList("ctset", "cttost", "ltable", "snapspan", "stset", "stdescribe", "stsum", "stci", "stcurve", "stbase", "stfill", "stgen", "stsplit", "stvary", "sttocc", "sttoct", "sts", "stcox", "streg", "stintreg", "stintcox", "stcrreg", "stir", "strate", "stptime", "stmh", "stmc").contains(var0)) {
+            return "统计|生存分析";
+         } else if (Arrays.asList("cc", "cs", "ir", "mcc", "dstdize", "pkexamine", "pksumm", "pkcross", "pkequiv", "pkcollapse", "pkshape").contains(var0)) {
+            return "统计|流行病学及相关";
+         } else if (Arrays.asList("eregress", "eprobit", "eoprobit", "eintreg").contains(var0)) {
+            return "统计|内生协变量";
+         } else if (Arrays.asList("teffects", "eteffects", "etregress", "etpoisson", "stteffects", "didregress", "xtdidregress", "mediate", "hdidregress", "xthdidregress", "telasso").contains(var0)) {
+            return "统计|因果推断/处理效应";
+         } else if (Arrays.asList("sem", "gsem").contains(var0)) {
+            return "统计|结构方程模型(SEM)";
+         } else if ("fmm".equals(var0)) {
+            return "统计|有限混合模型(FMM)";
+         } else if (Arrays.asList("irt", "irtgraph", "diflogistic", "difmh").contains(var0)) {
+            return "统计|项目反应理论(IRT)";
+         } else if (Arrays.asList("dsge", "dsgenl").contains(var0)) {
+            return "统计|DSGE模型";
+         } else if (Arrays.asList("alpha", "factor", "pca", "canon", "ca", "candisc", "hotelling", "manova", "mvreg", "mca", "mds", "mdslong", "mdsmat", "mvtest", "procrustes", "discrim", "cluster").contains(var0)) {
+            return "统计|多元分析";
+         } else if (Arrays.asList("svyset", "svydescribe", "svy").contains(var0)) {
+            return "统计|调查数据分析";
+         } else if (Arrays.asList("lasso", "elasticnet", "sqrtlasso", "poregress", "pologit", "popoisson", "dsregress", "dslogit", "dspoisson", "poivregress", "xporegress", "xpologit", "xpopoisson", "xpoivregress").contains(var0)) {
+            return "统计|Lasso回归";
+         } else if ("meta".equals(var0)) {
+            return "统计|Meta分析";
+         } else if ("mi".equals(var0)) {
+            return "统计|多重插补";
+         } else if (Arrays.asList("npregress", "nptrend").contains(var0)) {
+            return "统计|非参数分析";
+         } else if (Arrays.asList("exlogistic", "expoisson", "bitest", "bitesti", "ksmirnov", "symmetry", "tetrachoric", "tabi").contains(var0)) {
+            return "统计|精确统计";
+         } else if (Arrays.asList("bootstrap", "jackknife", "permute", "simulate", "statsby").contains(var0)) {
+            return "统计|重抽样";
+         } else if (Arrays.asList("power", "ciwidth", "gsbounds", "gsdesign").contains(var0)) {
+            return "统计|效能，精度和样品含量";
+         } else if (Arrays.asList("bayes", "bayesmh", "bayespredict", "bayesreps", "bayesstats", "bayesgraph", "bayestest", "bayesvarstable", "bayesirf", "bayesfcast").contains(var0)) {
+            return "统计|贝叶斯分析";
+         } else if (Arrays.asList("bmaregress", "bmacoefsample", "bmagraph", "bmastats", "bmapredict").contains(var0)) {
+            return "统计|贝叶斯模型平均";
+         } else if (Arrays.asList("ivregress", "ivprobit", "ivtobit", "ivpoisson", "ivfprobit", "ivqregress", "ivreghdfe").contains(var0)) {
+            return "统计|工具变量与内生性";
+         } else if (Arrays.asList("test", "testparm", "testnl", "lincom", "nlcom", "contrast", "pwcompare", "predict", "predictnl", "margins", "lrtest", "hausman", "suest", "linktest", "estimates", "estat").contains(var0)) {
+            return "统计|估计后分析";
          } else if ("did_builder".equals(var0)) {
             return "DID 专区|DID分步构建";
-         } else if (Arrays.asList("test", "lincom").contains(var0)) {
-            return "后估计|系数检验";
-         } else if (Arrays.asList("predict", "margins").contains(var0)) {
-            return "后估计|预测边际";
-         } else if (Arrays.asList("histogram", "kdensity", "graph_box").contains(var0)) {
-            return "图形|分布图";
-         } else if (Arrays.asList("scatter", "lfit", "twoway").contains(var0)) {
+         } else if (Arrays.asList("twoway", "scatter", "line", "connected", "lfit", "qfit").contains(var0)) {
             return "图形|二维图(散点图，折线图等)";
+         } else if ("graph_bar".equals(var0)) {
+            return "图形|条形图";
+         } else if ("graph_dot".equals(var0)) {
+            return "图形|点图";
+         } else if ("graph_pie".equals(var0)) {
+            return "图形|饼图";
+         } else if ("histogram".equals(var0)) {
+            return "图形|直方图";
+         } else if ("graph_box".equals(var0)) {
+            return "图形|箱线图";
+         } else if ("twoway_contour".equals(var0)) {
+            return "图形|等高线图";
+         } else if ("graph_matrix".equals(var0)) {
+            return "图形|散点图矩阵";
+         } else if (Arrays.asList("kdensity", "lowess", "lpoly").contains(var0)) {
+            return "图形|平滑和密度";
+         } else if (Arrays.asList("rvfplot", "rvpplot", "avplot", "avplots", "lvr2plot", "cprplot", "acprplot").contains(var0)) {
+            return "图形|回归诊断图";
+         } else if ("tsline".equals(var0)) {
+            return "图形|时间序列图";
+         } else if ("xtline".equals(var0)) {
+            return "图形|面板数据折线图";
+         } else if ("sts_graph".equals(var0)) {
+            return "图形|生存分析图";
+         } else if (Arrays.asList("roctab", "rocfit", "roccomp", "rocgold", "rocreg", "rocregplot").contains(var0)) {
+            return "图形|ROC分析";
+         } else if (Arrays.asList("screeplot", "scoreplot", "loadingplot", "biplot", "cluster_dendrogram", "cabiplot", "caprojection", "mdsconfig", "mdsshepard", "procoverlay").contains(var0)) {
+            return "图形|多元分析图";
+         } else if (Arrays.asList("cchart", "pchart", "rchart", "xchart", "shewhart", "serrbar").contains(var0)) {
+            return "图形|质量控制";
+         } else if (Arrays.asList("symplot", "quantile", "qnorm", "pnorm", "qchi", "pchi", "qqplot", "gladder", "qladder", "dotplot", "spikeplot", "sunflower", "marginsplot", "coefplot").contains(var0)) {
+            return "图形|更多统计图形";
+         } else if ("graph_combine".equals(var0)) {
+            return "图形|图形组合";
+         } else if ("graph".equals(var0)) {
+            return "图形|管理图形";
+         } else if ("set".equals(var0)) {
+            return "图形|更改方案/大小";
          } else if ("did_trends".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
-         } else if (Arrays.asList("coefplot", "marginsplot").contains(var0)) {
-            return "图形|更多统计图形";
          } else if ("event_plot".equals(var0)) {
             return "DID 专区|平行趋势与动态图";
          } else if ("oneclick".equals(var0)) {

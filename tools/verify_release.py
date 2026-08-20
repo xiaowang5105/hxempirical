@@ -6,6 +6,7 @@ import sys
 import zipfile
 
 root = Path(__file__).resolve().parents[1]
+PORTABLE_TEXT_SUFFIXES = {".ado", ".do", ".sthlp", ".dlg", ".md", ".pkg", ".toc"}
 
 
 def fail(msg):
@@ -15,6 +16,34 @@ def fail(msg):
 
 def read_text(path):
     return (root / path).read_text(encoding="utf-8")
+
+
+def portable_bytes(path):
+    path = Path(path)
+    raw = (root / path).read_bytes()
+    if path.suffix.lower() in PORTABLE_TEXT_SUFFIXES:
+        text = raw.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+        return text.encode("utf-8")
+    return raw
+
+
+def posix_checksum(data):
+    polynomial = 0x04C11DB7
+    table = []
+    for index in range(256):
+        value = index << 24
+        for _ in range(8):
+            value = ((value << 1) ^ polynomial) & 0xFFFFFFFF if value & 0x80000000 else (value << 1) & 0xFFFFFFFF
+        table.append(value)
+    crc = 0
+    for byte in data:
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ table[((crc >> 24) ^ byte) & 0xFF]
+    length = len(data)
+    while length:
+        byte = length & 0xFF
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ table[((crc >> 24) ^ byte) & 0xFF]
+        length >>= 8
+    return (~crc) & 0xFFFFFFFF
 
 
 pkg = read_text("hxempirical.pkg").splitlines()
@@ -69,7 +98,11 @@ for line in read_text("hxempirical-release.index").splitlines():
         meta[key] = value.strip()
     elif line.startswith("f "):
         parts.append(line.split(None, 1)[1].strip())
-if not {"archive", "bytes", "sha256", "parts"} <= set(meta):
+required_meta = {
+    "archive", "package", "version", "pkg_bytes", "pkg_checksum",
+    "pkg_sha256", "bytes", "checksum", "sha256", "parts", "offline_index",
+}
+if not required_meta <= set(meta):
     fail("release index metadata incomplete")
 if meta["archive"] != "hxempirical-release.zip":
     fail("unexpected release archive name: " + meta["archive"])
@@ -93,6 +126,18 @@ if len(raw) != indexed_bytes:
     fail("zip byte count mismatch")
 if hashlib.sha256(raw).hexdigest() != meta["sha256"].lower():
     fail("zip sha256 mismatch")
+if posix_checksum(raw) != int(meta["checksum"]):
+    fail("zip POSIX checksum mismatch")
+
+package = portable_bytes("hxempirical.pkg")
+if meta["package"] != "hxempirical.pkg" or meta["version"] != version:
+    fail("release index package/version binding mismatch")
+if len(package) != int(meta["pkg_bytes"]):
+    fail("package byte count mismatch")
+if posix_checksum(package) != int(meta["pkg_checksum"]):
+    fail("package POSIX checksum mismatch")
+if hashlib.sha256(package).hexdigest() != meta["pkg_sha256"].lower():
+    fail("package sha256 mismatch")
 
 b64 = "".join("".join((root / p).read_text(encoding="utf-8").split()) for p in parts)
 try:
@@ -103,7 +148,10 @@ if reconstructed != raw:
     fail("base64 parts mismatch")
 
 # The release ZIP is the actual installer payload: no missing, extra, duplicate, or stale files.
-expected = set(managed) | {"hxempirical.pkg", "hxinstall.do", "hxinstall_offline.do", "INSTALL.md"}
+offline_name = meta.get("offline_index", "")
+if offline_name != "hxempirical-offline.index":
+    fail("release index does not bind the offline integrity index")
+expected = set(managed) | {"hxempirical.pkg", "hxinstall.do", "hxinstall_offline.do", "INSTALL.md", offline_name}
 with zipfile.ZipFile(root / meta["archive"]) as release:
     name_list = release.namelist()
     if len(name_list) != len(set(name_list)):
@@ -111,11 +159,32 @@ with zipfile.ZipFile(root / meta["archive"]) as release:
     names = set(name_list)
     if names != expected:
         fail(f"zip manifest mismatch missing={sorted(expected - names)} extra={sorted(names - expected)}")
-    for rel in sorted(expected):
+    for rel in sorted(expected - {offline_name}):
         packaged = release.read(rel)
-        working = (root / rel).read_bytes()
+        working = portable_bytes(rel)
         if packaged != working:
             fail("zip content mismatch: " + rel)
+
+    offline_lines = release.read(offline_name).decode("utf-8").splitlines()
+    offline_files = [line.split()[1] for line in offline_lines if line.startswith("f ")]
+    if offline_files != managed:
+        fail("offline integrity index does not match the package manifest order")
+    offline_meta = {}
+    offline_records = {}
+    for line in offline_lines:
+        fields = line.split()
+        if len(fields) >= 3 and fields[0] == "d":
+            offline_meta[fields[1]] = " ".join(fields[2:])
+        elif len(fields) == 4 and fields[0] == "f":
+            offline_records[fields[1]] = (int(fields[2]), int(fields[3]))
+    if offline_meta.get("package") != "hxempirical.pkg" or offline_meta.get("version") != version:
+        fail("offline integrity package/version binding mismatch")
+    if int(offline_meta.get("pkg_bytes", -1)) != len(package) or int(offline_meta.get("pkg_checksum", -1)) != posix_checksum(package):
+        fail("offline integrity package checksum mismatch")
+    for rel in managed:
+        working = portable_bytes(rel)
+        if offline_records.get(rel) != (len(working), posix_checksum(working)):
+            fail("offline integrity file checksum mismatch: " + rel)
 
 print(
     f"HX_RELEASE_VERIFY_OK version={version} managed={len(managed)} "

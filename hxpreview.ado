@@ -1,4 +1,4 @@
-*! hxpreview 1.3.1  12aug2026
+*! hxpreview 1.3.4  16aug2026
 *! Build the native Stata command shown by the dynamic dialog.
 program define hxpreview, rclass
     version 16.0
@@ -34,6 +34,15 @@ program define hxpreview, rclass
 
     local preview `"`command'"'
     if "`command'" == "lfit" local preview "twoway lfit"
+    if "`command'" == "graph_bar" local preview "graph bar"
+    if "`command'" == "graph_dot" local preview "graph dot"
+    if "`command'" == "graph_pie" local preview "graph pie"
+    if "`command'" == "graph_box" local preview "graph box"
+    if "`command'" == "graph_matrix" local preview "graph matrix"
+    if "`command'" == "twoway_contour" local preview "twoway contour"
+    if "`command'" == "graph_combine" local preview "graph combine"
+    if "`command'" == "cluster_dendrogram" local preview "cluster dendrogram"
+    if "`command'" == "sts_graph" local preview "sts graph"
     if "`command'" == "misstable" local preview "misstable summarize"
     if "`command'" == "duplicates" local preview "duplicates report"
     local opt ""
@@ -86,7 +95,11 @@ program define hxpreview, rclass
         local preview `"`preview' = `expression'"'
     }
     if inlist(`"`template'"', "expression_body", "command_body") & `"`expression'"' != "" {
-        local preview `"`preview' `expression'"'
+        local body = trim(`"`expression'"')
+        if `"`template'"' == "command_body" & inlist(substr(`"`body'"', 1, 1), ":", ",") {
+            local preview `"`preview'`body'"'
+        }
+        else local preview `"`preview' `body'"'
     }
     if `"`template'"' == "reshape" & `"`expression'"' != "" {
         local preview `"`preview' `expression'"'
