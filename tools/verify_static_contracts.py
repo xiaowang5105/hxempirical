@@ -83,12 +83,13 @@ if "工作台只检测是否已安装，不再自动安装" not in readme:
 if "hxempirical 不再自动安装第三方命令" not in entry:
     fail("public hxempirical install compatibility path must not install packages")
 
-# The public launcher must load the downloaded installer core silently.
-# Using `noisily do` echoes the entire ~580-line installer into Results.
+# The public launcher must load the downloaded installer core silently and by
+# exact temporary path.  Using `noisily do` echoes the installer into Results;
+# resolving only by command name also permits current-directory shadowing.
 if "capture noisily do" in launcher:
     fail("public hxinstall.do still echoes the installer core into Results")
-if "capture quietly do" not in launcher:
-    fail("public hxinstall.do does not load the installer core quietly")
+if "capture quietly run" not in launcher or "bootstrap_installer" not in launcher:
+    fail("public hxinstall.do does not load the exact temporary installer quietly")
 
 # User-ado discovery must not execute one Stata `which` call per scanned file.
 discovery_start = java.find("private List<String> discoverInstalledExternalCommands")
@@ -131,17 +132,15 @@ for system_file in (
         fail(f"required system file is not marked with uppercase F: {system_file}")
 if "local personal_h" not in read("hxinstaller.ado") or "local target `\"`personal_h'\"'" not in read("hxinstaller.ado"):
     fail("transactional installer does not target PERSONAL/h")
-if "& !`legacy_present'" not in read("hxinstaller.ado"):
-    fail("same-version fast path can skip legacy PERSONAL-root cleanup")
-if "legacy_root'hxworkbench.jar" not in read("hxinstaller.ado"):
-    fail("legacy JAR shadow is not detected")
+if "if !`standard_present'" not in read("hxinstaller.ado") or "local target" not in read("hxinstaller.ado") or "legacy_root" not in read("hxinstaller.ado"):
+    fail("existing legacy PERSONAL-root installs are not updated in place")
 for needle in (
     "legacy_root",
-    "旧 PERSONAL 根目录文件仍在遮挡",
-    "Pre-1.5.10 custom installs wrote managed files directly in PERSONAL",
+    "PERSONAL（旧布局）",
+    "Prefer an existing legacy-root installation",
 ):
     if needle not in read("hxinstaller.ado"):
-        fail(f"legacy PERSONAL-root migration guard missing: {needle}")
+        fail(f"legacy PERSONAL-root update guard missing: {needle}")
 if "x[0].lower() == \"f\"" not in read("tools/verify_release.py"):
     fail("release verifier does not include uppercase F package entries")
 
@@ -207,4 +206,3 @@ for needle in (
 ):
     if needle not in java_text:
         fail("OneClick task-first UI contract missing: " + needle)
-

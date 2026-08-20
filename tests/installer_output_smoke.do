@@ -15,7 +15,7 @@ local test_personal `"`output_base'_personal"'
 sysdir set PERSONAL `"`test_personal'/"'
 cd `"`c(tmpdir)'"'
 
-capture log close _all
+capture log close hxoutput
 log using `"`output_log'"', text replace name(hxoutput)
 capture noisily do `"`installer'"' auto `"`repository'"'
 local install_rc = _rc

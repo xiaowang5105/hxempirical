@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.11  15aug2026}{...}
+{* *! version 1.5.12  20aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -157,6 +157,9 @@ wants the entry at every Stata startup, run {cmd:hxempirical menu persist}.
 That command adds one HX-managed block to profile.do while preserving all
 unrelated lines. Remove only that managed block with
 {cmd:hxempirical menu remove}. hxempirical never uses {cmd:window menu clear}.
+Malformed HX markers, including nesting, an isolated end marker, or a missing
+end marker, stop the operation without rewriting profile.do. Failure to create
+the first HX backup also leaves the original profile unchanged.
 
 {title:Missing-value analysis}
 
@@ -232,11 +235,21 @@ Expected missing-file probes are captured and replaced by a concise diagnostic.
 
 {pstd}
 The same one-line installer automatically selects install or update from the
-local manifest, writes its managed files into PERSONAL, retries
-transient downloads, stages all files before replacement, and restores the
-previous installation if a write fails. Uninstall also removes the managed
-startup-menu block when present. Restart Stata after an update or uninstall so
-the loaded Java class is released.
+local manifest. A same-version fast path requires a version-matched
+{cmd:hxempirical.integrity} record and a matching file length and Stata/POSIX
+checksum for every managed file; a missing or altered file starts repair.
+The package manifest and decoded release ZIP are both checked against their
+byte counts and POSIX checksums in the same-source release index before any
+formal replacement. The package name and version must also match. SHA256 values
+in the index support release and browser-side auditing and are not reported as
+a Stata-side verification.
+
+{pstd}
+Installation stages all files before replacement and restores the previous
+installation if a write fails. Uninstall backs up the managed installation,
+attempts the lock-prone JAR first, and rolls back all changes if any deletion or
+profile cleanup fails. The manifest and installer remain available for retry.
+Restart Stata after an update or uninstall so the loaded Java class is released.
 
 {title:Examples}
 
@@ -283,4 +296,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.11.
+HX empirical workbench, package version 1.5.12.

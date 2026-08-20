@@ -2,9 +2,16 @@ version 17.0
 clear all
 set more off
 
-/* Run from the repository root on Windows or macOS. */
-capture quietly which hxsetup
-if _rc adopath ++ "."
+/* Run from the repository root, or pass the repository root as argument 1. */
+args repository
+if `"`repository'"' == "" local repository `"`c(pwd)'"'
+local repository : subinstr local repository "\" "/", all
+capture program drop hxsetup
+capture quietly run `"`repository'/hxsetup.ado"'
+if _rc {
+    display as error "HX_TEST_FAIL cannot load repository hxsetup.ado"
+    exit _rc
+}
 
 local original_personal `"`c(sysdir_personal)'"'
 local test_personal `"`c(tmpdir)'hxempirical_profile_smoke"'
@@ -18,9 +25,10 @@ capture quietly erase `"`test_personal'/__hxempirical_profile_write_test.tmp"'
 capture quietly rmdir `"`test_personal'"'
 
 sysdir set PERSONAL `"`test_personal'/"'
+adopath ++ `"`repository'"'
 
 /* A clean account starts without the PERSONAL directory. */
-capture noisily hxsetup, persist
+capture noisily hxsetup, persist menusource(`"`repository'/hxmenu.ado"')
 if _rc {
     local rc = _rc
     sysdir set PERSONAL `"`original_personal'"'
@@ -30,7 +38,7 @@ if _rc {
 confirm file `"`test_profile'"'
 
 /* Repeating persistence must keep exactly one managed block. */
-quietly hxsetup, persist
+quietly hxsetup, persist menusource(`"`repository'/hxmenu.ado"')
 tempname profile_in
 file open `profile_in' using `"`test_profile'"', read text
 local begin_count 0
@@ -81,6 +89,19 @@ if r(optional_missing) < 0 | r(optional_missing) > 8 {
     sysdir set PERSONAL `"`original_personal'"'
     display as error "HX_TEST_FAIL invalid optional dependency count"
     exit 459
+}
+
+/* Every official command exposed by the curated linear-model directory must
+   resolve in the supported Stata environment.  ivreg2 is an optional external
+   extension and is therefore covered by dependency handling instead. */
+foreach cmd in regress areg qreg rreg cnsreg newey vwls xtgls prais ///
+    ivregress ivprobit cfregress sureg mvreg reg3 sem {
+    capture quietly which `cmd'
+    if _rc {
+        sysdir set PERSONAL `"`original_personal'"'
+        display as error "HX_TEST_FAIL linear catalog command unavailable: `cmd'"
+        exit 111
+    }
 }
 
 sysdir set PERSONAL `"`original_personal'"'

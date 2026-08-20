@@ -10,11 +10,11 @@
 
 两种方式最终安装的是同一份发布包，统一写入 Stata 标准首字母 ado 目录：优先 `PERSONAL/h`；如果该目录不可写，会自动回退到 `PLUS/h`。首次安装、检查更新和自动修复使用同一条命令。
 
-## 1.5.10 安装布局说明
+## 1.5.12 安装布局与安全说明
 
-从 1.5.10 起，`net install` 与 `hxinstall.do` 统一使用 `PERSONAL/h`（或 `PLUS/h`）。`hxworkbench.jar`、`.dlg` 和内置 `.dta` 均作为系统安装文件处理。旧版 `hxinstall.do` 曾把 HX 文件直接写进 `PERSONAL` 根目录；新版事务式安装器会在标准目录成功写入后清理这些旧影子文件。
+全新安装统一使用 `PERSONAL/h`（或 `PLUS/h`）。`hxworkbench.jar`、`.dlg` 和内置 `.dta` 均作为系统安装文件处理。检测到 Stata 当前仍从旧版 `PERSONAL` 根目录加载 HX 时，事务式安装器会在原位置完成安全更新，防止新旧目录互相遮挡；这类旧布局可在确认新版正常后再按维护说明迁移。
 
-如果一直使用传统 `net install` 且电脑上还存在旧根目录副本，需要先用一次 `hxinstall.do` 完成自动迁移，或手动清理旧根目录 HX 文件；此后继续 `net install ..., replace force` 即可。
+如果一直使用传统 `net install` 且电脑上还存在旧根目录副本，先运行一次 `hxinstall.do` 将旧副本更新到同一版本。确认 `which hxempirical` 指向预期位置后，再迁移或清理旧布局。
 
 ## 方法 A：在线安装
 
@@ -28,7 +28,7 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 
 安装器依次执行：
 
-1. 取得短安装核心，检查 Stata 版本，并选择可写的持久 ado 目录（优先 `PERSONAL`，必要时 `PLUS/h`）；
+1. 取得短安装核心，检查 Stata 版本，并选择可写的持久 ado 目录（优先 `PERSONAL/h`，必要时 `PLUS/h`；已在使用的旧根目录安装会原位安全更新）；
 2. 读取 `hxempirical.pkg`，比较当前版本与最新版本；
 3. 版本相同且文件完整时直接结束；
 4. 需要安装、更新或修复时才下载 Base64 文本分段；
@@ -40,8 +40,8 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 已经是最新版本时，Results 显示：
 
 ```text
-当前版本：1.5.11
-最新版本：1.5.11
+当前版本：1.5.12
+最新版本：1.5.12
 已是最新版本，无需更新。
 ```
 
@@ -78,8 +78,11 @@ do "D:/你的解压目录/hxinstall_offline.do"
 
 - 全部 `.ado`、`.sthlp`、`.dlg`、测试数据和 Java 工作台；
 - `hxempirical.pkg` 完整清单；
+- `hxempirical-offline.index` 逐文件长度与 checksum 索引；
 - 在线/本地共用的事务式安装器；
 - 离线启动文件和本说明。
+
+离线启动器会先核对清单版本、文件名安全性，以及每个受管文件的长度和 checksum。任一文件损坏、缺失或大小写冲突都会在写入 `PERSONAL` 前停止。
 
 原 ZIP 和解压目录不会被修改。更新完成后可以自行保留或删除下载文件。
 
@@ -114,11 +117,13 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 
 离线更新：下载最新 ZIP，解压后重新运行 `hxinstall_offline.do`。
 
-安装器通过 `PERSONAL` 中的本地清单识别已有版本。版本相同且受管文件完整时立即结束；存在新版时先备份再统一替换；同版本缺少文件时自动修复。写入失败时会恢复原版本。遇到 `hxworkbench.jar` 正在使用或 `r(602)` 时，请关闭所有 Stata 窗口，重新打开 Stata 后先执行更新。
+安装器通过 `PERSONAL` 中的本地清单和 `hxempirical.integrity` 识别已有版本。版本相同、完整性记录版本一致，并且每个受管文件的长度和 checksum 均吻合时才立即结束；文件缺失或内容变化会自动进入修复。存在新版时先备份再统一替换，写入失败时恢复原版本。遇到 `hxworkbench.jar` 正在使用或 `r(602)` 时，请关闭所有 Stata 窗口，重新打开 Stata 后先执行更新。
+
+发布索引还记录 `hxempirical.pkg` 和发布 ZIP 的 SHA256，供构建流程与浏览器下载审计。Stata 端实际验证 pkg 与 ZIP 各自的字节数和 POSIX checksum，不会把未在 Stata 中计算的 SHA256 报告为验证成功。
 
 ## 修复安装
 
-普通安装命令已经能够自动发现缺失文件。需要无条件重新覆盖全部受管文件时运行：
+普通安装命令会自动发现缺失文件、长度变化和 checksum 不一致。需要无条件重新覆盖全部受管文件时运行：
 
 ```stata
 hxempirical repair
@@ -144,7 +149,9 @@ hxempirical uninstall
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 ```
 
-卸载器会删除 `PERSONAL` 中由 hxempirical 清单管理的文件，并移除 HX 写入 `profile.do` 的菜单区块。完成后重新启动 Stata。
+卸载器先备份受管文件、安装清单、完整性记录和安装器，再优先删除容易被锁定的 `hxworkbench.jar`。任何删除或 `profile.do` 清理失败都会从备份恢复，并保留可重试入口；成功完成全部步骤后才报告卸载完成。完成后重新启动 Stata。
+
+`hxempirical menu persist` 会先检查 `profile.do` 中 HX 标记是否成对且没有嵌套。发现孤立标记、缺失结束标记或备份失败时会停止，原 `profile.do` 保持不变。
 
 如果电脑以前多次使用 `net install` 安装过旧版本，`PLUS` 目录可能还保留旧登记。按提示运行：
 
@@ -209,11 +216,13 @@ Windows 和 macOS 使用同一发布包。安装器会创建缺失的 `PERSONAL`
 ```stata
 do "tests/cross_platform_core_smoke.do"
 do "tests/installer_lifecycle_smoke.do"
+do "tests/installer_integrity_smoke.do"
 do "tests/offline_launcher_smoke.do"
 do "tests/installer_output_smoke.do"
+do "tests/hxsetup_profile_safety_smoke.do"
 ```
 
-这些测试使用隔离的临时 `PERSONAL`，覆盖目录创建、核心/可选依赖诊断、菜单持久化、首次安装、同版本快速退出、自动修复、核心源码不回显、离线启动和卸载。
+Windows 维护者也可以运行 `tools/run_stata_tests.ps1`；它逐项启动 Stata、设置超时并保留失败日志。上述测试使用隔离的临时 `PERSONAL`，覆盖目录创建、核心/可选依赖诊断、菜单持久化、首次安装、同版本完整性快速退出、损坏文件自动修复、发布索引拒绝、核心源码不回显、真实离线 ZIP 和事务卸载。
 
 ## 传统 Stata 包管理（高级）
 

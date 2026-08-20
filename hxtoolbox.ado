@@ -1,5 +1,5 @@
-*! hxtoolbox 4.7.1  15aug2026
-*! Open the Java single-window workbench; keep the native dialog as fallback.
+*! hxtoolbox 4.7.2  20aug2026
+*! Open the Java single-window workbench; classic dialog requires explicit option.
 program define hxtoolbox
     version 17.0
     syntax [, CLASSIC]

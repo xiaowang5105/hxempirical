@@ -1,8 +1,15 @@
 v 1
 d archive hxempirical-release.zip
-d bytes 413687
-d sha256 5d52447677fdd7faf97f29a29c8b5e359199a6e19c38754e5f3f33c9ce697227
+d package hxempirical.pkg
+d version 1.5.12
+d pkg_bytes 995
+d pkg_checksum 3983280840
+d pkg_sha256 a588edbc133e057f296e217987515de0487cfbb38be9a135a35b84e09e3ece9c
+d bytes 431535
+d checksum 105865161
+d sha256 a5c140dd5ba0083c3a08efc5aadf2d7ebf34d4b3a505124a794a943a8b4548c7
 d parts 12
+d offline_index hxempirical-offline.index
 f release/hxempirical-release.b64.001
 f release/hxempirical-release.b64.002
 f release/hxempirical-release.b64.003
