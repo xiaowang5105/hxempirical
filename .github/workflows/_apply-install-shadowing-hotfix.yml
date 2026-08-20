@@ -3,12 +3,15 @@ name: Apply install shadowing hotfix
 on:
   push:
     branches: [hotfix/install-shadowing-v1513]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.head_ref == '' || github.head_ref == 'hotfix/install-shadowing-v1513'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
