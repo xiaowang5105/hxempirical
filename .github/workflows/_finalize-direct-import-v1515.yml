@@ -1,0 +1,101 @@
+name: Finalize direct Excel CSV import 1.5.15
+
+on:
+  push:
+    branches: [feature/direct-excel-csv-import-v1515]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/direct-excel-csv-import-v1515
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+
+      - name: Apply 1.5.15 source and release changes
+        run: python tools/_finalize_direct_import_v1515.py
+
+      - name: Compile direct-import hook without SFI stubs
+        run: |
+          rm -rf /tmp/hximporthook
+          mkdir -p /tmp/hximporthook
+          javac --release 11 -d /tmp/hximporthook src/main/java/com/hexie/stata/HxDirectImportHook.java
+          java -cp /tmp/hximporthook com.hexie.stata.HxDirectImportHook --self-test
+          jar --update --file hxworkbench.jar -C /tmp/hximporthook com/hexie/stata/HxDirectImportHook.class
+          java -cp hxworkbench.jar com.hexie.stata.HxDirectImportHook --self-test
+
+      - name: Rebuild managed release bundle
+        shell: pwsh
+        run: ./tools/build_release_bundle.ps1
+
+      - name: Verify direct import contract
+        run: python tools/verify_direct_import_contracts.py
+
+      - name: Verify JAR provenance and Java level
+        run: python tools/verify_hxworkbench_jar_sync.py
+
+      - name: Verify repository invariants
+        run: python tools/verify_repository_invariants.py
+
+      - name: Verify release
+        run: python tools/verify_release.py
+
+      - name: Verify static contracts
+        run: python tools/verify_static_contracts.py
+
+      - name: Verify installer contracts
+        run: python tools/verify_installer_contracts.py
+
+      - name: Verify Statistics catalog
+        run: python tools/verify_statistics_catalog.py
+
+      - name: Parse future production build script
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'tools/build_hxworkbench_jar.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+          Write-Host 'HX_JAR_BUILD_SCRIPT_PARSE_OK'
+
+      - name: Commit finalized 1.5.15 product files
+        shell: bash
+        run: |
+          rm -f tools/_finalize_direct_import_v1515.py
+          python - <<'PY'
+          from pathlib import Path
+          readme = Path('README.md')
+          readme.write_text('\n'.join(line.rstrip() for line in readme.read_text(encoding='utf-8').splitlines()) + '\n', encoding='utf-8')
+          agents = Path('AGENTS.md')
+          agents.write_text(agents.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/_finalize-direct-import-v1515.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: import Excel and CSV directly into current data"
+          git push origin HEAD:feature/direct-excel-csv-import-v1515
