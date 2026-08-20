@@ -18,6 +18,9 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Verify repository installation invariants
+        run: python tools/verify_repository_invariants.py
+
       - name: Verify managed release
         run: python tools/verify_release.py
 
