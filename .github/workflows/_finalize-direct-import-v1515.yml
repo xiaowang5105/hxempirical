@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   finalize:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,11 +81,10 @@ jobs:
           }
           Write-Host 'HX_JAR_BUILD_SCRIPT_PARSE_OK'
 
-      - name: Commit finalized 1.5.15 feature
+      - name: Commit finalized 1.5.15 product files
         shell: bash
         run: |
           rm -f tools/_finalize_direct_import_v1515.py
-          rm -f .github/workflows/_finalize-direct-import-v1515.yml
           python - <<'PY'
           from pathlib import Path
           readme = Path('README.md')
@@ -92,6 +92,7 @@ jobs:
           agents = Path('AGENTS.md')
           agents.write_text(agents.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
           PY
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/_finalize-direct-import-v1515.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
