@@ -30,7 +30,11 @@ install_doc = read("INSTALL.md")
 launcher = read("hxinstall.do")
 pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
-semantics = read("hxsemantics.ado")
+semantics_entry = read("hxsemantics.ado")
+semantics_rules = read("hxsemantics_rules.do")
+semantics = semantics_entry + "\n" + semantics_rules
+if "findfile hxsemantics_rules.do" not in semantics_entry or "include `\"`hx_semantics_rules'\"'" not in semantics_entry:
+    fail("hxsemantics does not load the split rules file in its local-macro scope")
 preview = read("hxpreview.ado")
 resolve = read("hxresolve.ado")
 
@@ -553,7 +557,7 @@ if "hxempirical 不再自动安装第三方命令" not in entry:
 # Using `noisily do` echoes the entire ~580-line installer into Results.
 if "capture noisily do" in launcher:
     fail("public hxinstall.do still echoes the installer core into Results")
-if "capture quietly do" not in launcher:
+if "capture quietly do" not in launcher and "capture quietly run" not in launcher:
     fail("public hxinstall.do does not load the installer core quietly")
 
 # User-ado discovery must not execute one Stata `which` call per scanned file.
@@ -595,19 +599,18 @@ for system_file in (
 ):
     if f"F {system_file}" not in pkg:
         fail(f"required system file is not marked with uppercase F: {system_file}")
-if "local personal_h" not in read("hxinstaller.ado") or "local target `\"`personal_h'\"'" not in read("hxinstaller.ado"):
+installer_text = read("hxinstaller.ado")
+if "local personal_h" not in installer_text or "local target `\"`personal_h'\"'" not in installer_text:
     fail("transactional installer does not target PERSONAL/h")
-if "& !`legacy_present'" not in read("hxinstaller.ado"):
-    fail("same-version fast path can skip legacy PERSONAL-root cleanup")
-if "legacy_root'hxworkbench.jar" not in read("hxinstaller.ado"):
-    fail("legacy JAR shadow is not detected")
 for needle in (
-    "legacy_root",
-    "旧 PERSONAL 根目录文件仍在遮挡",
-    "Pre-1.5.10 custom installs wrote managed files directly in PERSONAL",
+    "local legacy_root",
+    "local standard_present",
+    "if !`standard_present'",
+    "local target `\"`legacy_root'\"'",
+    "Existing legacy PERSONAL-root",
 ):
-    if needle not in read("hxinstaller.ado"):
-        fail(f"legacy PERSONAL-root migration guard missing: {needle}")
+    if needle not in installer_text:
+        fail(f"legacy PERSONAL-root in-place update guard missing: {needle}")
 if "x[0].lower() == \"f\"" not in read("tools/verify_release.py"):
     fail("release verifier does not include uppercase F package entries")
 
@@ -1460,4 +1463,3 @@ for needle in (
 ):
     if needle not in java_text:
         fail("OneClick task-first UI contract missing: " + needle)
-

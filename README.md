@@ -2,9 +2,18 @@
 
 ## 当前版本与下载
 
-**当前发布版本：1.5.11**<br>
+**当前发布版本：1.5.12**<br>
 **支持：Stata 17 及以上版本**<br>
-**上次修改时间：2026-08-15 21:45（UTC+8）**
+**上次修改时间：2026-08-20 18:30（UTC+8）**
+
+### 1.5.12 安装安全与界面收尾
+
+- 在线启动器增加 GitHub Pages → Raw 同源回退，并从临时文件精确加载安装核心，旧工作目录中的同名 `.ado` 无法抢先执行。
+- 安装、更新、修复和卸载使用事务锁、发布版本绑定、文件名安全检查、逐文件长度与 POSIX checksum；同版本文件损坏会自动修复，失败回滚会保留可恢复备份。
+- 浏览器离线 ZIP 自带逐文件完整性索引，解压后无需再次联网；任何文件缺失、损坏、重复或路径异常都会在写入正式目录前停止。
+- `profile.do` 菜单块改为事务写入；标记缺损、备份或恢复失败时保留用户原文件并给出明确提示。
+- 工作台补齐显式返回目标、目录滚动复位、1024×700 / 1280×720 自适应布局、统一 Java2D 图标和有效线性模型命令，并保留 1.5.11 的 OneClick 重构与相邻 JAR 加载规则。
+- 合并完整 Statistics 命令目录、统一语义注册表与新图形页；生产构建同时校验统计目录覆盖、Java 11 字节码以及 JAR 与源码的 Git blob 对应关系。
 
 ### 1.5.11 OneClick 界面与 Java 加载路径修复
 
@@ -18,7 +27,7 @@
 - **以后安装、更新、修复统一只记一条命令：** `do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"`。不需要区分首次安装和日常更新。
 - 修复 `net install` 与旧 `hxinstall.do` 使用不同目录导致的版本遮挡：从本版起，两种安装方式都以 Stata 标准首字母目录 `PERSONAL/h`（不可写时 `PLUS/h`）为正式安装位置。
 - `hxempirical.pkg` 将 `hxworkbench.jar`、经典 `.dlg` 和内置测试 `.dta` 改为大写 `F` 系统安装文件，保证 `net install` 不会把这些必需文件当作普通 ancillary 文件。
-- `hxinstall.do` 会在新目录成功写入后清理 1.5.9 及以前遗留在 `PERSONAL` 根目录的 HX 受管文件，避免旧 `hxempirical.ado` / `hxworkbench.jar` 抢先被 Stata 找到。
+- 新安装使用标准首字母目录；检测到仍在 `PERSONAL` 根目录运行的旧安装时，会在原位置安全更新，防止旧文件继续遮挡新版。完成验证后可按安装说明迁移旧布局。
 - 发布 CI 同时检查大小写 `f/F` 清单、标准 `h/` 布局和旧根目录迁移守卫。
 
 ### 1.5.9 自查修复：外部命令扫描与文档一致性
@@ -369,7 +378,7 @@ hxempirical uninstall
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 ```
 
-卸载器会删除标准安装目录 `PERSONAL/h`（或回退时的 `PLUS/h`）中由本地清单管理的文件，并清理旧版遗留在 `PERSONAL` 根目录的 HX 影子文件，同时移除 HX 写入 `profile.do` 的菜单区块。若电脑以前多次使用 `net install` 安装过旧版本，卸载器会提示通过 `ado dir hxempirical` 和 `ado uninstall [编号]` 清理旧包登记。完成后重新启动 Stata。
+卸载器会删除当前实际安装位置中由经过校验的本地清单管理的文件，同时移除 HX 写入 `profile.do` 的菜单区块。标准位置是 `PERSONAL/h`（或回退时的 `PLUS/h`）；旧版根目录安装会在原位置按同一事务规则卸载。若电脑以前多次使用 `net install` 安装过旧版本，卸载器会提示通过 `ado dir hxempirical` 和 `ado uninstall [编号]` 清理旧包登记。完成后重新启动 Stata。
 
 ## 兼容性
 
@@ -382,11 +391,32 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do" uninstall
 hxempirical, classic
 ```
 
-在全新用户环境中运行 `hxempirical menu persist` 时，程序会先创建并验证 `PERSONAL` 目录，再写入自己管理的 `profile.do` 区块。仓库维护者可以在 Windows 或 macOS 的 Stata 中运行以下脚本，检查干净目录下的持久菜单、重复执行、移除和依赖诊断：
+在全新用户环境中运行 `hxempirical menu persist` 时，程序会先创建并验证 `PERSONAL` 目录，再写入自己管理的 `profile.do` 区块。若现有 `profile.do` 包含嵌套的 HX 开始标记、孤立的结束标记或缺失的结束标记，程序会停止并保持原文件不变；首次备份失败也不会继续写入。
+
+Windows 维护者从仓库根目录运行带单项超时和明确成功标记检查的统一测试器：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/run_stata_tests.ps1
+```
+
+macOS 维护者可在 Stata GUI 中逐项执行，或在仓库根目录用对应版本的 `stata-mp -b do` 批处理执行以下六个测试：
 
 ```stata
 do "tests/cross_platform_core_smoke.do"
+do "tests/hxsetup_profile_safety_smoke.do"
+do "tests/installer_integrity_smoke.do"
+do "tests/installer_lifecycle_smoke.do"
+do "tests/installer_output_smoke.do"
+do "tests/offline_launcher_smoke.do"
 ```
+
+生产 JAR 发布前还要额外运行真实 Workbench 综合测试：
+
+```stata
+do "tests/workbench_real_stata_smoke.do" "仓库根目录"
+```
+
+该测试通过真实 Stata Java 运行时检查 `version`、`selfTest`、`launch/close`、15 类命令页面，以及回归、面板、IV、DID、时间序列、生存、Graphics、merge、reshape、collapse、margins、estat 和 estimates。
 
 ## 当前开发方向
 
@@ -602,7 +632,19 @@ do "tests/cross_platform_core_smoke.do"
 
 ## 版本记录
 
-### 1.5.6（当前版本）
+### 1.5.12（当前版本）
+
+**发布时间**：2026-08-20 18:30（UTC+8）
+
+**修改内容**：
+
+- 完成在线与离线安装链路的来源绑定、逐文件完整性验证、事务回滚、并发锁和路径安全检查。
+- 修复旧工作目录命令遮挡、损坏文件被误判为最新版、异常 `profile.do` 内容丢失以及部分卸载等风险。
+- 补齐工作台返回逻辑、滚动复位、小屏自适应、图标系统和线性模型目录有效命令。
+- 在最新版主线保留 OneClick、新数据表、完整 Statistics 目录、新图形页、外部命令扫描及相邻 JAR 加载功能。
+- 新增 Statistics 目录完整性与 JAR/源码同步验证，发布包只能由真实 Stata SFI + Java 11 生产构建生成。
+
+### 1.5.6
 
 **发布时间**：2026-08-15（UTC+8）
 
@@ -640,7 +682,7 @@ do "tests/cross_platform_core_smoke.do"
 
 **修改内容**：
 
-- 将 455 行事务式安装逻辑移入 `hxinstaller.ado`，公开 `hxinstall.do` 缩为短启动器；运行时只回显短启动段以及版本、进度、校验和结果。
+- 将 455 行事务式安装逻辑移入 `hxinstaller.ado`，公开 `hxinstall.do` 缩为短启动器；运行时只回显短启动段以及版本、下载进度和安装结果。
 - 同一条在线命令现在先比较本地与发布版本；版本相同且文件完整时立即结束，不再重复下载和覆盖。
 - 同版本缺少受管文件时自动修复；新增 `hxempirical repair` 强制修复入口。
 - 安装、更新、自动修复、卸载、离线启动和“核心源码不回显”纳入 Stata 自动化测试。

@@ -90,6 +90,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -127,7 +128,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.11";
+   public static final String VERSION = "1.5.12";
    private static HxWorkbench.WorkbenchFrame frame;
 
    private HxWorkbench() {
@@ -142,7 +143,8 @@ public final class HxWorkbench {
          for (String var22 : var20.warnings) {
             System.out.println("HX_CONVERT_WARNING " + var22);
          }
-      } else if (var0.length != 2
+      } else if (!(var0.length == 3 && "--render-small-preview".equals(var0[0]))
+         && (var0.length != 2
          || !"--render-preview".equals(var0[0])
             && !"--render-missing-preview".equals(var0[0])
             && !"--render-missing-results-preview".equals(var0[0])
@@ -164,13 +166,14 @@ public final class HxWorkbench {
             && !"--render-did-pretrend-preview".equals(var0[0])
             && !"--render-oneclick-preview".equals(var0[0])
             && !"--render-oneclick-results-preview".equals(var0[0])
+            && !"--render-stats-category-preview".equals(var0[0])
             && !"--render-regress-preview".equals(var0[0])
             && !"--render-regress-command-preview".equals(var0[0])
             && !"--render-special-graph-preview".equals(var0[0])
-            && !"--render-did-trends-graph-preview".equals(var0[0])) {
+            && !"--render-did-trends-graph-preview".equals(var0[0]))) {
          System.out
             .println(
-               "Usage: HxWorkbench --inspect-convert-file input.csv | --render-preview|--render-home-preview|--render-graph-preview|--render-did-preview|--render-oneclick-preview|--render-oneclick-results-preview output.png"
+               "Usage: HxWorkbench --inspect-convert-file input.csv | --render-preview|--render-home-preview|--render-graph-preview|--render-did-preview|--render-oneclick-preview|--render-oneclick-results-preview|--render-stats-category-preview output.png | --render-small-preview WIDTHxHEIGHT output.png"
             );
       } else {
          boolean var1 = var0[0].startsWith("--render-missing");
@@ -192,11 +195,33 @@ public final class HxWorkbench {
          boolean var16 = "--render-oneclick-preview".equals(var0[0]);
          boolean var17 = "--render-oneclick-results-preview".equals(var0[0]);
          boolean var18 = "--render-regress-preview".equals(var0[0]);
-         String var19 = var0[1];
+         boolean var18b = "--render-stats-category-preview".equals(var0[0]);
+         boolean var18c = "--render-small-preview".equals(var0[0]);
+         int previewWidth = 1672;
+         int previewHeight = 901;
+         String var19;
+         if (var18c) {
+            Matcher viewport = Pattern.compile("^(\\d{3,4})x(\\d{3,4})$").matcher(var0[1]);
+            if (!viewport.matches()) {
+               throw new IllegalArgumentException("Small preview viewport must use WIDTHxHEIGHT, for example 1024x700");
+            }
+            previewWidth = Integer.parseInt(viewport.group(1));
+            previewHeight = Integer.parseInt(viewport.group(2));
+            if (previewWidth < 800 || previewHeight < 600 || previewWidth > 3840 || previewHeight > 2160) {
+               throw new IllegalArgumentException("Small preview viewport must be between 800x600 and 3840x2160");
+            }
+            var19 = var0[2];
+         } else {
+            var19 = var0[1];
+         }
+         final int renderWidth = previewWidth;
+         final int renderHeight = previewHeight;
          SwingUtilities.invokeAndWait(() -> {
+            HxWorkbench.WorkbenchFrame previewFrame = null;
             try {
                setNativeLookAndFeel();
                HxWorkbench.WorkbenchFrame var19x = new HxWorkbench.WorkbenchFrame(true);
+               previewFrame = var19x;
                if (var1) {
                   var19x.populateMissingPreviewState();
                }
@@ -293,23 +318,46 @@ public final class HxWorkbench {
                   var19x.showSpecialGraphPage("did_trends");
                }
 
-               var19x.setSize(1672, 901);
+               if (var18b) {
+                  var19x.populateStatsCategoryRegressionState();
+               }
+
+               if (var18c) {
+                  var19x.populateResponsivePreviewState();
+                  var19x.setMinimumSize(new Dimension(Math.min(1180, renderWidth), Math.min(680, renderHeight)));
+                  var19x.applyResponsiveSidebarForWidth(renderWidth);
+               }
+
+               var19x.setSize(renderWidth, renderHeight);
                var19x.addNotify();
                Container var20x = var19x.getContentPane();
-               var20x.setSize(1672, 901);
+               var20x.setSize(renderWidth, renderHeight);
                var19x.validate();
                layoutTree(var20x);
                var19x.applyDividerRatios();
                layoutTree(var20x);
+               if (var18c) {
+                  var19x.assertResponsiveViewport(renderWidth, renderHeight);
+                  layoutTree(var20x);
+               }
                BufferedImage var21 = new BufferedImage(var20x.getWidth(), var20x.getHeight(), 1);
                Graphics2D var22x = var21.createGraphics();
                var20x.printAll(var22x);
                var22x.dispose();
                ImageIO.write(var21, "png", new File(var19));
-               var19x.dispose();
+               if (var18b) {
+                  System.out.println("HX_NAVIGATION_SELFTEST_OK stats_category_and_icons");
+               }
+               if (var18c) {
+                  System.out.println("HX_RESPONSIVE_SELFTEST_OK " + renderWidth + "x" + renderHeight);
+               }
                System.out.println("HX_UI_PREVIEW_OK " + var19);
             } catch (Exception var23) {
                throw new RuntimeException(var23);
+            } finally {
+               if (previewFrame != null) {
+                  previewFrame.dispose();
+               }
             }
          });
       }
@@ -348,6 +396,56 @@ public final class HxWorkbench {
          }
       });
       return 0;
+   }
+
+   public static int close(String[] var0) {
+      try {
+         SwingUtilities.invokeAndWait(() -> {
+            if (frame != null) {
+               frame.dispose();
+               frame = null;
+            }
+         });
+         SFIToolkit.displayln("HX_JAVA_CLOSE_OK");
+         return 0;
+      } catch (Throwable var1) {
+         SFIToolkit.errorln("HX_JAVA_CLOSE_EXCEPTION " + var1.getMessage());
+         return 459;
+      }
+   }
+
+   public static int workbenchSmokeTest(String[] var0) {
+      try {
+         SwingUtilities.invokeAndWait(() -> {
+            HxWorkbench.WorkbenchFrame smokeFrame = new HxWorkbench.WorkbenchFrame(true);
+            try {
+               String[] commands = new String[]{
+                  "regress", "reghdfe", "xtreg", "xtabond", "ivregress", "didregress",
+                  "arima", "stcox", "merge", "reshape", "collapse", "margins", "estat",
+                  "estimates", "sem"
+               };
+               for (String command : commands) {
+                  smokeFrame.openCommandPage(command);
+                  if (!command.equals(smokeFrame.currentCommand)) {
+                     throw new IllegalStateException("command page mismatch: " + command + " -> " + smokeFrame.currentCommand);
+                  }
+               }
+               smokeFrame.showSpecialGraphPage("scatter");
+               smokeFrame.showDidBuilderPage();
+               smokeFrame.showConvertDtaPage();
+               smokeFrame.showMissingAnalysisPage();
+               smokeFrame.openBaselineRegressionWorkspace();
+            } finally {
+               smokeFrame.dispose();
+            }
+         });
+         SFIToolkit.displayln("HX_WORKBENCH_REAL_STATA_SMOKE_OK commands=15 graphics=1 workflows=4");
+         return 0;
+      } catch (Throwable var1) {
+         SFIToolkit.errorln("HX_WORKBENCH_REAL_STATA_SMOKE_EXCEPTION " + var1.getMessage());
+         SFIToolkit.errorln(SFIToolkit.stackTraceToString(var1));
+         return 459;
+      }
    }
 
    public static int selfTest(String[] var0) {
@@ -2447,6 +2545,12 @@ public final class HxWorkbench {
    }
 
    private static final class WorkbenchFrame extends JFrame {
+      private enum WorkspaceReturnTarget {
+         HOME,
+         CHOOSER,
+         LINEAR_EXACT
+      }
+
       private static final Color APP_BG = new Color(248, 250, 253);
       private static final Color SURFACE = new Color(255, 255, 255);
       private static final Color SIDEBAR = new Color(247, 249, 251);
@@ -2521,7 +2625,7 @@ public final class HxWorkbench {
       private final JButton runButton = new JButton("运行命令");
       private final JButton copyCommandButton = new JButton("复制命令");
       private final JLabel commandDockTitle = new JLabel("即将执行的 Stata 命令");
-      private final JLabel commandDockHint = new JLabel("可修改，完整命令写入 History");
+      private final JLabel commandDockHint = new JLabel("可修改；运行后写入历史窗口");
       private final JLabel commandDockStatus = new JLabel("等待执行");
       private final JProgressBar commandDockProgress = new JProgressBar();
       private final JButton refreshButton = new JButton("刷新");
@@ -2560,6 +2664,10 @@ public final class HxWorkbench {
       private String activeMethodName = "";
       private boolean chooserReady;
       private boolean chooserAtCategoryLevel;
+      private JScrollPane chooserCatalogScroll;
+      private JScrollPane exactLinearScroll;
+      private WorkspaceReturnTarget workspaceReturnTarget = WorkspaceReturnTarget.HOME;
+      private Rectangle initialWorkArea = new Rectangle(0, 0, 1366, 768);
       private final HxWorkbench.DataTableModel dataModel = new HxWorkbench.DataTableModel();
       private final JTable dataTable = new JTable(this.dataModel);
       private final JLabel dataCellRefLabel = new JLabel("未选择", SwingConstants.CENTER);
@@ -2971,8 +3079,7 @@ public final class HxWorkbench {
          super("我的实证工具箱");
          this.previewMode = var1;
          this.setDefaultCloseOperation(1);
-         this.setMinimumSize(new Dimension(1280, 720));
-         this.setSize(new Dimension(1672, 941));
+         this.applyAdaptiveWindowBounds();
          this.setLocationRelativeTo(null);
          this.setLayout(new BorderLayout());
          this.getContentPane().setBackground(APP_BG);
@@ -3402,6 +3509,162 @@ public final class HxWorkbench {
          this.missingResultTabs.setSelectedIndex(3);
       }
 
+      private void populateStatsCategoryRegressionState() {
+         this.browseCategoryOverview("stats");
+         if (!this.chooserAtCategoryLevel || !"统计".equals(this.chooserTitle.getText())
+            || this.chooserResultsHost.getComponentCount() == 0 || !this.chooserAvailableCommands.isEmpty()) {
+            throw new IllegalStateException("statistics category retained stale command state");
+         }
+
+         this.browseMethod("stats", "纵向/面板数据");
+         if (this.chooserAtCategoryLevel || !this.chooserAvailableCommands.contains("xtreg")
+            || this.chooserAvailableCommands.contains("hxconvert")) {
+            throw new IllegalStateException("statistics method catalog contains the wrong commands or hierarchy state");
+         }
+         this.handleChooserBack();
+         if (!this.chooserAtCategoryLevel || !"统计".equals(this.chooserTitle.getText())) {
+            throw new IllegalStateException("chooser back navigation did not return to the statistics category");
+         }
+
+         this.chooserCatalogScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.browseCategoryOverview("data");
+         if (this.chooserCatalogScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("category overview scroll was not reset on navigation");
+         }
+
+         this.showHomePage();
+         this.openCommandPage("summarize");
+         if (this.workspaceReturnTarget != WorkspaceReturnTarget.HOME) {
+            throw new IllegalStateException("home shortcut inherited a stale chooser return target");
+         }
+         this.handleWorkspaceBack();
+         if (!"home".equals(this.activeSidebarKey) || this.homeButton.isVisible()) {
+            throw new IllegalStateException("home shortcut back navigation did not return home");
+         }
+
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.chooserCatalogScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.openCommandPageFromChooser("summarize");
+         if (this.workspaceReturnTarget != WorkspaceReturnTarget.CHOOSER) {
+            throw new IllegalStateException("catalog command lost its chooser return target");
+         }
+         this.handleWorkspaceBack();
+         if (!"汇总，表格和假设检验".equals(this.activeMethodName)
+            || this.chooserCatalogScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("catalog back navigation did not restore the matching directory at the top");
+         }
+
+         Dimension minimum = this.getMinimumSize();
+         if (minimum.width > this.initialWorkArea.width || minimum.height > this.initialWorkArea.height
+            || this.getWidth() > this.initialWorkArea.width || this.getHeight() > this.initialWorkArea.height) {
+            throw new IllegalStateException("adaptive window bounds exceed the available work area");
+         }
+         this.browseCategoryOverview("stats");
+
+         for (String kind : Arrays.asList("menu", "home", "data", "stats", "graph", "oneclick", "external", "settings", "import", "regression", "fixed", "did", "check", "variable", "sample", "merge", "structure", "correlation", "test", "table", "search")) {
+            Icon icon = uiIcon(kind, 20, ACCENT);
+            BufferedImage image = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D graphics = image.createGraphics();
+            icon.paintIcon(null, graphics, 2, 2);
+            graphics.dispose();
+            int painted = 0;
+            for (int y = 0; y < image.getHeight(); y++) {
+               for (int x = 0; x < image.getWidth(); x++) {
+                  if ((image.getRGB(x, y) >>> 24) != 0) painted++;
+               }
+            }
+            if (painted < 8) throw new IllegalStateException("icon did not render: " + kind);
+         }
+      }
+
+      private void applyAdaptiveWindowBounds() {
+         Rectangle workArea;
+         try {
+            workArea = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+         } catch (RuntimeException ex) {
+            workArea = new Rectangle(0, 0, 1366, 768);
+         }
+         if (workArea.width <= 0 || workArea.height <= 0) workArea = new Rectangle(0, 0, 1366, 768);
+         this.initialWorkArea = new Rectangle(workArea);
+         int availableWidth = Math.max(640, workArea.width - 24);
+         int availableHeight = Math.max(480, workArea.height - 24);
+         int minimumWidth = Math.min(1180, availableWidth);
+         int minimumHeight = Math.min(680, availableHeight);
+         int initialWidth = Math.min(1672, availableWidth);
+         int initialHeight = Math.min(941, availableHeight);
+         if (availableWidth < 1120) this.sidebarCollapsed = true;
+         this.setMinimumSize(new Dimension(minimumWidth, minimumHeight));
+         this.setSize(new Dimension(Math.max(minimumWidth, initialWidth), Math.max(minimumHeight, initialHeight)));
+      }
+
+      private void applyResponsiveSidebarForWidth(int width) {
+         if (width < 1120 && !this.sidebarCollapsed) {
+            this.sidebarCollapsed = true;
+            this.applySidebarCollapsedState();
+         }
+      }
+
+      private void populateResponsivePreviewState() {
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.openCommandPageFromChooser("summarize");
+      }
+
+      private void layoutResponsivePreview() {
+         this.validate();
+         HxWorkbench.layoutTree(this.getContentPane());
+      }
+
+      private void assertViewportComponent(Component component, Container viewport, String label) {
+         if (component == null || !component.isVisible() || component.getParent() == null) {
+            throw new IllegalStateException(label + " is not visible in the responsive viewport");
+         }
+         Rectangle bounds = SwingUtilities.convertRectangle(component.getParent(), component.getBounds(), viewport);
+         if (bounds.width <= 0 || bounds.height <= 0 || bounds.x < 0 || bounds.x + bounds.width > viewport.getWidth()) {
+            throw new IllegalStateException(label + " exceeds the responsive viewport: " + bounds + " in " + viewport.getSize());
+         }
+      }
+
+      private void assertResponsiveViewport(int width, int height) {
+         Container viewport = this.getContentPane();
+         if (viewport.getWidth() <= 0 || viewport.getHeight() <= 0 || viewport.getWidth() > width || viewport.getHeight() > height) {
+            throw new IllegalStateException("responsive content exceeds its frame viewport: " + viewport.getSize() + " in " + width + "x" + height);
+         }
+
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.sidebarToggleButton, viewport, "sidebar toggle");
+         this.assertViewportComponent(this.stageCards, viewport, "main stage");
+         this.assertViewportComponent(this.changeMethodButton, viewport, "workspace back button");
+         this.assertViewportComponent(this.commandDock, viewport, "command dock");
+         this.assertViewportComponent(this.runButton, viewport, "run button");
+
+         this.handleWorkspaceBack();
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.chooserBackButton, viewport, "chooser back button");
+         this.assertViewportComponent(this.chooserResultsHost, viewport, "command chooser");
+
+         this.browseMethod("reg", "线性模型");
+         this.layoutResponsivePreview();
+         if (!"stats".equals(this.activeSidebarKey)) {
+            throw new IllegalStateException("linear catalog did not map its sidebar state to statistics");
+         }
+         this.exactLinearScroll.getVerticalScrollBar().setValues(120, 10, 0, 400);
+         this.openCommandPageFromLinearCatalog("qreg");
+         this.layoutResponsivePreview();
+         this.handleWorkspaceBack();
+         this.layoutResponsivePreview();
+         if (!this.exactLinearScroll.isVisible() || this.exactLinearScroll.getVerticalScrollBar().getValue() != 0) {
+            throw new IllegalStateException("linear catalog back navigation did not return to the top");
+         }
+
+         this.showHomePage();
+         this.layoutResponsivePreview();
+         this.assertViewportComponent(this.searchField, viewport, "home search");
+
+         this.browseMethod("stats", "汇总，表格和假设检验");
+         this.openCommandPageFromChooser("summarize");
+         this.layoutResponsivePreview();
+      }
+
       private void populateHomePreviewState() {
          this.rebuilding = true;
          this.categoryModel.clear();
@@ -3650,7 +3913,8 @@ public final class HxWorkbench {
          bar.setMinimumSize(new Dimension(0, 36));
          JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
          left.setOpaque(false);
-         this.sidebarToggleButton = new JButton("☰");
+         this.sidebarToggleButton = new JButton();
+         this.sidebarToggleButton.setIcon(uiIcon("menu", 18, TEXT));
          this.sidebarToggleButton.setToolTipText("隐藏左侧导航");
          this.sidebarToggleButton.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 254), new Color(239, 244, 250), TEXT, new Color(226, 232, 240)));
          this.sidebarToggleButton.setBorder(new EmptyBorder(5, 9, 5, 9));
@@ -3752,7 +4016,8 @@ public final class HxWorkbench {
          this.sidebarPanel.setMinimumSize(new Dimension(width, 0));
          if (this.sidebarBottomPanel != null) this.sidebarBottomPanel.setVisible(!this.sidebarCollapsed);
          if (this.sidebarToggleButton != null) {
-            this.sidebarToggleButton.setText("☰");
+            this.sidebarToggleButton.setText("");
+            this.sidebarToggleButton.setIcon(uiIcon("menu", 18, TEXT));
             this.sidebarToggleButton.setToolTipText(this.sidebarCollapsed ? "打开左侧导航" : "隐藏左侧导航");
          }
          for (JButton button : this.sidebarButtons.values()) {
@@ -3774,6 +4039,8 @@ public final class HxWorkbench {
          button.putClientProperty("hx.sidebar.label", label);
          button.putClientProperty("hx.sidebar.glyph", glyph);
          button.setHorizontalAlignment(SwingConstants.LEFT);
+         button.setIcon(uiIcon(key, 18, new Color(72, 92, 125)));
+         button.setIconTextGap(10);
          button.setBorder(new EmptyBorder(7, 12, 7, 12));
          button.setPreferredSize(new Dimension(156, 36));
          button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
@@ -3797,6 +4064,8 @@ public final class HxWorkbench {
          Color pressed = active ? new Color(216, 232, 253) : new Color(238, 243, 249);
          Color fg = active ? new Color(18, 91, 196) : new Color(36, 48, 66);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(bg, hover, pressed, fg, active ? new Color(201, 221, 249) : SURFACE));
+         String key = Objects.toString(button.getClientProperty("hx.sidebar.key"), "data");
+         button.setIcon(uiIcon(key, 18, active ? ACCENT : new Color(72, 92, 125)));
       }
 
       private void setSidebarActive(String key) {
@@ -3819,7 +4088,10 @@ public final class HxWorkbench {
       }
 
       private JButton homeQuickButton(String title, String glyph, Runnable action) {
-         JButton button = new JButton("<html><div style='text-align:center'><span style='font-size:18px;color:#2563d9'>" + html(glyph) + "</span><br><b>" + html(title) + "</b></div></html>");
+         JButton button = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b></div></html>");
+         button.setIcon(uiIcon(iconKindForTitle(title), 22, ACCENT));
+         button.setHorizontalTextPosition(SwingConstants.CENTER);
+         button.setVerticalTextPosition(SwingConstants.BOTTOM);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 255), new Color(236, 244, 255), TEXT, new Color(216, 225, 238)));
          button.setBorder(new EmptyBorder(10, 8, 10, 8));
          button.setFocusPainted(false);
@@ -3830,7 +4102,10 @@ public final class HxWorkbench {
       }
 
       private JButton homeFeatureButton(String title, String subtitle, String glyph, Runnable action) {
-         JButton button = new JButton("<html><div style='text-align:center'><span style='font-size:16px;color:#2a66be'>" + html(glyph) + "</span><br><b>" + html(title) + "</b><br><span style='font-size:8px;color:#637083'>" + html(subtitle) + "</span></div></html>");
+         JButton button = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b><br><span style='font-size:8px;color:#637083'>" + html(subtitle) + "</span></div></html>");
+         button.setIcon(uiIcon(iconKindForTitle(title), 21, ACCENT));
+         button.setHorizontalTextPosition(SwingConstants.CENTER);
+         button.setVerticalTextPosition(SwingConstants.BOTTOM);
          button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 250, 253), new Color(239, 244, 250), TEXT, new Color(222, 228, 237)));
          button.setBorder(new EmptyBorder(10, 8, 10, 8));
          button.setFocusPainted(false);
@@ -3873,8 +4148,10 @@ public final class HxWorkbench {
          return b;
       }
 
-      private JButton refTask(String glyph, String title, String subtitle, Color accent, Runnable action) {
+      private JButton refTask(String title, String subtitle, Color accent, Runnable action) {
          JButton b = new JButton("<html><div style='text-align:left'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#6b7890'>" + html(subtitle) + "</span></div></html>");
+         b.setIcon(uiIcon(iconKindForTitle(title), 20, accent));
+         b.setIconTextGap(12);
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(249, 251, 254), new Color(240, 245, 252), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(11, 14, 11, 14));
          b.setHorizontalAlignment(SwingConstants.LEFT);
@@ -3885,7 +4162,7 @@ public final class HxWorkbench {
          return b;
       }
 
-      private JButton refQuick(String glyph, String title, Runnable action) {
+      private JButton refQuick(String title, Runnable action) {
          JButton b = new JButton("<html><div style='text-align:center'><b>" + html(title) + "</b></div></html>");
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 251, 255), new Color(239, 245, 253), TEXT, new Color(221, 228, 239)));
          b.setBorder(new EmptyBorder(8, 6, 8, 6));
@@ -3914,7 +4191,7 @@ public final class HxWorkbench {
          JPanel right = this.refCard();
          right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
          right.setPreferredSize(new Dimension(240, 0));
-         JLabel t = new JLabel("▥  推荐路径");
+         JLabel t = new JLabel("推荐路径", uiIcon("stats", 18, ACCENT), SwingConstants.LEFT);
          t.setForeground(TEXT);
          t.setFont(t.getFont().deriveFont(Font.BOLD, 15.0F));
          t.setAlignmentX(0.0F);
@@ -3946,7 +4223,7 @@ public final class HxWorkbench {
          JPanel tip = new JPanel(new BorderLayout(8,8));
          tip.setBackground(new Color(255,250,241));
          tip.setBorder(BorderFactory.createCompoundBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(255,219,166), 9), new EmptyBorder(13,13,13,13)));
-         JLabel tipText = new JLabel("<html><b><span style='color:#f59e0b'>☼ 小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法！</span></html>");
+         JLabel tipText = new JLabel("<html><b><span style='color:#f59e0b'>小贴士</span></b><br><br><span style='color:#68758b'>命令太多时，优先从常用命令开始，逐步深入更高阶方法。</span></html>");
          tip.add(tipText, BorderLayout.CENTER);
          tip.setMaximumSize(new Dimension(Integer.MAX_VALUE, 145));
          right.add(tip);
@@ -3961,7 +4238,7 @@ public final class HxWorkbench {
          b.setVerticalAlignment(SwingConstants.TOP);
          b.setFocusPainted(false); b.setContentAreaFilled(false);
          b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-         b.addActionListener(e -> this.openCommandPage(cmd));
+         b.addActionListener(e -> this.openCommandPageFromChooser(cmd));
          return b;
       }
 
@@ -3974,7 +4251,7 @@ public final class HxWorkbench {
             JButton b = new JButton("<html><div style='text-align:left'><b>"+html(row[0])+"</b>&nbsp;&nbsp;<span style='color:#68758b'>"+html(row[1])+"</span><span style='float:right'> ›</span></div></html>");
             b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(249,251,254), new Color(242,246,251), TEXT, SURFACE));
             b.setBorder(new EmptyBorder(5, 2, 5, 2)); b.setHorizontalAlignment(SwingConstants.LEFT); b.setFocusPainted(false); b.setContentAreaFilled(false);
-            String cmd = row[0]; b.addActionListener(e -> this.openCommandPage(cmd));
+            String cmd = row[0]; b.addActionListener(e -> this.openCommandPageFromChooser(cmd));
             g.add(b);
          }
          return g;
@@ -3997,9 +4274,11 @@ public final class HxWorkbench {
 
       private JButton homeQuickTileV130(String title, String detail, String glyph, Runnable action) {
          JButton b = new JButton(
-            "<html><div style='text-align:center'><span style='font-size:22px;color:#2f6fe4'>" + html(glyph) + "</span><br>"
-               + "<b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></div></html>"
+            "<html><div style='text-align:center'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></div></html>"
          );
+         b.setIcon(uiIcon(iconKindForTitle(title), 25, ACCENT));
+         b.setHorizontalTextPosition(SwingConstants.CENTER);
+         b.setVerticalTextPosition(SwingConstants.BOTTOM);
          b.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(247, 250, 255), new Color(240, 246, 255), TEXT, SURFACE));
          b.setBorder(new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(220, 227, 238), 10));
          b.setFocusPainted(false);
@@ -4012,11 +4291,12 @@ public final class HxWorkbench {
       private JButton homeListRowV130(String title, String detail, String glyph, Runnable action) {
          JButton row = new JButton(
             "<html><table width='360' cellpadding='0' cellspacing='0'><tr>"
-               + "<td width='42'><span style='font-size:17px;color:#2f6fe4'>" + html(glyph) + "</span></td>"
                + "<td><b>" + html(title) + "</b><br><span style='font-size:9px;color:#718096'>" + html(detail) + "</span></td>"
                + "<td width='18' align='right'><span style='color:#607089'>›</span></td>"
                + "</tr></table></html>"
          );
+         row.setIcon(uiIcon(iconKindForTitle(title), 20, ACCENT));
+         row.setIconTextGap(12);
          row.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 251, 255), new Color(241, 246, 253), TEXT, SURFACE));
          row.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(234, 238, 244)),
@@ -4058,7 +4338,7 @@ public final class HxWorkbench {
          JPanel root = new JPanel(new BorderLayout());
          root.setBackground(APP_BG);
 
-         JPanel body = new JPanel();
+         JPanel body = new WidthTrackingPanel();
          body.setBackground(APP_BG);
          body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
          body.setBorder(new EmptyBorder(20, 24, 16, 24));
@@ -4097,7 +4377,7 @@ public final class HxWorkbench {
             new HxWorkbench.WorkbenchFrame.RoundedBorder(new Color(213, 222, 236), 11),
             new EmptyBorder(6, 12, 6, 12)
          ));
-         JLabel searchIcon = new JLabel("⌕");
+         JLabel searchIcon = new JLabel(uiIcon("search", 18, new Color(72, 92, 125)));
          searchIcon.setForeground(new Color(72, 92, 125));
          searchIcon.setFont(searchIcon.getFont().deriveFont(Font.BOLD, 18.0F));
          searchWrap.add(searchIcon, BorderLayout.WEST);
@@ -4305,11 +4585,11 @@ public final class HxWorkbench {
          quick.add(quickTitle, BorderLayout.NORTH);
          JPanel quickGrid = new JPanel(new GridLayout(1,5,8,0));
          quickGrid.setOpaque(false);
-         quickGrid.add(this.refQuick("", "基准回归", this::openBaselineRegressionWorkspace));
-         quickGrid.add(this.refQuick("", "固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
-         quickGrid.add(this.refQuick("", "双重差分", () -> this.browseMethod("reg", "双重差分")));
-         quickGrid.add(this.refQuick("", "描述统计", () -> this.browseMethod("stats", "描述统计")));
-         quickGrid.add(this.refQuick("", "OneClick", () -> this.browseMethodCategory("oneclick")));
+         quickGrid.add(this.refQuick("基准回归", this::openBaselineRegressionWorkspace));
+         quickGrid.add(this.refQuick("固定效应", () -> this.browseMethod("reg", "固定效应线性回归")));
+         quickGrid.add(this.refQuick("双重差分", () -> this.browseMethod("reg", "双重差分")));
+         quickGrid.add(this.refQuick("描述统计", () -> this.browseMethod("stats", "描述统计")));
+         quickGrid.add(this.refQuick("OneClick", () -> this.browseMethodCategory("oneclick")));
          quick.add(quickGrid, BorderLayout.CENTER);
          hero.add(quick);
 
@@ -4372,12 +4652,12 @@ public final class HxWorkbench {
          common.add(commonTitle, BorderLayout.NORTH);
          JPanel taskGrid = new JPanel(new GridLayout(2,3,12,12));
          taskGrid.setOpaque(false);
-         taskGrid.add(this.refTask("", "导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.browseMethod("data", "导入与转换")));
-         taskGrid.add(this.refTask("", "描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
-         taskGrid.add(this.refTask("", "基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
-         taskGrid.add(this.refTask("", "固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
-         taskGrid.add(this.refTask("", "双重差分", "didregress / xtdidregress", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
-         taskGrid.add(this.refTask("", "OneClick", "控制变量组合", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
+         taskGrid.add(this.refTask("导入数据", "Excel / CSV / DTA", new Color(33,176,93), () -> this.browseMethod("data", "导入与转换")));
+         taskGrid.add(this.refTask("描述统计", "summarize / tabstat", new Color(57,125,242), () -> this.browseMethod("stats", "描述统计")));
+         taskGrid.add(this.refTask("基准回归", "xtreg / reghdfe / regress", new Color(142,91,230), this::openBaselineRegressionWorkspace));
+         taskGrid.add(this.refTask("固定效应", "areg / reghdfe / xtreg", new Color(245,138,45), () -> this.browseMethod("reg", "固定效应线性回归")));
+         taskGrid.add(this.refTask("双重差分", "didregress / xtdidregress", new Color(31,180,151), () -> this.browseMethod("reg", "双重差分")));
+         taskGrid.add(this.refTask("OneClick", "控制变量组合", new Color(57,120,244), () -> this.browseMethodCategory("oneclick")));
          common.add(taskGrid, BorderLayout.CENTER);
          gm.gridx = 0; gm.weightx = 0.72; gm.insets = new Insets(0,0,0,12);
          middleRow.add(common, gm);
@@ -4409,15 +4689,15 @@ public final class HxWorkbench {
          more.add(moreTitle, BorderLayout.NORTH);
          JPanel moreGrid = new JPanel(new GridLayout(3,3,10,10));
          moreGrid.setOpaque(false);
-         moreGrid.add(this.refTask("", "导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.browseMethod("data", "导入与转换")));
-         moreGrid.add(this.refTask("", "数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
-         moreGrid.add(this.refTask("", "变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
-         moreGrid.add(this.refTask("", "样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
-         moreGrid.add(this.refTask("", "合并与追加", "merge / append", new Color(87,140,245), () -> this.browseMethod("data", "合并与追加")));
-         moreGrid.add(this.refTask("", "数据结构", "reshape / xtset / tsset", new Color(37,180,144), () -> this.browseMethod("data", "数据结构")));
-         moreGrid.add(this.refTask("", "相关分析", "correlate / pwcorr", new Color(57,125,242), () -> this.browseMethod("stats", "相关分析")));
-         moreGrid.add(this.refTask("", "均值检验", "ttest", new Color(245,138,45), () -> this.browseMethod("stats", "均值检验")));
-         moreGrid.add(this.refTask("", "频数列联", "tabulate", new Color(142,91,230), () -> this.browseMethod("stats", "频数列联")));
+         moreGrid.add(this.refTask("导入与转换", "Excel / CSV / DTA", new Color(87,140,245), () -> this.browseMethod("data", "导入与转换")));
+         moreGrid.add(this.refTask("数据检查", "缺失 / 重复 / 唯一键", new Color(37,180,144), () -> this.browseMethod("data", "数据检查")));
+         moreGrid.add(this.refTask("变量处理", "generate / replace", new Color(229,170,52), () -> this.browseMethod("data", "变量处理")));
+         moreGrid.add(this.refTask("样本处理", "keep / drop", new Color(159,91,225), () -> this.browseMethod("data", "样本处理")));
+         moreGrid.add(this.refTask("合并与追加", "merge / append", new Color(87,140,245), () -> this.browseMethod("data", "合并与追加")));
+         moreGrid.add(this.refTask("数据结构", "reshape / xtset / tsset", new Color(37,180,144), () -> this.browseMethod("data", "数据结构")));
+         moreGrid.add(this.refTask("相关分析", "correlate / pwcorr", new Color(57,125,242), () -> this.browseMethod("stats", "相关分析")));
+         moreGrid.add(this.refTask("均值检验", "ttest", new Color(245,138,45), () -> this.browseMethod("stats", "均值检验")));
+         moreGrid.add(this.refTask("频数列联", "tabulate", new Color(142,91,230), () -> this.browseMethod("stats", "频数列联")));
          more.add(moreGrid, BorderLayout.CENTER);
          body.add(more);
 
@@ -4512,6 +4792,7 @@ public final class HxWorkbench {
 
       private void openHomeTask(String var1, String var2) {
          if ("special".equals(var1)) {
+            this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
             this.activeCategoryCode = var2;
             this.activeCategoryName = "test".equals(var2) ? "测试数据" : "性能设置";
             this.activeMethodName = this.activeCategoryName;
@@ -4788,7 +5069,7 @@ public final class HxWorkbench {
                this.updateRegressPreview();
             } else if (var1.command.startsWith("oneclick")) {
                this.browseMethodCategory("oneclick");
-               this.openCommandPage(var1.command);
+               this.openCommandPageFromChooser(var1.command);
                this.rebuilding = true;
                this.setComboValue(this.oneClickY, var1.oneY);
                this.setComboValue(this.oneClickX, var1.oneX);
@@ -4802,7 +5083,7 @@ public final class HxWorkbench {
                this.updateOneClickPreview();
             } else if ("did_builder".equals(var1.command)) {
                this.browseMethodCategory("did");
-               this.openCommandPage("did_builder");
+               this.openCommandPageFromChooser("did_builder");
                this.rebuilding = true;
                this.setComboValue(this.didAction, var1.didAction);
                this.setComboValue(this.depvar, var1.depvar);
@@ -4829,7 +5110,11 @@ public final class HxWorkbench {
                   this.browseMethod(var1.category, var1.method);
                }
 
-               this.openCommandPage(var1.command);
+               if (!var1.category.isBlank() && !var1.method.isBlank()) {
+                  this.openCommandPageFromChooser(var1.command);
+               } else {
+                  this.openCommandPage(var1.command);
+               }
                this.rebuilding = true;
                this.setComboValue(this.depvar, var1.depvar);
                setListSelectedValues(this.variables, splitWords(var1.controls));
@@ -5005,7 +5290,7 @@ public final class HxWorkbench {
 
       private JButton groupedMethodRow(String category, String number, String method, String preview, Color accent) {
          JButton row = new JButton(
-            "<html><table width='930' cellpadding='0' cellspacing='0'><tr>"
+            "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='58'><span style='color:#7b8aa3'>" + html(number) + "</span></td>"
                + "<td width='315'><b>" + html(method) + "</b></td>"
                + "<td><span style='font-family:monospace;color:#65758f'>" + html(preview) + "</span></td>"
@@ -5103,6 +5388,7 @@ public final class HxWorkbench {
          this.inspectorToggle.setVisible(false);
          this.chooserResultsHost.revalidate();
          this.chooserResultsHost.repaint();
+         this.resetChooserScroll(this.chooserCatalogScroll);
          this.stageLayout.show(this.stageCards, "chooser");
          this.syncSidebarFromContext();
       }
@@ -5180,7 +5466,7 @@ public final class HxWorkbench {
       private JButton statsMethodRow(String number, String method, Color accent) {
          String commands = statsMethodPreview(method);
          JButton row = new JButton(
-            "<html><table width='930' cellpadding='0' cellspacing='0'><tr>"
+            "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='58'><span style='color:#7b8aa3'>" + html(number) + "</span></td>"
                + "<td width='315'><b>" + html(method) + "</b></td>"
                + "<td><span style='font-family:monospace;color:#65758f'>" + html(commands) + "</span></td>"
@@ -5294,6 +5580,10 @@ public final class HxWorkbench {
          this.activeCategoryName = categoryLabel(var1);
          this.syncSidebarFromContext();
          this.activeMethodName = "";
+         this.chooserAvailableCommands.clear();
+         this.selectedChooserCommand = "";
+         this.chooserSearchField.setText("");
+         this.updateChooserInspector("");
          this.selectCategoryCode(var1);
          LinkedHashSet<String> methodSet = new LinkedHashSet<>(previewMethodsForCategory(var1));
          if (!this.previewMode) {
@@ -5341,7 +5631,7 @@ public final class HxWorkbench {
          text.add(a); text.add(Box.createVerticalStrut(6)); text.add(d); row.add(n,BorderLayout.WEST); row.add(text,BorderLayout.CENTER); return row;
       }
 
-      private JComponent exactLinearMainCard(String glyph, String command, String title, String desc, String example, Color accent) {
+      private JComponent exactLinearMainCard(String command, String title, String desc, String example, Color accent) {
          JPanel card = new JPanel(new BorderLayout(12, 6));
          card.setBackground(SURFACE);
          card.setBorder(BorderFactory.createCompoundBorder(
@@ -5362,13 +5652,13 @@ public final class HxWorkbench {
          text.add(name);
          card.add(text, BorderLayout.CENTER);
          JButton enter = this.refButton("进入设置", true);
-         enter.addActionListener(e -> this.openCommandPage(command));
+         enter.addActionListener(e -> this.openCommandPageFromLinearCatalog(command));
          card.add(enter, BorderLayout.EAST);
          card.setPreferredSize(new Dimension(500, 82));
          return card;
       }
 
-      private JComponent exactLinearGroup(String glyph, String title, String[][] entries, Color accent) {
+      private JComponent exactLinearGroup(String title, String[][] entries, Color accent) {
          JPanel card = new JPanel(new BorderLayout(0, 8));
          card.setBackground(SURFACE);
          card.setBorder(BorderFactory.createCompoundBorder(
@@ -5391,7 +5681,7 @@ public final class HxWorkbench {
             b.setContentAreaFilled(false);
             b.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
             String cmd = e[0];
-            b.addActionListener(ev -> this.openCommandPage(cmd));
+            b.addActionListener(ev -> this.openCommandPageFromLinearCatalog(cmd));
             list.add(b);
          }
          card.add(list, BorderLayout.CENTER);
@@ -5427,7 +5717,7 @@ public final class HxWorkbench {
          header.add(actions, BorderLayout.EAST);
          root.add(header, BorderLayout.NORTH);
 
-         JPanel body = new JPanel();
+         JPanel body = new WidthTrackingPanel();
          body.setOpaque(false);
          body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
 
@@ -5460,10 +5750,10 @@ public final class HxWorkbench {
          commonCard.add(ct, BorderLayout.NORTH);
          JPanel commonGrid = new JPanel(new GridLayout(2,2,12,12));
          commonGrid.setOpaque(false);
-         commonGrid.add(this.exactLinearMainCard("","regress","普通线性回归","","",new Color(54,114,236)));
-         commonGrid.add(this.exactLinearMainCard("","areg","单组固定效应","","",new Color(29,164,101)));
-         commonGrid.add(this.exactLinearMainCard("","reghdfe","高维固定效应回归","","",new Color(245,125,30)));
-         commonGrid.add(this.exactLinearMainCard("","qreg","分位数回归","","",new Color(134,84,225)));
+         commonGrid.add(this.exactLinearMainCard("regress","普通线性回归","","",new Color(54,114,236)));
+         commonGrid.add(this.exactLinearMainCard("areg","单组固定效应","","",new Color(29,164,101)));
+         commonGrid.add(this.exactLinearMainCard("reghdfe","高维固定效应回归","","",new Color(245,125,30)));
+         commonGrid.add(this.exactLinearMainCard("qreg","分位数回归","","",new Color(134,84,225)));
          commonCard.add(commonGrid, BorderLayout.CENTER);
          commonCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 230));
          body.add(commonCard);
@@ -5476,22 +5766,23 @@ public final class HxWorkbench {
          more.add(mt, BorderLayout.NORTH);
          JPanel groups = new JPanel(new GridLayout(2,2,12,12));
          groups.setOpaque(false);
-         groups.add(this.exactLinearGroup("","稳健与异常值处理",new String[][]{{"rreg","稳健回归"},{"cnsreg","约束线性回归"},{"newey","Newey-West"}},new Color(47,104,213)));
-         groups.add(this.exactLinearGroup("","加权与广义最小二乘",new String[][]{{"regressw","加权最小二乘"},{"vwls","可变权重"},{"gls","广义最小二乘"},{"prais","Prais-Winsten"}},new Color(37,172,92)));
-         groups.add(this.exactLinearGroup("","工具变量与内生性",new String[][]{{"ivregress","工具变量"},{"ivreg","2SLS"},{"ivprobit","IV Probit"},{"control","控制函数"}},new Color(245,128,30)));
-         groups.add(this.exactLinearGroup("","其他线性扩展",new String[][]{{"sureg","SUR"},{"seemingly","SUR"},{"seemingly2","SUR 扩展"},{"ml","最大似然"}},new Color(132,85,220)));
+         groups.add(this.exactLinearGroup("稳健与异常值处理",new String[][]{{"rreg","稳健回归"},{"cnsreg","约束线性回归"},{"newey","Newey-West"}},new Color(47,104,213)));
+          groups.add(this.exactLinearGroup("加权与广义最小二乘",new String[][]{{"regress","加权最小二乘（使用权重）"},{"vwls","可变权重"},{"xtgls","面板广义最小二乘"},{"prais","Prais-Winsten"}},new Color(37,172,92)));
+          groups.add(this.exactLinearGroup("工具变量与内生性",new String[][]{{"ivregress","工具变量"},{"ivreg2","增强型 2SLS"},{"ivprobit","IV Probit"},{"cfregress","控制函数"}},new Color(245,128,30)));
+          groups.add(this.exactLinearGroup("其他线性扩展",new String[][]{{"sureg","SUR"},{"mvreg","多元回归"},{"reg3","联立方程"},{"sem","结构方程"}},new Color(132,85,220)));
          more.add(groups, BorderLayout.CENTER);
          body.add(more);
 
          JScrollPane scroll = softScroll(body);
          scroll.setBorder(null);
          scroll.getVerticalScrollBar().setUnitIncrement(18);
+         this.exactLinearScroll = scroll;
          root.add(scroll, BorderLayout.CENTER);
          return root;
       }
 
       private void showExactLinearPage() {
-         this.activeCategoryCode="reg"; this.activeCategoryName="回归"; this.activeMethodName="线性模型"; this.chooserReady=false; this.setSidebarActive("reg"); this.inspectorToggle.setVisible(false); this.stageLayout.show(this.stageCards,"linear_exact"); this.statusLabel.setText("数据检查不停歇保障数据质量，仅用于质量评估与诊断。");
+          this.activeCategoryCode="reg"; this.activeCategoryName="回归"; this.activeMethodName="线性模型"; this.chooserReady=false; this.syncSidebarFromContext(); this.inspectorToggle.setVisible(false); this.resetChooserScroll(this.exactLinearScroll); this.stageLayout.show(this.stageCards,"linear_exact"); this.statusLabel.setText("请选择线性模型命令进入设置。");
       }
 
       private JPanel buildChooserInfoBlock(String title, JTextArea body, int rows) {
@@ -5579,7 +5870,7 @@ public final class HxWorkbench {
             }
          });
          this.chooserInspectorOpenButton.addActionListener(e -> {
-            if (!this.selectedChooserCommand.isBlank()) this.openCommandPage(this.selectedChooserCommand);
+            if (!this.selectedChooserCommand.isBlank()) this.openCommandPageFromChooser(this.selectedChooserCommand);
          });
          actions.add(this.chooserInspectorHelpButton);
          actions.add(this.chooserInspectorOpenButton);
@@ -5702,11 +5993,23 @@ public final class HxWorkbench {
          scroll.setOpaque(false);
          scroll.getViewport().setOpaque(false);
          scroll.getVerticalScrollBar().setUnitIncrement(18);
+         this.chooserCatalogScroll = scroll;
          catalog.add(scroll, BorderLayout.CENTER);
          center.add(catalog, BorderLayout.CENTER);
          root.add(center, BorderLayout.CENTER);
          root.add(this.buildChooserInspectorPanel(), BorderLayout.EAST);
          return root;
+      }
+
+      private void resetChooserScroll(JScrollPane scroll) {
+         if (scroll == null) return;
+         Runnable reset = () -> {
+            scroll.getViewport().setViewPosition(new java.awt.Point(0, 0));
+            scroll.getVerticalScrollBar().setValue(0);
+            scroll.getHorizontalScrollBar().setValue(0);
+         };
+         reset.run();
+         SwingUtilities.invokeLater(reset);
       }
 
       private void browseMethod(String var1, String var2) {
@@ -5988,7 +6291,7 @@ public final class HxWorkbench {
                String command = Objects.toString(model.getValueAt(row, 0), "");
                WorkbenchFrame.this.updateChooserInspector(command);
                if (event.getClickCount() >= 2 || table.convertColumnIndexToModel(viewColumn) == 4) {
-                  WorkbenchFrame.this.openCommandPage(command);
+                  WorkbenchFrame.this.openCommandPageFromChooser(command);
                }
             }
          });
@@ -6129,6 +6432,7 @@ public final class HxWorkbench {
          }
          this.chooserResultsHost.revalidate();
          this.chooserResultsHost.repaint();
+         this.resetChooserScroll(this.chooserCatalogScroll);
       }
 
       private JComponent chooserMethodLead(String detail) {
@@ -6156,7 +6460,7 @@ public final class HxWorkbench {
          String source = commandSource(command);
          String body;
          if (featured) {
-            body = "<html><table width='960' cellpadding='0' cellspacing='0'><tr>"
+            body = "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='155'><span style='font-family:monospace;font-size:17px;color:#2b63c5'><b>" + html(command) + "</b></span><br>"
                + "<span style='font-size:9px;color:#2b63c5'>" + html(source) + "</span></td>"
                + "<td><span style='font-size:15px'><b>" + html(title) + "</b></span><br>"
@@ -6165,7 +6469,7 @@ public final class HxWorkbench {
                + "<td width='82' align='right'><span style='font-size:10px;color:#53657d'>进入设置  ›</span></td>"
                + "</tr></table></html>";
          } else {
-            body = "<html><table width='960' cellpadding='0' cellspacing='0'><tr>"
+            body = "<html><table width='100%' cellpadding='0' cellspacing='0'><tr>"
                + "<td width='145'><span style='font-family:monospace;font-size:13px;color:#2b63c5'><b>" + html(command) + "</b></span></td>"
                + "<td width='215'><span style='font-size:12px'><b>" + html(title) + "</b></span></td>"
                + "<td><span style='font-size:9px;color:#5e6d82'>" + html(purpose) + "</span></td>"
@@ -6183,8 +6487,8 @@ public final class HxWorkbench {
          row.setContentAreaFilled(false);
          row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
          row.setMaximumSize(new Dimension(Integer.MAX_VALUE, featured ? 72 : 38));
-         row.setPreferredSize(new Dimension(980, featured ? 72 : 38));
-         row.addActionListener(e -> this.openCommandPage(command));
+         row.setPreferredSize(new Dimension(720, featured ? 72 : 38));
+         row.addActionListener(e -> this.openCommandPageFromChooser(command));
          return row;
       }
 
@@ -6263,7 +6567,7 @@ public final class HxWorkbench {
          button.setCursor(Cursor.getPredefinedCursor(12));
          button.setFocusPainted(false);
          button.setContentAreaFilled(false);
-         button.addActionListener(event -> this.openCommandPage(command));
+         button.addActionListener(event -> this.openCommandPageFromChooser(command));
          return button;
       }
 
@@ -6323,10 +6627,31 @@ public final class HxWorkbench {
 
       private void configureWorkspaceBack() {
          this.changeMethodButton.setText("← 上一级");
-         String var1 = this.activeMethodName == null ? "" : this.activeMethodName.trim();
-         this.changeMethodButton.setToolTipText(!var1.isBlank() && !var1.equals(this.activeCategoryName) ? "返回当前方法的命令选择页" : "返回上一级选择");
+         String tooltip;
+         if (this.workspaceReturnTarget == WorkspaceReturnTarget.CHOOSER) {
+            tooltip = "返回当前命令目录";
+         } else if (this.workspaceReturnTarget == WorkspaceReturnTarget.LINEAR_EXACT) {
+            tooltip = "返回线性模型目录";
+         } else {
+            tooltip = "返回首页";
+         }
+         this.changeMethodButton.setToolTipText(tooltip);
          this.homeButton.setText("首页");
          this.homeButton.setToolTipText("返回首页");
+      }
+
+      private void handleWorkspaceBack() {
+         if (this.workspaceReturnTarget == WorkspaceReturnTarget.CHOOSER && this.chooserReady) {
+            this.resetChooserScroll(this.chooserCatalogScroll);
+            this.stageLayout.show(this.stageCards, "chooser");
+            this.syncSidebarFromContext();
+         } else if (this.workspaceReturnTarget == WorkspaceReturnTarget.LINEAR_EXACT) {
+            this.resetChooserScroll(this.exactLinearScroll);
+            this.stageLayout.show(this.stageCards, "linear_exact");
+            this.syncSidebarFromContext();
+         } else {
+            this.showHomePage();
+         }
       }
 
       private void setWorkspaceBreadcrumb(String path) {
@@ -6870,14 +7195,7 @@ public final class HxWorkbench {
          styleSecondaryButton(this.changeMethodButton);
          styleSecondaryButton(this.homeButton);
          this.homeButton.addActionListener(var1x -> this.showHomePage());
-         this.changeMethodButton.addActionListener(var1x -> {
-            if (this.chooserReady) {
-               this.stageLayout.show(this.stageCards, "chooser");
-               this.syncSidebarFromContext();
-            } else {
-               this.showHomePage();
-            }
-         });
+         this.changeMethodButton.addActionListener(var1x -> this.handleWorkspaceBack());
          JButton help = new JButton("查看帮助");
          styleSecondaryButton(help);
          help.addActionListener(var1x -> this.openHelp());
@@ -8140,7 +8458,7 @@ public final class HxWorkbench {
             if (!var1x.getValueIsAdjusting() && !this.rebuilding) {
                String var2x = this.commandList.getSelectedValue();
                if (var2x != null && !var2x.isBlank()) {
-                  this.openCommandPage(var2x);
+                  this.openCommandPageFromChooser(var2x);
                }
             }
          });
@@ -8465,7 +8783,7 @@ public final class HxWorkbench {
          if (var8 != null) {
             this.methodChanged();
          } else if (var10 != null) {
-            this.openCommandPage(var10);
+            this.openCommandPageFromChooser(var10);
          }
 
          this.setBusy(false, var4 == 0 ? "已读取命令目录。" : "读取命令目录失败，返回码 " + var4);
@@ -8522,6 +8840,8 @@ public final class HxWorkbench {
       private void showCommand(String var1) {
          if ("regress".equals(var1)) {
             this.showRegressPage();
+         } else if (this.previewMode) {
+            this.showPreviewCommandPage(var1);
          } else {
             this.regressWorkspaceActive = false;
             this.showWorkspacePage();
@@ -8571,6 +8891,7 @@ public final class HxWorkbench {
       }
 
       private void openBaselineRegressionWorkspace() {
+         this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
          this.activeCategoryCode = "reg";
          this.activeCategoryName = "回归模型";
          this.activeMethodName = "基准回归";
@@ -9308,6 +9629,7 @@ public final class HxWorkbench {
       }
 
       private void showHomePage() {
+         this.workspaceReturnTarget = WorkspaceReturnTarget.HOME;
          this.currentCommand = "";
          this.regressWorkspaceActive = false;
          this.baselineTaskActive = false;
@@ -10041,6 +10363,19 @@ public final class HxWorkbench {
       }
 
       private void openCommandPage(String var1) {
+         this.openCommandPage(var1, WorkspaceReturnTarget.HOME);
+      }
+
+      private void openCommandPageFromChooser(String command) {
+         this.openCommandPage(command, WorkspaceReturnTarget.CHOOSER);
+      }
+
+      private void openCommandPageFromLinearCatalog(String command) {
+         this.openCommandPage(command, WorkspaceReturnTarget.LINEAR_EXACT);
+      }
+
+      private void openCommandPage(String var1, WorkspaceReturnTarget returnTarget) {
+         this.workspaceReturnTarget = returnTarget == null ? WorkspaceReturnTarget.HOME : returnTarget;
          this.baselineTaskActive = false;
          if ("xtreg".equals(var1)) {
             this.showXtregWizardPageV130();
@@ -10424,6 +10759,7 @@ public final class HxWorkbench {
          }
 
          this.formPanel.removeAll();
+         this.formPanel.setLayout(new GridBagLayout());
          GridBagConstraints c = new GridBagConstraints();
          c.gridx = 0;
          c.gridy = 0;
@@ -18098,7 +18434,7 @@ public final class HxWorkbench {
 
       private void navigateTo(String var1, String var2, String var3) {
          this.browseMethod(var1, var2);
-         this.openCommandPage(var3);
+         this.openCommandPageFromChooser(var3);
       }
 
       private void chooseAndLoadDta() {
@@ -18178,6 +18514,126 @@ public final class HxWorkbench {
          }
 
          return false;
+      }
+
+      private static Icon uiIcon(String kind, int size, Color color) {
+         return new WorkbenchIcon(kind, size, color);
+      }
+
+      private static String iconKindForTitle(String title) {
+         String value = title == null ? "" : title;
+         if (value.contains("OneClick")) return "oneclick";
+         if (value.contains("导入")) return "import";
+         if (value.contains("描述")) return "stats";
+         if (value.contains("基准")) return "regression";
+         if (value.contains("固定")) return "fixed";
+         if (value.contains("双重")) return "did";
+         if (value.contains("检查")) return "check";
+         if (value.contains("变量")) return "variable";
+         if (value.contains("样本")) return "sample";
+         if (value.contains("合并")) return "merge";
+         if (value.contains("结构")) return "structure";
+         if (value.contains("相关")) return "correlation";
+         if (value.contains("均值")) return "test";
+         if (value.contains("频数")) return "table";
+         if (value.contains("外部")) return "external";
+         return "data";
+      }
+
+      private static final class WorkbenchIcon implements Icon {
+         private final String kind;
+         private final int size;
+         private final Color color;
+
+         WorkbenchIcon(String kind, int size, Color color) {
+            this.kind = kind == null ? "data" : kind;
+            this.size = Math.max(12, size);
+            this.color = color == null ? TEXT : color;
+         }
+
+         @Override public int getIconWidth() { return this.size; }
+         @Override public int getIconHeight() { return this.size; }
+
+         @Override
+         public void paintIcon(Component component, Graphics graphics, int x, int y) {
+            Graphics2D g = (Graphics2D)graphics.create();
+            g.translate(x, y);
+            double scale = this.size / 20.0;
+            g.scale(scale, scale);
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(this.color);
+            g.setStroke(new BasicStroke(1.7F, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            switch (this.kind) {
+               case "menu":
+                  g.drawLine(3, 5, 17, 5); g.drawLine(3, 10, 17, 10); g.drawLine(3, 15, 17, 15); break;
+               case "home":
+                  g.drawLine(3, 9, 10, 3); g.drawLine(10, 3, 17, 9); g.drawRoundRect(5, 8, 10, 9, 1, 1); g.drawLine(9, 17, 9, 12); break;
+               case "data": case "import":
+                  g.drawRoundRect(4, 2, 11, 15, 2, 2); g.drawLine(8, 6, 13, 6); g.drawLine(8, 9, 13, 9); g.drawLine(8, 12, 11, 12);
+                  if ("import".equals(this.kind)) { g.drawLine(2, 10, 7, 10); g.drawLine(5, 8, 7, 10); g.drawLine(5, 12, 7, 10); }
+                  break;
+               case "stats":
+                  g.drawLine(3, 17, 17, 17); g.drawRoundRect(4, 10, 2, 6, 1, 1); g.drawRoundRect(9, 6, 2, 10, 1, 1); g.drawRoundRect(14, 3, 2, 13, 1, 1); break;
+               case "graph": case "regression":
+                  g.drawLine(3, 3, 3, 17); g.drawLine(3, 17, 17, 17); g.drawLine(5, 14, 9, 10); g.drawLine(9, 10, 12, 12); g.drawLine(12, 12, 17, 5); break;
+               case "fixed": case "table":
+                  g.drawRoundRect(3, 3, 14, 14, 1, 1); g.drawLine(3, 8, 17, 8); g.drawLine(3, 13, 17, 13); g.drawLine(8, 3, 8, 17); g.drawLine(13, 3, 13, 17); break;
+               case "did": case "merge":
+                  g.drawLine(3, 6, 16, 6); g.drawLine(13, 3, 16, 6); g.drawLine(13, 9, 16, 6); g.drawLine(17, 14, 4, 14); g.drawLine(7, 11, 4, 14); g.drawLine(7, 17, 4, 14); break;
+               case "oneclick":
+                  g.fillPolygon(new int[]{10,12,17,12,10,8,3,8}, new int[]{2,8,10,12,18,12,10,8}, 8); break;
+               case "external":
+                  g.drawRoundRect(3, 5, 14, 10, 2, 2); g.drawLine(7, 5, 7, 3); g.drawLine(13, 5, 13, 3); g.drawLine(7, 15, 7, 17); g.drawLine(13, 15, 13, 17); break;
+               case "history":
+                  g.drawOval(3, 3, 14, 14); g.drawLine(10, 10, 10, 6); g.drawLine(10, 10, 14, 12); break;
+               case "settings":
+                  g.drawOval(6, 6, 8, 8); g.drawOval(9, 9, 2, 2); g.drawLine(10, 2, 10, 5); g.drawLine(10, 15, 10, 18); g.drawLine(2, 10, 5, 10); g.drawLine(15, 10, 18, 10); break;
+               case "check":
+                  g.drawOval(3, 3, 14, 14); g.drawLine(6, 10, 9, 13); g.drawLine(9, 13, 15, 7); break;
+               case "variable":
+                  g.drawOval(2, 8, 4, 4); g.drawOval(8, 2, 4, 4); g.drawOval(14, 8, 4, 4); g.drawOval(8, 14, 4, 4); g.drawLine(6, 9, 9, 6); g.drawLine(11, 6, 14, 9); g.drawLine(14, 11, 11, 14); g.drawLine(9, 14, 6, 11); break;
+               case "sample":
+                  g.drawLine(3, 4, 17, 4); g.drawLine(3, 4, 8, 10); g.drawLine(17, 4, 12, 10); g.drawLine(8, 10, 8, 16); g.drawLine(8, 16, 12, 18); g.drawLine(12, 18, 12, 10); break;
+               case "structure":
+                  g.drawRoundRect(3, 3, 14, 14, 1, 1); g.drawLine(6, 7, 14, 7); g.drawLine(6, 10, 14, 10); g.drawLine(6, 13, 14, 13); break;
+               case "correlation":
+                  g.drawOval(3, 5, 8, 8); g.drawOval(9, 7, 8, 8); g.drawLine(5, 16, 15, 4); break;
+               case "test":
+                  g.drawLine(4, 6, 16, 6); g.drawLine(7, 6, 4, 14); g.drawLine(13, 6, 16, 14); g.drawLine(2, 14, 6, 14); g.drawLine(14, 14, 18, 14); g.drawLine(10, 3, 10, 17); break;
+               case "search":
+                  g.drawOval(3, 3, 10, 10); g.drawLine(12, 12, 17, 17); break;
+               default:
+                  g.drawRoundRect(3, 3, 14, 14, 2, 2); g.drawLine(7, 7, 13, 7); g.drawLine(7, 11, 13, 11); break;
+            }
+            g.dispose();
+         }
+      }
+
+      private void showPreviewCommandPage(String command) {
+         CommandGuide guide = commandGuide(command);
+         this.regressWorkspaceActive = false;
+         this.showWorkspacePage();
+         this.currentCommand = command;
+         this.commandDock.setVisible(true);
+         this.commandTabs.setVisible(true);
+         this.runButton.setText("运行命令");
+         this.runButton.setEnabled(true);
+         this.previewArea.setEditable(true);
+         this.commandTitle.setText(command + " · " + guide.title);
+         this.commandTitle.setToolTipText(guide.title);
+         this.setWorkspaceBreadcrumb(commandPath(command));
+         this.exampleLabel.setText("<html><b>最简单例子：</b> " + html(guide.example) + "</html>");
+         this.insightArea.setText("主要意图：" + guide.purpose + "\n\n推荐数据：" + guide.bestFor + "\n\n优点、限制与注意：" + guide.difference);
+         this.syntaxArea.setText(command + " ...");
+         this.previewArea.setText(guide.example.isBlank() ? command : guide.example);
+         this.formPanel.removeAll();
+         this.formPanel.setLayout(new BorderLayout());
+         JLabel note = new JLabel("预览模式：参数区不连接 Stata。", SwingConstants.CENTER);
+         note.setForeground(MUTED);
+         this.formPanel.add(note, BorderLayout.CENTER);
+         this.formPanel.revalidate();
+         this.formPanel.repaint();
+         this.statusLabel.setText("预览模式已打开 " + command + " 命令页。");
       }
 
       private static String categoryLabel(String var0) {

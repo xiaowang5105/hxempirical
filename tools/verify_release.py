@@ -103,7 +103,10 @@ if reconstructed != raw:
     fail("base64 parts mismatch")
 
 # The release ZIP is the actual installer payload: no missing, extra, duplicate, or stale files.
-expected = set(managed) | {"hxempirical.pkg", "hxinstall.do", "hxinstall_offline.do", "INSTALL.md"}
+offline_name = meta.get("offline_index", "")
+if offline_name != "hxempirical-offline.index":
+    fail("release index does not bind the offline integrity index")
+expected = set(managed) | {"hxempirical.pkg", "hxinstall.do", "hxinstall_offline.do", "INSTALL.md", offline_name}
 with zipfile.ZipFile(root / meta["archive"]) as release:
     name_list = release.namelist()
     if len(name_list) != len(set(name_list)):
@@ -111,11 +114,16 @@ with zipfile.ZipFile(root / meta["archive"]) as release:
     names = set(name_list)
     if names != expected:
         fail(f"zip manifest mismatch missing={sorted(expected - names)} extra={sorted(names - expected)}")
-    for rel in sorted(expected):
+    for rel in sorted(expected - {offline_name}):
         packaged = release.read(rel)
         working = (root / rel).read_bytes()
         if packaged != working:
             fail("zip content mismatch: " + rel)
+
+    offline_lines = release.read(offline_name).decode("utf-8").splitlines()
+    offline_files = [line.split()[1] for line in offline_lines if line.startswith("f ")]
+    if offline_files != managed:
+        fail("offline integrity index does not match the package manifest order")
 
 print(
     f"HX_RELEASE_VERIFY_OK version={version} managed={len(managed)} "
