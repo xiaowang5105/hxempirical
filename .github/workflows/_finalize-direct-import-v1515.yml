@@ -3,6 +3,8 @@ name: Finalize direct Excel CSV import 1.5.15
 on:
   push:
     branches: [feature/direct-excel-csv-import-v1515]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
