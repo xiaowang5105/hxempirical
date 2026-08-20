@@ -123,8 +123,13 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $outputJar -PathType Le
     throw "jar packaging failed with exit code $LASTEXITCODE"
 }
 
-# Record exactly which Java source blob produced the shipped JAR.
-$sourceBytes = [System.IO.File]::ReadAllBytes($source)
+# Record the canonical Git blob for the Java source.  Git normalizes this
+# tracked text file to LF, so normalize the Windows working-tree copy before
+# calculating the blob ID.  This makes the provenance marker identical on
+# Windows, macOS, and Linux CI.
+$sourceText = [System.IO.File]::ReadAllText($source, [System.Text.Encoding]::UTF8)
+$sourceText = $sourceText.Replace("`r`n", "`n").Replace("`r", "`n")
+$sourceBytes = [System.Text.Encoding]::UTF8.GetBytes($sourceText)
 $prefixBytes = [System.Text.Encoding]::ASCII.GetBytes("blob $($sourceBytes.Length)`0")
 $blobBytes = New-Object byte[] ($prefixBytes.Length + $sourceBytes.Length)
 [System.Buffer]::BlockCopy($prefixBytes, 0, $blobBytes, 0, $prefixBytes.Length)

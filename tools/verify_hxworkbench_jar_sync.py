@@ -19,6 +19,9 @@ def fail(message: str) -> None:
 
 def git_blob_sha1(path: Path) -> str:
     data = path.read_bytes()
+    # The Java source is a tracked text file.  Match Git's canonical LF blob
+    # even when a Windows checkout materializes CRLF in the working tree.
+    data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
     header = f"blob {len(data)}\0".encode("ascii")
     return hashlib.sha1(header + data).hexdigest()
 

@@ -5,9 +5,9 @@ d version 1.5.12
 d pkg_bytes 975
 d pkg_checksum 3583872910
 d pkg_sha256 4ea773ab0b9ffcfa5dd6bb8f13d77ef044c26b3abe33deb72da3584fa5704337
-d bytes 573049
-d checksum 2325396547
-d sha256 f2f8055f55156dc4e3d53fee0fff54520b637af56e128df31915ad8917d13b30
+d bytes 573041
+d checksum 1807795486
+d sha256 c48e1caba2791e6694669b6f71282f06cb207fb8380cfe22f5401192105fd84c
 d parts 16
 d offline_index hxempirical-offline.index
 f release/hxempirical-release.b64.001
