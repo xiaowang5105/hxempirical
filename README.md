@@ -89,9 +89,13 @@ regress price mpg weight
 
 ## 第三方命令
 
-hxempirical **不替用户安装第三方命令**。工作台只检测是否已安装，并在界面中展示和调用。常见外部命令包括 `reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot` 和 `event_plot`。
+hxempirical **不替用户安装第三方命令**。工作台只检测是否已安装，不再自动安装；需要某个第三方命令时，请按该命令作者的发布说明安装，安装完成后重新进入“外部命令”页面扫描即可。
 
-需要某个第三方命令时，请按该命令作者的发布说明安装；安装完成后重新进入“外部命令”页面扫描即可。
+常见外部命令包括 `reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot` 和 `event_plot`。
+
+`oneclick` 通过 SSC 安装，且依赖 `tuples`；这条依赖关系用于检测和兼容性说明，实际安装由用户自行完成。
+
+`oneclick_robustness` 按作者扩展处理，当前未配置经过验证的 SSC 自动安装源，需要按作者发布说明手动安装；安装完成后 hxempirical 会自动识别。
 
 ## 安装器行为
 
