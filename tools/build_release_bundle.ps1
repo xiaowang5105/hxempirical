@@ -62,7 +62,24 @@ function Copy-FlatReleaseFiles {
         if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
             [System.IO.Directory]::CreateDirectory($destinationDirectory) | Out-Null
         }
-        [System.IO.File]::Copy($sourcePath, $destinationPath, $true)
+        $extension = [System.IO.Path]::GetExtension($relativePath).ToLowerInvariant()
+        $portableTextExtensions = @('.ado', '.do', '.sthlp', '.dlg', '.md', '.pkg', '.toc')
+        if ($portableTextExtensions -contains $extension) {
+            # Git stores these public package files with LF line endings.  Build
+            # the archive from the same canonical bytes on every platform so
+            # GitHub/Linux checkouts and Windows developer checkouts produce an
+            # identical package and identical installer checksums.
+            $text = [System.IO.File]::ReadAllText($sourcePath, [System.Text.Encoding]::UTF8)
+            $text = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+            [System.IO.File]::WriteAllText(
+                $destinationPath,
+                $text,
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
+        else {
+            [System.IO.File]::Copy($sourcePath, $destinationPath, $true)
+        }
     }
 }
 
@@ -238,8 +255,9 @@ try {
     # The extracted browser ZIP installs directly from its managed files.  A
     # separate per-file index is generated before the ZIP and therefore avoids
     # any self-reference while still giving Stata exact byte/checksum bindings.
-    $packageBytes = (Get-Item -LiteralPath $manifestPath).Length
-    $packageChecksum = Get-PosixChecksum -LiteralPath $manifestPath
+    $stagedManifestPath = Join-Path $outerStage 'hxempirical.pkg'
+    $packageBytes = (Get-Item -LiteralPath $stagedManifestPath).Length
+    $packageChecksum = Get-PosixChecksum -LiteralPath $stagedManifestPath
     $offlineIndexLines = [System.Collections.Generic.List[string]]::new()
     $offlineIndexLines.Add('v 1')
     $offlineIndexLines.Add("d package $packageName")
@@ -247,7 +265,7 @@ try {
     $offlineIndexLines.Add("d pkg_bytes $packageBytes")
     $offlineIndexLines.Add("d pkg_checksum $packageChecksum")
     foreach ($managedFile in $managedFiles) {
-        $managedPath = Join-Path $repository $managedFile
+        $managedPath = Join-Path $outerStage $managedFile
         $managedBytes = (Get-Item -LiteralPath $managedPath).Length
         $managedChecksum = Get-PosixChecksum -LiteralPath $managedPath
         $offlineIndexLines.Add("f $managedFile $managedBytes $managedChecksum")
@@ -258,7 +276,7 @@ try {
     New-PortableZipFromDirectory -SourceDirectory $outerStage -ArchivePath $archivePath
 
     $partNames = @(Write-Base64Parts -ArchivePath $archivePath -OutputRoot $repository -RelativeDirectory 'release' -ChunkSize $ChunkBytes -Encoding $utf8NoBom)
-    $metadata = Write-ReleaseIndex -IndexPath $indexPath -ArchivePath $archivePath -ArchiveName 'hxempirical-release.zip' -PackagePath $manifestPath -PackageName $packageName -PackageVersion $packageVersion -PartNames $partNames -Encoding $utf8NoBom -ExtraMetadata @('d offline_index hxempirical-offline.index')
+    $metadata = Write-ReleaseIndex -IndexPath $indexPath -ArchivePath $archivePath -ArchiveName 'hxempirical-release.zip' -PackagePath $stagedManifestPath -PackageName $packageName -PackageVersion $packageVersion -PartNames $partNames -Encoding $utf8NoBom -ExtraMetadata @('d offline_index hxempirical-offline.index')
 
     [PSCustomObject]@{
         Archive = $archivePath
