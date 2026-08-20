@@ -108,6 +108,10 @@ for needle in (
 ):
     if needle not in installer:
         fail(f"installer effective-path gate missing: {needle}")
+if "TARGET(string asis)" in installer:
+    fail("installer effective-path target must not preserve call-site quotes")
+if "syntax , TARGET(string) PACKAGEVERSION(string)" not in installer:
+    fail("installer effective-path target must use syntax string normalization")
 if "不建议使用 `net install`" not in readme:
     fail("README must not recommend net install for routine updates")
 if "`net install` 兼容入口（不推荐用于日常更新）" not in install_doc:

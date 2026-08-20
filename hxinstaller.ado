@@ -1,4 +1,4 @@
-*! hxinstaller 1.5.13  20aug2026
+*! hxinstaller 1.5.14  20aug2026
 *! Hidden transactional installer core for hxempirical
 program define hxinstaller
     version 17.0
@@ -1345,7 +1345,7 @@ end
 capture program drop _hxinstaller_effective
 program define _hxinstaller_effective, rclass
     version 17.0
-    syntax , TARGET(string asis) PACKAGEVERSION(string)
+    syntax , TARGET(string) PACKAGEVERSION(string)
 
     local expected `"`target'hxempirical.ado"'
     local expected_norm : subinstr local expected "\" "/", all
