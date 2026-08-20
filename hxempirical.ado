@@ -1,4 +1,4 @@
-*! hxempirical 1.5.12  20aug2026
+*! hxempirical 1.5.13  20aug2026
 *! Public entry point for the HX empirical workbench
 program define hxempirical, rclass
     version 13.0
@@ -49,12 +49,12 @@ program define hxempirical, rclass
 
     if `"`action'"' == "about" {
         display as text _newline ustrunescape("hxempirical\uff1a\u6211\u7684\u5b9e\u8bc1\u5de5\u5177\u7bb1")
-        display as text ustrunescape("\u7248\u672c\uff1a") as result "1.5.12"
+        display as text ustrunescape("\u7248\u672c\uff1a") as result "1.5.13"
         display as text ustrunescape("Stata\uff1a") as result "`c(stata_version)' (`c(os)')"
         display as text ustrunescape("\u6700\u4f4e\u652f\u6301\uff1a") as result "Stata 17"
         display as text ustrunescape("\u754c\u9762\uff1a") as result ustrunescape("Java \u5355\u7a97\u53e3\u5de5\u4f5c\u53f0\uff1b\u7ecf\u5178 .dlg \u624b\u52a8\u540e\u5907")
         return local package "hxempirical"
-        return local version "1.5.12"
+        return local version "1.5.13"
         return local os "`c(os)'"
         return scalar stata_version = c(stata_version)
         exit
@@ -85,12 +85,102 @@ program define hxempirical, rclass
             display as error ustrunescape("[\u6838\u5fc3\u7ec4\u4ef6\uff1a\u4e0d\u5b8c\u6574] ") "`core_ok'/`core_total'"
             display as error ustrunescape("\u7f3a\u5c11\uff1a") trim(`"`core_missing'"')
         }
+
+        /* A complete active installation can still be stale when another HX
+           copy lives in a different user ado directory.  Inspect both standard
+           first-letter locations and report what Stata actually resolves. */
+        local personal `"`c(sysdir_personal)'"'
+        local plus `"`c(sysdir_plus)'"'
+        local personal : subinstr local personal "\" "/", all
+        local plus : subinstr local plus "\" "/", all
+        if `"`personal'"' != "" & substr(`"`personal'"', -1, 1) != "/" local personal `"`personal'/"'
+        if `"`plus'"' != "" & substr(`"`plus'"', -1, 1) != "/" local plus `"`plus'/"'
+        local personal_h ""
+        local plus_h ""
+        if `"`personal'"' != "" local personal_h `"`personal'h/"'
+        if `"`plus'"' != "" local plus_h `"`plus'h/"'
+
+        local personal_version ""
+        if `"`personal_h'"' != "" {
+            capture quietly confirm file `"`personal_h'hxempirical.ado"'
+            if !_rc {
+                tempname hxpersonal
+                capture quietly file open `hxpersonal' using `"`personal_h'hxempirical.ado"', read text
+                if !_rc {
+                    file read `hxpersonal' hxline
+                    file close `hxpersonal'
+                    local hxline = trim(`"`hxline'"')
+                    gettoken hxmark hxrest : hxline
+                    gettoken hxname hxrest : hxrest
+                    gettoken hxver hxrest : hxrest
+                    if `"`hxmark'"' == "*!" & lower(`"`hxname'"') == "hxempirical" local personal_version `"`hxver'"'
+                }
+            }
+        }
+
+        local plus_version ""
+        if `"`plus_h'"' != "" {
+            capture quietly confirm file `"`plus_h'hxempirical.ado"'
+            if !_rc {
+                tempname hxplus
+                capture quietly file open `hxplus' using `"`plus_h'hxempirical.ado"', read text
+                if !_rc {
+                    file read `hxplus' hxline
+                    file close `hxplus'
+                    local hxline = trim(`"`hxline'"')
+                    gettoken hxmark hxrest : hxline
+                    gettoken hxname hxrest : hxrest
+                    gettoken hxver hxrest : hxrest
+                    if `"`hxmark'"' == "*!" & lower(`"`hxname'"') == "hxempirical" local plus_version `"`hxver'"'
+                }
+            }
+        }
+
+        local active_path ""
+        local active_version ""
+        capture quietly findfile hxempirical.ado
+        if !_rc {
+            local active_path `"`r(fn)'"'
+            tempname hxactive
+            capture quietly file open `hxactive' using `"`active_path'"', read text
+            if !_rc {
+                file read `hxactive' hxline
+                file close `hxactive'
+                local hxline = trim(`"`hxline'"')
+                gettoken hxmark hxrest : hxline
+                gettoken hxname hxrest : hxrest
+                gettoken hxver hxrest : hxrest
+                if `"`hxmark'"' == "*!" & lower(`"`hxname'"') == "hxempirical" local active_version `"`hxver'"'
+            }
+        }
+
+        local shadow_found 0
+        if `"`personal_version'"' != "" & `"`plus_version'"' != "" & `"`personal_version'"' != `"`plus_version'"' local shadow_found 1
+
+        display as text _newline "安装路径检查"
+        if `shadow_found' {
+            display as error "[警告] 检测到多版本安装，存在 ado-path 版本遮挡风险。"
+            if `"`active_path'"' != "" display as text "当前生效：" as result `"`active_path' (`active_version')"'
+            if `"`personal_version'"' != "" display as text "PERSONAL/h：" as result `"`personal_h'hxempirical.ado (`personal_version')"'
+            if `"`plus_version'"' != "" display as text "PLUS/h：" as result `"`plus_h'hxempirical.ado (`plus_version')"'
+            display as text "建议运行：" as result "hxempirical repair"
+        }
+        else {
+            display as result "[安装路径：正常]"
+            if `"`active_path'"' != "" display as text "当前生效：" as result `"`active_path' (`active_version')"'
+        }
+
         hxdependency check
         local optional_missing = r(optional_missing)
         return scalar core_healthy = (`core_ok' == `core_total')
         return scalar core_installed = `core_ok'
         return scalar core_total = `core_total'
         return scalar optional_missing = `optional_missing'
+        return scalar shadowing_detected = `shadow_found'
+        return local active_hxempirical `"`active_path'"'
+        return local active_version `"`active_version'"'
+        return local personal_version `"`personal_version'"'
+        return local plus_version `"`plus_version'"'
         exit
     }
 

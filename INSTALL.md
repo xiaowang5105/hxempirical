@@ -10,11 +10,11 @@
 
 两种方式最终安装的是同一份发布包，统一写入 Stata 标准首字母 ado 目录：优先 `PERSONAL/h`；如果该目录不可写，会自动回退到 `PLUS/h`。首次安装、检查更新和自动修复使用同一条命令。
 
-## 1.5.12 安装布局与安全说明
+## 1.5.13 安装路径与遮挡防护
 
 全新安装统一使用 `PERSONAL/h`（或 `PLUS/h`）。`hxworkbench.jar`、`.dlg` 和内置 `.dta` 均作为系统安装文件处理。检测到 Stata 当前仍从旧版 `PERSONAL` 根目录加载 HX 时，事务式安装器会在原位置完成安全更新，防止新旧目录互相遮挡；这类旧布局可在确认新版正常后再按维护说明迁移。
 
-如果一直使用传统 `net install` 且电脑上还存在旧根目录副本，先运行一次 `hxinstall.do` 将旧副本更新到同一版本。确认 `which hxempirical` 指向预期位置后，再迁移或清理旧布局。
+**不要使用 `net install` 进行日常安装或更新。** Stata 自带包管理器可能把新版本写入 `PLUS/h`，而已有的 `PERSONAL/h` 旧副本在 adopath 中优先级更高，结果会出现“installation complete，但 `hxempirical about` 仍是旧版”。遇到历史双版本时运行 `hxempirical doctor`，再执行 `hxempirical repair`；事务式安装器会验证 Stata 当前实际解析到的路径和版本。
 
 ## 方法 A：在线安装
 
@@ -40,8 +40,8 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 已经是最新版本时，Results 显示：
 
 ```text
-当前版本：1.5.12
-最新版本：1.5.12
+当前版本：1.5.13
+最新版本：1.5.13
 已是最新版本，无需更新。
 ```
 
@@ -101,7 +101,10 @@ hxempirical
 
 ```text
 [核心组件：正常] 11/11
+[安装路径：正常]
 ```
+
+如果同时存在 `PERSONAL/h` 和 `PLUS/h` 且版本不同，doctor 会列出当前生效路径和两个版本，并提示运行 `hxempirical repair`。
 
 `reghdfe`、`winsor2`、`ivreghdfe`、`ppmlhdfe`、`oneclick`、`oneclick_robustness`、`coefplot`、`event_plot` 等属于外部扩展。它们缺失时，核心工作台和 Stata 官方命令仍然可用。hxempirical 只检测和展示，不负责安装；需要什么命令请按作者发布说明自行安装，安装完成后重新进入“外部命令”扫描。
 
@@ -216,6 +219,7 @@ Windows 和 macOS 使用同一发布包。安装器会创建缺失的 `PERSONAL`
 ```stata
 do "tests/cross_platform_core_smoke.do"
 do "tests/installer_lifecycle_smoke.do"
+do "tests/installer_shadowing_smoke.do"
 do "tests/installer_integrity_smoke.do"
 do "tests/offline_launcher_smoke.do"
 do "tests/installer_output_smoke.do"
@@ -225,12 +229,12 @@ do "tests/workbench_real_stata_smoke.do" "仓库根目录"
 
 Windows 维护者也可以运行 `tools/run_stata_tests.ps1`；它逐项启动 Stata、设置超时并保留失败日志。前六项安装测试使用隔离的临时 `PERSONAL`，覆盖目录创建、核心/可选依赖诊断、菜单持久化、首次安装、同版本完整性快速退出、损坏文件自动修复、发布索引拒绝、核心源码不回显、真实离线 ZIP 和事务卸载。最后一项使用真实 Stata Java 运行时验证最终 JAR 与主要命令页面。
 
-## 传统 Stata 包管理（高级）
+## `net install` 兼容入口（不推荐用于日常更新）
 
-GitHub Pages 仍支持：
+GitHub Pages 仍保留 Stata 包管理兼容入口：
 
 ```stata
 net install hxempirical, from("https://xiaowang5105.github.io/hxempirical/") replace force
 ```
 
-普通用户使用在线安装器或浏览器离线包。统一安装器负责更新、回滚、清理旧文件和菜单持久化。
+但 `net install` 的目标目录由 Stata 包管理器决定，可能写入 `PLUS/h`，无法保证覆盖 adopath 中优先级更高的 `PERSONAL/h` 旧副本。因此普通用户不要用它做日常安装/更新。标准入口始终是 `hxinstall.do`；若曾使用 `net install`，先运行 `hxempirical doctor`，发现双版本时运行 `hxempirical repair`。

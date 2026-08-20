@@ -2,9 +2,16 @@
 
 ## 当前版本与下载
 
-**当前发布版本：1.5.12**<br>
+**当前发布版本：1.5.13**<br>
 **支持：Stata 17 及以上版本**<br>
 **上次修改时间：2026-08-20 18:30（UTC+8）**
+
+### 1.5.13 安装路径遮挡修复
+
+- `hxempirical doctor` 现在同时检查 `PERSONAL/h` 与 `PLUS/h` 的 HX 版本，并显示 Stata 当前实际解析到的 `hxempirical.ado`；版本不一致时明确提示 ado-path 遮挡风险。
+- 在线安装器在“已是最新版本”快速退出前以及事务提交后都会验证**当前实际生效路径 + 版本**，不再把“文件写入成功”误报为“当前运行版本已更新”。
+- 日常安装、更新和修复统一使用 `hxinstall.do` / `hxempirical update` / `hxempirical repair`。`net install` 仅保留兼容入口，因为它的目标目录由 Stata 包管理器决定，可能写入 `PLUS/h` 而被更高优先级的 `PERSONAL/h` 旧副本遮挡。
+- 新增隔离的双目录遮挡 smoke test 和静态防回归契约。
 
 ### 1.5.12 安装安全与界面收尾
 
@@ -25,7 +32,7 @@
 ### 1.5.10 安装布局统一
 
 - **以后安装、更新、修复统一只记一条命令：** `do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"`。不需要区分首次安装和日常更新。
-- 修复 `net install` 与旧 `hxinstall.do` 使用不同目录导致的版本遮挡：从本版起，两种安装方式都以 Stata 标准首字母目录 `PERSONAL/h`（不可写时 `PLUS/h`）为正式安装位置。
+- 事务式 `hxinstall.do` 统一管理 `PERSONAL/h`（不可写时 `PLUS/h`）；Stata 自带 `net install` 的目标目录由包管理器决定，不能保证与当前生效 HX 位于同一目录，因此不再作为日常安装/更新入口。
 - `hxempirical.pkg` 将 `hxworkbench.jar`、经典 `.dlg` 和内置测试 `.dta` 改为大写 `F` 系统安装文件，保证 `net install` 不会把这些必需文件当作普通 ancillary 文件。
 - 新安装使用标准首字母目录；检测到仍在 `PERSONAL` 根目录运行的旧安装时，会在原位置安全更新，防止旧文件继续遮挡新版。完成验证后可按安装说明迁移旧布局。
 - 发布 CI 同时检查大小写 `f/F` 清单、标准 `h/` 布局和旧根目录迁移守卫。
@@ -87,7 +94,7 @@
 do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 ```
 
-**日常使用只需要记住这一条。** 安装器会自动判断当前状态，不需要先运行 `net install`，也不需要手工判断版本。公开的 `hxinstall.do` 只有一个很短的启动段，复杂安装逻辑在后台 `.ado` 中执行：
+**日常使用只需要记住这一条。** 不建议使用 `net install` 进行日常安装或更新；如果历史上用过 `net install`，运行 `hxempirical doctor` 检查是否存在 `PERSONAL/h` 与 `PLUS/h` 双版本，再用 `hxempirical repair` 统一当前有效安装。 安装器会自动判断当前状态，不需要先运行 `net install`，也不需要手工判断版本。公开的 `hxinstall.do` 只有一个很短的启动段，复杂安装逻辑在后台 `.ado` 中执行：
 
 - 第一次运行：优先安装到当前用户的 `PERSONAL/h`；该目录不可写时自动尝试 `PLUS/h`；
 - 已安装且版本相同、文件完整：立即提示“已是最新版本”，不下载完整发布包；
