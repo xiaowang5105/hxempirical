@@ -38,6 +38,11 @@ jobs:
       - name: Commit permanent hotfix only
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('hxinstaller.ado')
+          p.write_text(p.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8', newline='\n')
+          PY
           rm -f tools/_apply_install_shadowing_hotfix.py
           rm -f .github/workflows/_apply-install-shadowing-hotfix.yml
           git config user.name "github-actions[bot]"
