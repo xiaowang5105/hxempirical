@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.12  20aug2026}{...}
+{* *! version 1.5.13  20aug2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -141,6 +141,9 @@ Run the maintained installer from GitHub Pages:
 {phang2}{cmd:. do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"}
 
 {pstd}
+Use the maintained installer for normal install/update/repair. {cmd:net install} is retained only as a compatibility entry because Stata may place it under {bf:PLUS/h} while an older {bf:PERSONAL/h} copy has higher adopath priority. {cmd:hxempirical doctor} reports differing PERSONAL/PLUS versions and {cmd:hxempirical repair} updates the managed effective location.
+
+{pstd}
 Then open it with
 
 {phang2}{cmd:. hxempirical}
@@ -202,7 +205,7 @@ Install any command you need using its author's instructions, then reopen {bf:å¤
 
 {pstd}
 Missing external commands are not core-health failures. {cmd:hxempirical doctor}
-reports the core workbench separately from these extensions. A command page can
+reports the core workbench separately from these extensions and also checks for conflicting PERSONAL/h and PLUS/h HX versions. A command page can
 be inspected even when its extension is absent; attempting to run a missing external
 command produces an install-it-yourself notice rather than an automatic installer.
 
@@ -283,4 +286,4 @@ It does not replace a prespecified main model or causal identification strategy.
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.12.
+HX empirical workbench, package version 1.5.13.

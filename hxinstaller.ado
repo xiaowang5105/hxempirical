@@ -1,4 +1,4 @@
-*! hxinstaller 1.5.12  20aug2026
+*! hxinstaller 1.5.13  20aug2026
 *! Hidden transactional installer core for hxempirical
 program define hxinstaller
     version 17.0
@@ -829,6 +829,28 @@ if !`exploded_source' & !`download_failed' {
     }
 }
 
+/* A byte-perfect target is not enough: Stata must actually resolve the
+   command from that target.  This catches PERSONAL/PLUS and current-directory
+   shadowing before the same-version fast path can report a false success. */
+if `"`action'"' == "update" & `"`installed_version'"' == `"`package_version'"' & `install_complete' {
+    local effective_ok 0
+    local effective_path ""
+    local effective_version ""
+    capture quietly _hxinstaller_effective, target(`"`target'"') packageversion(`"`package_version'"')
+    if !_rc {
+        local effective_ok = r(ok)
+        local effective_path `"`r(path)'"'
+        local effective_version `"`r(version)'"'
+    }
+    if !`effective_ok' {
+        noisily display as text "检测到当前生效路径与受管安装位置不一致，将自动执行修复。"
+        if `"`effective_path'"' != "" noisily display as text "当前生效：" as result `"`effective_path' (`effective_version')"'
+        noisily display as text "目标位置：" as result `"`target'hxempirical.ado (`package_version')"'
+        local install_complete 0
+        local action "repair"
+    }
+}
+
 /* Same-version fast return is allowed only after the same-source package and
    release index are mutually bound and the local per-file integrity scan has
    passed. */
@@ -1179,6 +1201,29 @@ if !`install_failed' {
     }
 }
 
+/* Do not report success merely because files were written.  Verify the exact
+   hxempirical.ado that Stata resolves now; on mismatch, reuse the existing
+   transaction rollback so a shadowed install is never called complete. */
+if !`install_failed' {
+    local effective_ok 0
+    local effective_path ""
+    local effective_version ""
+    capture quietly _hxinstaller_effective, target(`"`target'"') packageversion(`"`package_version'"')
+    if !_rc {
+        local effective_ok = r(ok)
+        local effective_path `"`r(path)'"'
+        local effective_version `"`r(version)'"'
+    }
+    if !`effective_ok' {
+        noisily display as error "安装后的有效路径校验失败：Stata 没有解析到刚写入的版本。"
+        if `"`effective_path'"' != "" noisily display as text "当前生效：" as result `"`effective_path' (`effective_version')"'
+        else noisily display as text "当前生效：" as result "未找到 hxempirical.ado"
+        noisily display as text "目标位置：" as result `"`target'hxempirical.ado (`package_version')"'
+        noisily display as text "可能存在更高优先级的旧副本或自定义 adopath；请先处理路径遮挡后重试。"
+        local install_failed 1
+    }
+}
+
 /* Restore the complete previous installation when any commit step fails. */
 if `install_failed' {
     local restore_failed 0
@@ -1295,4 +1340,44 @@ if `menu_rc' {
 }
 else noisily display as text "顶部入口：" as result "用户(U) > 我的实证工具箱"
 noisily display as text "如本次更新前已打开工作台，请重新启动 Stata。"
+end
+
+capture program drop _hxinstaller_effective
+program define _hxinstaller_effective, rclass
+    version 17.0
+    syntax , TARGET(string asis) PACKAGEVERSION(string)
+
+    local expected `"`target'hxempirical.ado"'
+    local expected_norm : subinstr local expected "\" "/", all
+    local effective_path ""
+    capture quietly findfile hxempirical.ado
+    if !_rc local effective_path `"`r(fn)'"'
+    local effective_norm : subinstr local effective_path "\" "/", all
+
+    if lower("`c(os)'") == "windows" {
+        local expected_norm = lower(`"`expected_norm'"')
+        local effective_norm = lower(`"`effective_norm'"')
+    }
+
+    local effective_version ""
+    if `"`effective_path'"' != "" {
+        tempname hxeffective
+        capture quietly file open `hxeffective' using `"`effective_path'"', read text
+        if !_rc {
+            file read `hxeffective' hxline
+            file close `hxeffective'
+            local hxline = trim(`"`hxline'"')
+            gettoken hxmark hxrest : hxline
+            gettoken hxname hxrest : hxrest
+            gettoken hxver hxrest : hxrest
+            if `"`hxmark'"' == "*!" & lower(`"`hxname'"') == "hxempirical" local effective_version `"`hxver'"'
+        }
+    }
+
+    local path_ok = (`"`effective_norm'"' != "" & `"`effective_norm'"' == `"`expected_norm'"')
+    local version_ok = (`"`effective_version'"' == `"`packageversion'"')
+    return scalar ok = (`path_ok' & `version_ok')
+    return local path `"`effective_path'"'
+    return local version `"`effective_version'"'
+    return local expected `"`expected'"'
 end

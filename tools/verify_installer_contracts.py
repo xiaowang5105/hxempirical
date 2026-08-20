@@ -28,6 +28,7 @@ readme = read("README.md")
 help_text = read("hxempirical.sthlp")
 install_doc = read("INSTALL.md")
 launcher = read("hxinstall.do")
+installer = read("hxinstaller.ado")
 pkg = read("hxempirical.pkg")
 java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
 
@@ -91,6 +92,30 @@ if "capture noisily do" in launcher:
 if "capture quietly run" not in launcher or "bootstrap_installer" not in launcher:
     fail("public hxinstall.do does not load the exact temporary installer quietly")
 
+# Path-shadowing must be observable to users and must block false installer success.
+for needle in (
+    "检测到多版本安装",
+    "shadowing_detected",
+    "personal_version",
+    "plus_version",
+):
+    if needle not in entry:
+        fail(f"doctor path-shadowing diagnostic missing: {needle}")
+for needle in (
+    "_hxinstaller_effective",
+    "检测到当前生效路径与受管安装位置不一致",
+    "安装后的有效路径校验失败",
+):
+    if needle not in installer:
+        fail(f"installer effective-path gate missing: {needle}")
+if "不建议使用 `net install`" not in readme:
+    fail("README must not recommend net install for routine updates")
+if "`net install` 兼容入口（不推荐用于日常更新）" not in install_doc:
+    fail("INSTALL.md must label net install as compatibility-only")
+shadow_test = read("tests/installer_shadowing_smoke.do")
+if "HX_INSTALLER_SHADOWING_OK" not in shadow_test or "shadowing_detected" not in shadow_test:
+    fail("installer path-shadowing smoke test missing")
+
 # User-ado discovery must not execute one Stata `which` call per scanned file.
 discovery_start = java.find("private List<String> discoverInstalledExternalCommands")
 discovery_end = java.find("return new ArrayList<>(installed);", discovery_start)
@@ -120,7 +145,7 @@ current_version = version_match.group(1)
 if f"package version {current_version}." not in help_text:
     fail("help author/footer version is stale")
 
-# net install and the transactional installer must share one standard h/ layout.
+# The maintained transactional installer owns the normal h/ layout.  net install is compatibility-only because Stata may choose PLUS/h and leave a higher-priority PERSONAL/h copy active.
 for system_file in (
     "hxtoolbox_v2.dlg",
     "hxworkbench.jar",
