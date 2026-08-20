@@ -40,8 +40,8 @@ do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"
 已经是最新版本时，Results 显示：
 
 ```text
-当前版本：1.5.13
-最新版本：1.5.13
+当前版本：1.5.14
+最新版本：1.5.14
 已是最新版本，无需更新。
 ```
 
