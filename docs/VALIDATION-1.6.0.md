@@ -9,6 +9,7 @@
 - 11 项真实 Stata 测试：核心组件、执行状态、profile 安全、安装完整性、安装生命周期、安装输出、路径遮挡、离线安装、项目快照、项目往返重现、工作台主要功能。
 - 工作台首页离屏渲染检查，确认“研究项目”入口可见。
 - `git diff --check`。
+- GitHub Actions 在 Ubuntu 上通过发布一致性、Java 11 编译及项目行为检查，见 [运行记录](https://github.com/xiaowang5105/hxempirical/actions/runs/34010918151)；该记录对应功能提交 `1760da0`。
 
 路径遮挡测试在修复测试自身的硬编码版本、宏文本复制和 Windows 分隔符比较后单独重跑通过；其余 10 项使用同一最终生产 JAR 和发布包通过。
 
@@ -28,6 +29,6 @@
 - ZIP SHA-256：`4e9c2ccfe012b27f14670d8683db2c12a55e4118e87cb0c2292e85f5ba33c171`。
 - Java 来源清单同时绑定全部 5 个源文件和生产 JAR。
 
-当前产物保存在本地，尚未上传 GitHub。真实 Stata 的 GitHub Actions 工作流已加入仓库；远端运行仍需维护者配置带授权 Stata 的 self-hosted runner 和 `STATA_EXE`。
+源码和发布产物已上传至 `codex/execution-project-workflow` 分支，见 [PR #38](https://github.com/xiaowang5105/hxempirical/pull/38)。真实 Stata 的 GitHub Actions 工作流已加入仓库；远端运行仍需维护者配置带授权 Stata 的 self-hosted runner 和 `STATA_EXE`。
 
 本地原始测试日志位于 `.build/final-stata-logs-v2`；最终路径遮挡测试日志位于 `.build/shadowing-final-logs-v2`。这些目录不进入 Git 提交。
