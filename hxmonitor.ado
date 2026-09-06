@@ -2,6 +2,23 @@
 *! Live data monitor and before/after summaries for the empirical toolbox.
 program define hxmonitor, rclass
     version 16.0
+    /* A preview must leave the caller's results and RNG streams unchanged. */
+    tempname hx_input_results
+    _return hold `hx_input_results'
+    local hx_rngstate `"`c(rngstate)'"'
+    local hx_sortrngstate `"`c(sortrngstate)'"'
+    capture noisily _hxmonitor_impl `0'
+    local hx_rc = _rc
+    quietly set rngstate `hx_rngstate'
+    quietly set sortrngstate `hx_sortrngstate'
+    _return restore `hx_input_results'
+    return add
+    /* Monitor results are available through characteristics; preserve native r(). */
+    if `hx_rc' exit `hx_rc'
+end
+
+program define _hxmonitor_impl, rclass
+    version 16.0
     #delimit ;
     syntax [, ACTION(string) COMMAND(string) MONITORVAR(string)
         DEPVAR(string) VARS(string asis) IFCOND(string asis)
@@ -88,24 +105,7 @@ program define hxmonitor, rclass
         global HXMON_before_max ""
         global HXMON_before_missing ""
         global HXMON_before_affected ""
-        if "`command'" == "replace" & "`depvar'" != "" & `"`expression'"' != "" {
-            tempvar hx_snapshot_use hx_snapshot_new
-            quietly generate byte `hx_snapshot_use' = 1
-            if `"`ifcond'"' != "" capture quietly replace `hx_snapshot_use' = 0 if !(`ifcond')
-            capture confirm numeric variable `depvar'
-            if !_rc {
-                capture quietly generate double `hx_snapshot_new' = `expression' if `hx_snapshot_use'
-            }
-            else {
-                capture quietly generate strL `hx_snapshot_new' = `expression' if `hx_snapshot_use'
-            }
-            if !_rc {
-                quietly count if `hx_snapshot_use' & ///
-                    ((missing(`depvar') != missing(`hx_snapshot_new')) | ///
-                    (!missing(`depvar') & !missing(`hx_snapshot_new') & `depvar' != `hx_snapshot_new'))
-                global HXMON_before_affected = r(N)
-            }
-        }
+        /* Never evaluate the requested expression during a snapshot. */
         capture confirm numeric variable `target'
         if !_rc {
             quietly summarize `target', meanonly
@@ -322,7 +322,8 @@ program define hxmonitor, rclass
     local newline = char(13) + char(10)
     local rowtext `"`header'`newline'"'
     local shown 0
-    forvalues i = 1/`=_N' {
+    local previewlimit = min(_N, 5000)
+    forvalues i = 1/`previewlimit' {
         if `touse'[`i'] {
             local row ""
             foreach v of local limited {
@@ -344,6 +345,9 @@ program define hxmonitor, rclass
         }
     }
     if `shown' == 0 local rowtext "没有符合当前条件的观测"
+    if `previewlimit' < _N {
+        local rowtext `"`rowtext'`newline'预览仅检查前 `previewlimit' 行；样本统计使用全量数据。"'
+    }
     char _dta[hxtoolbox_monitor_rows] `"`rowtext'"'
 
     local operation "操作摘要：请选择具体命令后，这里说明将影响的数据。"
@@ -351,75 +355,10 @@ program define hxmonitor, rclass
     if "`command'" == "generate" {
         local operation `"操作摘要：将新增变量 `newvar'；预计计算 `sampleN' 个观测。"'
         local risk "提醒：新变量不会覆盖原变量；请检查公式中的零值、负值和缺失值。"
-        if "`newvar'" != "" & `"`expression'"' != "" {
-            tempvar hx_generate_preview
-            capture quietly generate double `hx_generate_preview' = `expression' if `touse'
-            if _rc capture quietly generate strL `hx_generate_preview' = `expression' if `touse'
-            if !_rc {
-                quietly count if `touse' & !missing(`hx_generate_preview')
-                local generated = r(N)
-                local operation `"操作摘要：将新增变量 `newvar'；当前条件下可计算 `generated' 个非缺失值。"'
-                local rowtext `"观测 | `newvar'（执行前预览）`newline'"'
-                local shown 0
-                forvalues i = 1/`=_N' {
-                    if `touse'[`i'] {
-                        capture confirm numeric variable `hx_generate_preview'
-                        if !_rc local newcell : display %10.4g `hx_generate_preview'[`i']
-                        else {
-                            local newcell = `hx_generate_preview'[`i']
-                            local newcell = substr(`"`newcell'"', 1, 24)
-                        }
-                        local rowtext `"`rowtext'`i' | `newcell'`newline'"'
-                        local ++shown
-                        if `shown' >= 8 continue, break
-                    }
-                }
-                char _dta[hxtoolbox_monitor_rows] `"`rowtext'"'
-            }
-        }
     }
     else if "`command'" == "replace" {
-        local operation `"操作摘要：将修改原变量 `depvar'；预计影响 `sampleN' 个观测。"'
-        local risk "提醒：会覆盖原值。建议先 generate 新变量或保存数据副本。"
-        capture confirm variable `depvar'
-        if !_rc & `"`expression'"' != "" {
-            tempvar hx_replace_preview hx_changed
-            capture confirm numeric variable `depvar'
-            local dep_is_numeric = !_rc
-            if `dep_is_numeric' capture quietly generate double `hx_replace_preview' = `expression' if `touse'
-            else capture quietly generate strL `hx_replace_preview' = `expression' if `touse'
-            if !_rc {
-                quietly generate byte `hx_changed' = `touse' & ///
-                    ((missing(`depvar') != missing(`hx_replace_preview')) | ///
-                    (!missing(`depvar') & !missing(`hx_replace_preview') & `depvar' != `hx_replace_preview'))
-                quietly count if `hx_changed'
-                local affected = r(N)
-                local unaffected = _N - `affected'
-                local operation `"操作摘要：将修改 `depvar'；真正改变 `affected' 个观测，未改变 `unaffected' 个。"'
-                local rowtext `"观测 | 原值 → 新值`newline'"'
-                local shown 0
-                forvalues i = 1/`=_N' {
-                    if `hx_changed'[`i'] {
-                        if `dep_is_numeric' {
-                            local oldcell : display %10.4g `depvar'[`i']
-                            local newcell : display %10.4g `hx_replace_preview'[`i']
-                        }
-                        else {
-                            local oldcell = `depvar'[`i']
-                            local oldcell = substr(`"`oldcell'"', 1, 14)
-                            local newcell = `hx_replace_preview'[`i']
-                            local newcell = substr(`"`newcell'"', 1, 14)
-                        }
-                        local rowtext `"`rowtext'`i' | `oldcell' → `newcell'`newline'"'
-                        local ++shown
-                        if `shown' >= 8 continue, break
-                    }
-                }
-                if `affected' == 0 local rowtext "当前设置不会改变任何观测"
-                char _dta[hxtoolbox_monitor_rows] `"`rowtext'"'
-            }
-            else local risk "检查结果：当前表达式尚未完成或与目标变量类型不兼容。"
-        }
+        local operation `"操作摘要：将修改原变量 `depvar'；当前条件匹配 `sampleN' 个观测。"'
+        local risk "提醒：会覆盖原值；表达式仅在正式执行时计算，执行结果以 Stata 输出为准。"
     }
     else if inlist("`command'", "keep", "drop") {
         if "`model'" == "处理变量" {

@@ -1,4 +1,4 @@
-*! hxsemantics_rules 1.5.12  20aug2026
+*! hxsemantics_rules 1.6.0  06sep2026
 *! Included by hxsemantics.ado in the same local-macro scope.
     if "`cmd'" == "use" {
         local template "command_body"

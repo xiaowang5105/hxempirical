@@ -3,6 +3,9 @@
 program define hxrefresh
     version 16.0
 
+    tempname hx_saved_results
+    _return hold `hx_saved_results'
+
     capture quietly ds
     if _rc local allvars ""
     else local allvars `"`r(varlist)'"'
@@ -33,4 +36,5 @@ program define hxrefresh
     }
 
     capture quietly hxregistry
+    _return restore `hx_saved_results'
 end

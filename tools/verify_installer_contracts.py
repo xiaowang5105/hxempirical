@@ -30,7 +30,7 @@ install_doc = read("INSTALL.md")
 launcher = read("hxinstall.do")
 installer = read("hxinstaller.ado")
 pkg = read("hxempirical.pkg")
-java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
+java = "\n".join(path.read_text(encoding="utf-8") for path in sorted((root / "src/main/java/com/hexie/stata").glob("*.java")))
 
 # doctor: the declared total must match the ado list plus the JAR and classic dlg.
 core_match = re.search(r'local core\s+"([^"]+)"', entry)

@@ -1,0 +1,30 @@
+name: Real Stata release acceptance
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  stata:
+    runs-on: [self-hosted, Windows, stata]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release and binary provenance
+        shell: pwsh
+        run: |
+          python tools/verify_release.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/verify_hxworkbench_jar_sync.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Run all real Stata tests
+        shell: pwsh
+        run: |
+          if (-not $env:STATA_EXE) { throw 'Set STATA_EXE on the licensed Stata runner.' }
+          ./tools/run_stata_tests.ps1 -StataExe $env:STATA_EXE -KeepLogs -LogDirectory "$env:RUNNER_TEMP/hx-stata-logs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: real-stata-logs
+          path: ${{ runner.temp }}/hx-stata-logs

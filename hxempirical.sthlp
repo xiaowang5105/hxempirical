@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.14  20aug2026}{...}
+{* *! version 1.6.0  06sep2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -27,7 +27,7 @@ currently in Stata memory. Double-clicked cell edits and the fx formula bar exec
 {cmd:replace}/{cmd:generate} operations. Commands run in Stata itself and are added to Stata History.
 
 {pstd}
-The 1.5.10 interface uses a compact desktop-workbench layout: a collapsible left
+The interface uses a compact desktop-workbench layout: a collapsible left
 navigation sidebar, dense command tables with search and source filters, a
 contextual command preview panel, and one shared right-side Current Data inspector.
 OneClick and ordinary command pages reuse the same data/result components.
@@ -283,7 +283,38 @@ OneClick output is a model-sensitivity and robustness aid. Candidate controls
 should be chosen from theory, prior literature, and the identification design.
 It does not replace a prespecified main model or causal identification strategy.
 
+{title:Research projects}
+{pstd}
+The top {bf:研究项目} menu saves a .hxproj journal together with an hx-assets directory.
+Each completed workbench step creates a .hxproj.recovery checkpoint including data;
+manual saves retain the previous readable journal as .hxproj.bak. Opening the original
+project offers a newer checkpoint, or a backup when the primary journal is damaged.
+Keep all these files with the assets directory. Interrupted running commands are not
+checkpointed. Snapshot creation and restoration require a single Stata frame; save
+extra frames separately before closing them. Restore failures retain the old data,
+estimation results and RNG state. Multi-frame dependencies are not packaged.
+Missing model files and linked asset directories are rejected. Filesystems without
+atomic file replacement cannot save projects; use a local disk with this capability.
+Panel setup commands from the wizard and generic panel pages are recorded before
+estimation and included in exported scripts. Newly saved IV settings retain the
+endogenous regressors, instruments and estimator choice. Old settings remain readable;
+roles and declarations omitted from old records must be supplied manually.
+Cell editors and the formula bar use underlying numeric/string values, independently
+of rounded displays, value labels and date formats. Accepting unchanged text preserves
+the original value, including extended missing values and string whitespace.
+Keep these together. A new project snapshots the current data. Saving records the current data,
+executed commands, model settings, and RNG state. Opening restores saved data after confirmation;
+it never automatically executes the recorded commands.
+{pstd}
+The menu exports do-files, compares stored coefficients and standard errors, and checks
+actual e(sample) membership as well as dataset signatures. Common-sample export supports
+plain regress, areg, xtreg, and reghdfe commands; complex prefixes and macros require manual setup.
+External files and third-party dependencies must remain available. Review exported scripts before running.
+{pstd}
+Internal UI queries preserve native r() results. Variable expressions are evaluated only during
+execution, and monitoring preserves RNG state. Recent models are distinguished by their complete settings.
+
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.14.
+HX empirical workbench, package version 1.6.0.

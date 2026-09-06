@@ -1,7 +1,10 @@
 param(
     [string]$StataExe = 'D:\Stata\StataMP-64.exe',
     [string]$Repository = (Split-Path -Parent $PSScriptRoot),
-    [ValidateRange(10, 3600)][int]$TimeoutSeconds = 180
+    [ValidateRange(10, 3600)][int]$TimeoutSeconds = 180,
+    [switch]$KeepLogs,
+    [string]$LogDirectory,
+    [string[]]$TestName = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +27,10 @@ function Convert-ToStataPath {
 }
 
 $testFiles = @(Get-ChildItem -LiteralPath $testsPath -Filter '*.do' -File | Sort-Object Name)
+if ($TestName.Count) {
+    $testFiles = @($testFiles | Where-Object { $TestName -contains $_.Name })
+    if ($testFiles.Count -ne $TestName.Count) { throw 'One or more requested test names were not found.' }
+}
 if ($testFiles.Count -eq 0) {
     throw "No Stata smoke tests found in $testsPath"
 }
@@ -34,6 +41,19 @@ $failures = [System.Collections.Generic.List[string]]::new()
 $completedCleanly = $false
 
 try {
+    if ($testFiles.Name -contains 'workflow_regression_smoke.do') {
+        $stataDirectory = Split-Path -Parent $StataExe
+        $javac = Get-ChildItem -LiteralPath (Join-Path $stataDirectory 'utilities') -Filter javac.exe -File -Recurse | Select-Object -First 1
+        if (-not $javac) { throw 'Workflow regression tests require a JDK beside the licensed Stata installation.' }
+        $testClasses = Join-Path $runDirectory 'test-classes'
+        New-Item -ItemType Directory -Path $testClasses | Out-Null
+        $testSource = Join-Path $testsPath 'java/com/hexie/stata/WorkflowRegressionTest.java'
+        $testClasspath = (Join-Path $repositoryPath 'hxworkbench.jar') + ';' + (Join-Path $stataDirectory 'utilities/jar/sfi-api.jar')
+        & $javac.FullName --release 11 -cp $testClasspath -d $testClasses $testSource
+        if ($LASTEXITCODE) { throw 'Workflow test compilation failed.' }
+        & (Join-Path $javac.DirectoryName 'jar.exe') --create --file (Join-Path $runDirectory 'hx-tests.jar') -C $testClasses .
+        if ($LASTEXITCODE) { throw 'Workflow test packaging failed.' }
+    }
     foreach ($testFile in $testFiles) {
         $source = [System.IO.File]::ReadAllText($testFile.FullName)
         $markerMatch = [regex]::Match($source, 'display\s+as\s+result\s+"(?<marker>[A-Z0-9_]+_OK)"')
@@ -103,10 +123,19 @@ try {
     $completedCleanly = $true
 }
 finally {
-    if ($completedCleanly -and (Test-Path -LiteralPath $runDirectory)) {
+    if ($LogDirectory -and (Test-Path -LiteralPath $runDirectory)) {
+        [System.IO.Directory]::CreateDirectory($LogDirectory) | Out-Null
+        Get-ChildItem -LiteralPath $runDirectory -File | Copy-Item -Destination $LogDirectory -Force
+    }
+    $resolvedRun = [System.IO.Path]::GetFullPath($runDirectory)
+    $expectedParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\') + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedRun.StartsWith($expectedParent) -or [System.IO.Path]::GetFileName($resolvedRun) -notlike 'hxempirical-stata-tests-*') {
+        throw 'Refusing cleanup outside the test-owned temporary directory.'
+    }
+    if ($completedCleanly -and -not $KeepLogs -and (Test-Path -LiteralPath $runDirectory)) {
         Remove-Item -LiteralPath $runDirectory -Recurse -Force
     }
     elseif (Test-Path -LiteralPath $runDirectory) {
-        Write-Host "Failed-test logs retained at: $runDirectory"
+        Write-Host "Test logs retained at: $runDirectory"
     }
 }

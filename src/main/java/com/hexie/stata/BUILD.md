@@ -4,7 +4,7 @@
 
 ## Production rule
 
-Compile `HxWorkbench.java` against the real Stata Function Interface archive from an installed Stata distribution:
+Compile all `src/main/java/com/hexie/stata/*.java` files against the real Stata Function Interface archive from an installed Stata distribution:
 
 ```text
 <Stata>/utilities/jar/sfi-api.jar
@@ -20,7 +20,7 @@ The repository tracks the exact Java source used to build the shipped JAR in:
 src/main/java/com/hexie/stata/HxWorkbench.jar-source
 ```
 
-`tools/verify_hxworkbench_jar_sync.py` fails whenever `HxWorkbench.java` changes without a corresponding production JAR rebuild. This deliberately prevents a PR from passing release CI with a stale GUI binary.
+`tools/verify_hxworkbench_jar_sync.py` fails whenever any Java module or the shipped JAR changes without a corresponding production JAR rebuild. This deliberately prevents a PR from passing release CI with a stale GUI binary.
 
 ## One-command Windows build
 
@@ -55,9 +55,9 @@ pwsh -File tools/build_hxworkbench_jar.ps1 `
 The build script performs all of the following:
 
 1. Refuses to continue without an `sfi-api.jar` containing `com/stata/sfi/SFIToolkit.class`.
-2. Compiles `HxWorkbench.java` with `javac --release 11`.
+2. Compiles all Java modules with `javac --release 11`.
 3. Replaces `hxworkbench.jar` with only the `com/hexie/stata` classes; Stata SFI classes are never bundled.
-4. Updates `HxWorkbench.jar-source` to the Git blob SHA-1 of the exact source bytes used for the build.
+4. Updates `HxWorkbench.jar-source` to a JSON manifest containing the SHA-256 of every Java source and the shipped JAR.
 5. Runs `tools/verify_hxworkbench_jar_sync.py`.
 6. Rebuilds the managed ZIP/index/Base64 release bundle and runs `tools/verify_release.py` unless `-SkipReleaseBundle` is supplied.
 

@@ -1,4 +1,4 @@
-*! hxinstaller 1.5.14  20aug2026
+*! hxinstaller 1.6.0  05sep2026
 *! Hidden transactional installer core for hxempirical
 program define hxinstaller
     version 17.0
