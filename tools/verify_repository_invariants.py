@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 import sys
+from datetime import datetime
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,6 +25,21 @@ ci = read(".github/workflows/ci.yml")
 runner = read("tools/run_stata_tests.ps1")
 pkg = read("hxempirical.pkg")
 release_index = read("hxempirical-release.index")
+
+# Public release metadata has one date. Internal module versions may be independent.
+package_version = re.search(r"(?m)^d Version (\S+)", pkg).group(1)
+package_date = re.search(r"(?m)^d Distribution-Date: (\d{8})", pkg).group(1)
+for public_file in ("hxempirical.ado", "hxempirical.sthlp"):
+    source = read(public_file)
+    header = re.search(r"\*!\s+(?:hxempirical|version)\s+(\S+)\s+(\d{2}[a-z]{3}\d{4})", source)
+    if not header or header.group(1) != package_version:
+        fail(f"public version mismatch: {public_file}")
+    if datetime.strptime(header.group(2), "%d%b%Y").strftime("%Y%m%d") != package_date:
+        fail(f"public release date mismatch: {public_file}")
+if f"**当前发布版本：{package_version}**" not in readme:
+    fail("README release version mismatch")
+if re.search(r"The \d+\.\d+\.\d+ interface", read("hxempirical.sthlp")):
+    fail("help interface paragraph contains a stale hardcoded version")
 
 entrypoint = 'do "https://xiaowang5105.github.io/hxempirical/hxinstall.do"'
 if readme.count(entrypoint) != 1:

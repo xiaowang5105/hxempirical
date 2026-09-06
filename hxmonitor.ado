@@ -322,7 +322,8 @@ program define _hxmonitor_impl, rclass
     local newline = char(13) + char(10)
     local rowtext `"`header'`newline'"'
     local shown 0
-    forvalues i = 1/`=_N' {
+    local previewlimit = min(_N, 5000)
+    forvalues i = 1/`previewlimit' {
         if `touse'[`i'] {
             local row ""
             foreach v of local limited {
@@ -344,6 +345,9 @@ program define _hxmonitor_impl, rclass
         }
     }
     if `shown' == 0 local rowtext "没有符合当前条件的观测"
+    if `previewlimit' < _N {
+        local rowtext `"`rowtext'`newline'预览仅检查前 `previewlimit' 行；样本统计使用全量数据。"'
+    }
     char _dta[hxtoolbox_monitor_rows] `"`rowtext'"'
 
     local operation "操作摘要：请选择具体命令后，这里说明将影响的数据。"

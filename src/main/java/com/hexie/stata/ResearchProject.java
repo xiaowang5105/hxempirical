@@ -2,6 +2,8 @@ package com.hexie.stata;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -9,6 +11,8 @@ import java.util.regex.*;
 
 /** Portable project journal, independent of Swing and Stata's live API. */
 final class ResearchProject {
+    static final int MAX_RUNS = 10000;
+    static final long MAX_BYTES = 64L * 1024 * 1024;
     final Path file;
     String assets, baseline = "", current = "", workingDirectory = "", rng = "", rngState = "";
     String currentRng = "", currentRngState = "";
@@ -30,12 +34,22 @@ final class ResearchProject {
     Path asset(String relative) throws IOException {
         Path parent = file.getParent();
         Path path = parent.resolve(relative).normalize();
-        if (relative.isBlank() || !path.startsWith(parent.resolve(assets)) || !path.startsWith(parent)
-                || Paths.get(relative).isAbsolute() || !path.startsWith(parent.resolve(assets).normalize())) {
+        Path root = parent.resolve(assets).normalize();
+        if (!assets.matches("hx-assets-[0-9a-f-]{36}") || relative.isBlank()
+                || Paths.get(relative).isAbsolute() || !path.startsWith(root) || path.equals(root)) {
             throw new IOException("项目资源路径无效：" + relative);
         }
-        if (Files.exists(path) && !path.toRealPath().startsWith(parent.toRealPath())) {
-            throw new IOException("项目资源位于项目目录之外。");
+        // Check every existing ancestor even when the new UUID target does not exist.
+        Path realParent = parent.toRealPath();
+        Path expected = realParent;
+        for (Path component : parent.relativize(path)) {
+            expected = expected.resolve(component);
+            Path candidate = parent.resolve(realParent.relativize(expected));
+            if (Files.isSymbolicLink(candidate)
+                    || (Files.exists(candidate, LinkOption.NOFOLLOW_LINKS)
+                    && !candidate.toRealPath().equals(expected))) {
+                throw new IOException("项目资源不能经过符号链接或 junction：" + relative);
+            }
         }
         return path;
     }
@@ -43,6 +57,36 @@ final class ResearchProject {
     String newAsset(String suffix) { return assets + "/" + UUID.randomUUID() + suffix; }
 
     void save() throws IOException {
+        writeProject(file);
+        dirty = false;
+    }
+
+    Path recoveryFile() { return file.resolveSibling(file.getFileName() + ".recovery"); }
+    Path backupFile() { return file.resolveSibling(file.getFileName() + ".bak"); }
+
+    void checkpoint() throws IOException { writeProject(recoveryFile()); }
+
+    Set<String> savedSnapshots() throws IOException {
+        Set<String> snapshots = new HashSet<>();
+        for (Path source : Arrays.asList(file, backupFile(), recoveryFile())) {
+            if (!Files.exists(source)) continue;
+            ResearchProject saved = loadFrom(file, source);
+            // A sidecar from another project must never authorize cleanup.
+            if (!assets.equals(saved.assets)) throw new IOException("项目恢复文件来自不同资源目录。");
+            snapshots.add(saved.baseline); snapshots.add(saved.current);
+        }
+        return snapshots;
+    }
+
+    void pruneSnapshots(Set<String> previous) throws IOException {
+        Set<String> retained = savedSnapshots();
+        retained.add(baseline); retained.add(current);
+        for (String old : previous) if (!retained.contains(old)) discardNewAsset(old);
+    }
+
+    private void writeProject(Path destination) throws IOException {
+        if (runs.size() > MAX_RUNS) throw new IOException("项目超过 10,000 步；请新建项目后继续。");
+        validateResources();
         Properties p = new Properties();
         p.setProperty("format", "HXPROJECT-1");
         p.setProperty("assets", assets);
@@ -62,14 +106,45 @@ final class ResearchProject {
         }
         StringWriter writer = new StringWriter();
         p.store(writer, "HX Empirical research project");
-        atomicWrite(file, writer.toString());
-        dirty = false;
+        String text = writer.toString();
+        if (text.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES)
+            throw new IOException("项目超过 64 MB，保存已取消；上一版本仍可打开。");
+        if (destination.equals(file) && Files.isRegularFile(file)) {
+            // Never replace the last good backup with an unreadable primary file.
+            boolean readable;
+            try { load(file); readable = true; } catch (IOException e) { readable = false; }
+            if (readable) atomicWrite(backupFile(), Files.readString(file, StandardCharsets.UTF_8));
+        }
+        atomicWrite(destination, text);
+    }
+
+    private void validateResources() throws IOException {
+        requireAsset(baseline); requireAsset(current);
+        for (Run r : runs) if (!r.model.isBlank())
+            for (String suffix : Arrays.asList(".ster", ".tsv", ".sample")) requireAsset(r.model + suffix);
+    }
+
+    private void requireAsset(String relative) throws IOException {
+        if (!Files.isRegularFile(asset(relative))) throw new IOException("项目资源缺失：" + relative);
+    }
+
+    // Only remove UUID resources created by this operation, never enumerate user files.
+    void discardNewAsset(String relative) throws IOException {
+        String name = Paths.get(relative).getFileName().toString();
+        if (!name.matches("[0-9a-f-]{36}(\\.dta|-model\\.(ster|tsv|sample))"))
+            throw new IOException("拒绝清理非项目生成的文件。");
+        Files.deleteIfExists(asset(relative));
     }
 
     static ResearchProject load(Path file) throws IOException {
-        if (Files.size(file) > 64L * 1024 * 1024) throw new IOException("项目文件超过 64 MB。");
+        return loadFrom(file, file);
+    }
+
+    static ResearchProject loadFrom(Path file, Path source) throws IOException {
+        if (Files.size(source) > MAX_BYTES) throw new IOException("项目文件超过 64 MB。");
         Properties p = new Properties();
-        try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) { p.load(reader); }
+        try (Reader reader = Files.newBufferedReader(source, StandardCharsets.UTF_8)) { p.load(reader); }
+        catch (IllegalArgumentException e) { throw new IOException("项目记录格式无效。", e); }
         if (!"HXPROJECT-1".equals(p.getProperty("format"))) throw new IOException("无法识别项目格式。");
         ResearchProject project = new ResearchProject(file);
         project.assets = p.getProperty("assets", "");
@@ -85,7 +160,7 @@ final class ResearchProject {
             throw new IOException("项目数据快照缺失；请将 .hxproj 与 hx-assets 目录一同移动。");
         try {
             int count = Integer.parseInt(p.getProperty("count", "0"));
-            if (count < 0 || count > 10000) throw new IOException("项目步骤数量无效。");
+            if (count < 0 || count > MAX_RUNS) throw new IOException("项目步骤数量无效。");
             for (int i = 0; i < count; i++) {
                 Run r = new Run(); String k = "run." + i + ".";
                 r.command = p.getProperty(k + "command", ""); r.settings = p.getProperty(k + "settings", "");
@@ -97,6 +172,7 @@ final class ResearchProject {
                 project.runs.add(r);
             }
         } catch (IllegalArgumentException e) { throw new IOException("项目记录格式无效。", e); }
+        project.validateResources();
         return project;
     }
 
@@ -229,9 +305,13 @@ final class ResearchProject {
     static void atomicWrite(Path file, String text) throws IOException {
         Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), ".hx-write-", ".tmp");
         try {
-            Files.writeString(temp, text, StandardCharsets.UTF_8);
-            try { Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
-            catch (AtomicMoveNotSupportedException e) { Files.move(temp,file,StandardCopyOption.REPLACE_EXISTING); }
+            try (FileChannel channel = FileChannel.open(temp, StandardOpenOption.WRITE)) {
+                ByteBuffer bytes = StandardCharsets.UTF_8.encode(text);
+                while (bytes.hasRemaining()) channel.write(bytes);
+                channel.force(true);
+            }
+            // Fail closed on filesystems without atomic replacement; retain the old file.
+            Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } finally { Files.deleteIfExists(temp); }
     }
 }

@@ -33,6 +33,39 @@ assert `"`signature'"' != ""
 capture noisily hxproject snapshot using `"`snapshot'"'
 assert _rc == 602
 assert _N == `n' & c(k) == `k'
+* Invalid RNG state must not replace live data/results.
+capture noisily hxproject restore using `"`snapshot'"', rng(mt64) rngstate(BADSTATE)
+assert _rc != 0
+assert _N == `n' & c(k) == `k'
+assert mreldif(e(b),expected_b) == 0
+assert e(sample) == 1
+assert `"`c(rngstate)'"' == `"`rng'"'
+assert `"`c(filename)'"' == `"`filename'"'
+* Read failure after changing RNG must roll back RNG as well.
+set seed 987
+local other_rng `"`c(rngstate)'"'
+set rngstate `rng'
+capture noisily hxproject restore using `"`snapshot'.absent"', rng(mt64) rngstate(`other_rng')
+assert _rc != 0
+assert `"`c(rngstate)'"' == `"`rng'"'
+assert mreldif(e(b),expected_b) == 0
+assert e(sample) == 1
+assert _N == `n' & c(k) == `k'
+* Multi-frame snapshots fail explicitly, leaving every frame intact.
+frame create lookup
+frame lookup: set obs 2
+tempfile multifile
+capture noisily hxproject snapshot using `"`multifile'"'
+assert _rc == 459
+frame lookup: assert _N == 2
+assert _N == `n'
+frame drop lookup
+* Successful restore invalidates old estimation results.
+replace y = 0
+hxproject restore using `"`snapshot'"', rng(mt64) rngstate(`rng')
+assert y == 2*x + sin(x)
+assert `"`e(cmd)'"' == ""
+
 erase `"`model'.ster"'
 erase `"`model'.tsv"'
 erase `"`model'.sample"'

@@ -844,6 +844,17 @@ public final class HxWorkbench {
          this.fireTableCellUpdated(row, column);
       }
 
+      String editValueAt(int row, int column) {
+         if (this.previewValues != null) return Objects.toString(this.previewValues[row][column], "");
+         int index = column + 1;
+         long observation = observationAt(row);
+         if (Data.isVarTypeString(index)) return Data.getStr(index, observation);
+         double value = Data.getNum(index, observation);
+         // Preserve .a-.z, and bypass labels, date formats and display rounding.
+         if (Missing.isMissing(value)) return Data.getFormattedValue(index, observation, false).trim();
+         return Double.toString(value);
+      }
+
       void refreshAll() {
          this.fireTableDataChanged();
       }
@@ -2421,7 +2432,9 @@ public final class HxWorkbench {
       }
 
       static String quote(String var0) {
-         String var1 = var0 == null ? "" : var0.replace("\"", "\"\"");
+         // Stata compound quotes retain embedded ordinary quotes verbatim.
+         // Doubling them adds literal quotes after a nested hxcontext/hxexecute call.
+         String var1 = var0 == null ? "" : var0;
          return "`\"" + var1 + "\"'";
       }
    }
@@ -4984,6 +4997,17 @@ public final class HxWorkbench {
          } else {
             var1.depvar = selected(this.depvar);
             var1.controls = String.join(" ", this.variables.getSelectedValuesList());
+            var1.endog = String.join(" ", this.endog.getSelectedValuesList());
+            var1.instruments = String.join(" ", this.instruments.getSelectedValuesList());
+            var1.absorb = String.join(" ", this.absorb.getSelectedValuesList());
+            var1.panel = selected(this.panel);
+            var1.time = selected(this.time);
+            var1.model = selected(this.model);
+            var1.expression = this.expression.getText();
+            var1.newvar = this.newvar.getText();
+            var1.usingFile = this.usingFile.getText();
+            var1.weightType = selected(this.genericWeightType);
+            var1.weightVar = selected(this.genericWeightVar);
             var1.vce = selected(this.vce);
             var1.cluster = selected(this.cluster);
             var1.ifcond = this.ifCondition.getText().trim();
@@ -5104,6 +5128,18 @@ public final class HxWorkbench {
                this.setComboValue(this.depvar, var1.depvar);
                setListSelectedValues(this.variables, splitWords(var1.controls));
                this.setComboValue(this.vce, var1.vce);
+               setListSelectedValues(this.endog, splitWords(var1.endog));
+               setListSelectedValues(this.instruments, splitWords(var1.instruments));
+               setListSelectedValues(this.absorb, splitWords(var1.absorb));
+               this.setComboValue(this.panel, var1.panel);
+               this.setComboValue(this.time, var1.time);
+               if (!var1.model.isBlank()) this.setComboValue(this.model, var1.model);
+               this.expression.setText(var1.expression);
+               this.newvar.setText(var1.newvar);
+               this.usingFile.setText(var1.usingFile);
+               if (!var1.weightType.isBlank()) this.setComboValue(this.genericWeightType, var1.weightType);
+               this.setComboValue(this.genericWeightVar, var1.weightVar);
+               this.updateGenericWeightConditionalFields();
                this.setComboValue(this.cluster, var1.cluster);
                this.ifCondition.setText(var1.ifcond);
                this.inCondition.setText(var1.incond);
@@ -7269,6 +7305,13 @@ public final class HxWorkbench {
          this.dataTable.setCellSelectionEnabled(true);
          this.dataTable.setSelectionMode(0);
          this.dataTable.setDefaultRenderer(Object.class, new HxWorkbench.WorkbenchFrame.ChangeRenderer());
+         this.dataTable.setDefaultEditor(Object.class, new javax.swing.DefaultCellEditor(new JTextField()) {
+            @Override
+            public Component getTableCellEditorComponent(JTable table, Object value, boolean selected, int row, int column) {
+               String raw = WorkbenchFrame.this.dataModel.editValueAt(table.convertRowIndexToModel(row), table.convertColumnIndexToModel(column));
+               return super.getTableCellEditorComponent(table, raw, selected, row, column);
+            }
+         });
          this.dataTable.getTableHeader().setReorderingAllowed(false);
          this.dataTable.setFillsViewportHeight(true);
          this.dataTable.setShowVerticalLines(false);
@@ -7662,7 +7705,7 @@ public final class HxWorkbench {
          String variable = this.dataModel.getColumnName(column);
          long observation = this.dataModel.observationAt(this.dataTable.convertRowIndexToModel(row));
          this.dataCellRefLabel.setText(variable + "[" + observation + "]");
-         Object value = this.dataModel.getValueAt(this.dataTable.convertRowIndexToModel(row), column);
+         Object value = this.dataModel.editValueAt(this.dataTable.convertRowIndexToModel(row), column);
          this.spreadsheetSyncing = true;
          this.dataFormulaField.setText(Objects.toString(value, ""));
          this.spreadsheetSyncing = false;
@@ -7678,7 +7721,7 @@ public final class HxWorkbench {
             }
             return expression;
          }
-         if (variableIndex > 0 && Data.isVarTypeString(variableIndex)) return HxWorkbench.StataBridge.quote(text);
+         if (variableIndex > 0 && Data.isVarTypeString(variableIndex)) return HxWorkbench.StataBridge.quote(input == null ? "" : input);
          String numeric = text.replace(",", "");
          if (numeric.matches("\\.[a-z]?|[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?")) return numeric;
          JOptionPane.showMessageDialog(
@@ -7717,7 +7760,8 @@ public final class HxWorkbench {
       }
 
       private boolean commitSpreadsheetCellEdit(int row, int column, Object value) {
-         if (this.previewMode || row < 0 || column < 0 || column >= this.dataModel.getColumnCount()) return false;
+         if (this.previewMode || this.runInProgress || row < 0 || column < 0 || column >= this.dataModel.getColumnCount()) return false;
+         if (Objects.toString(value, "").equals(this.dataModel.editValueAt(row, column))) return true;
          String variable = this.dataModel.getColumnName(column);
          int variableIndex = HxWorkbench.safe(() -> Data.getVarIndex(variable), -1);
          if (variableIndex <= 0) return false;
@@ -10143,7 +10187,7 @@ public final class HxWorkbench {
                JOptionPane.showMessageDialog(this, "请至少完成面板 ID、因变量，并保留一条可执行的 xtreg 命令。", "设置尚未完成", JOptionPane.INFORMATION_MESSAGE);
                return;
             }
-            int setupRc = HxWorkbench.StataBridge.execute(setup, false);
+            int setupRc = this.runProjectSetup(setup);
             if (setupRc != 0) {
                this.statusLabel.setText("xtset 失败，返回码：" + setupRc);
                return;
@@ -12038,13 +12082,21 @@ public final class HxWorkbench {
             return false;
          }
          String setup = "xtset " + panelVar + (timeVar.isBlank() ? "" : " " + timeVar);
-         int rc = HxWorkbench.StataBridge.execute(setup, false);
+         int rc = this.runProjectSetup(setup);
          if (rc != 0) {
             this.statusLabel.setText("xtset 失败，返回码：" + rc);
             JOptionPane.showMessageDialog(this, "面板结构声明失败：\n" + setup + "\n\n请检查面板键、重复时间或变量类型。", "xtset 失败", JOptionPane.WARNING_MESSAGE);
             return false;
          }
          return true;
+      }
+
+      private int runProjectSetup(String command) {
+         if (this.runInProgress) return 459;
+         this.researchProject.beginRun();
+         int rc = HxWorkbench.StataBridge.execute("hxexecute, command(" + StataBridge.quote(command) + ")", true);
+         this.researchProject.record(command, rc, Double.NaN, Double.NaN, StataBridge.lastNativeOutput());
+         return rc;
       }
 
       private static String structuredOrdinalOffset(String raw) {
@@ -16201,7 +16253,7 @@ public final class HxWorkbench {
       }
 
       private void updatePreview() {
-         if (!this.rebuilding && !this.currentCommand.isBlank()) {
+         if (!this.runInProgress && !this.rebuilding && !this.currentCommand.isBlank()) {
             if (this.baselineTaskActive) {
                this.updateBaselinePreview();
             } else if ("regress".equals(this.currentCommand) && this.regressWorkspaceActive) {
@@ -17869,6 +17921,7 @@ public final class HxWorkbench {
       }
 
       private void beginMonitoredRun(String var1, boolean var2, int var3) {
+         this.previewTimer.stop();
          this.researchProject.beginRun();
          this.runInProgress = true;
          this.runStartedAt = LocalDateTime.now();
@@ -18850,7 +18903,7 @@ public final class HxWorkbench {
 
       private void pushSelections(String var1, JList<String> var2) {
          for (String var4 : var2.getSelectedValuesList()) {
-            HxWorkbench.StataBridge.execute("quietly hxpick, target(" + var1 + ") action(add) value(" + HxWorkbench.StataBridge.quote(var4) + ")", false);
+            HxWorkbench.StataBridge.execute("quietly hxpick, target(" + var1 + ") action(add) value(" + var4 + ")", false);
          }
       }
 
@@ -18881,7 +18934,7 @@ public final class HxWorkbench {
       }
 
       private void schedulePreview() {
-         if (!this.rebuilding && !this.currentCommand.isBlank()) {
+         if (!this.runInProgress && !this.rebuilding && !this.currentCommand.isBlank()) {
             this.previewTimer.restart();
          }
       }

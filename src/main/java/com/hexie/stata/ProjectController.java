@@ -82,30 +82,42 @@ final class ProjectController {
         ResearchProject next=new ResearchProject(file);
         Files.createDirectories(file.getParent().resolve(next.assets));
         next.baseline=next.newAsset(".dta"); next.current=next.baseline;
+        try {
         check(stata.execute("hxproject snapshot using "+ResearchProject.stataQuote(next.asset(next.baseline).toString())));
         next.workingDirectory=stata.characteristic("hxproject_pwd");
         next.rng=stata.characteristic("hxproject_rng"); next.rngState=stata.characteristic("hxproject_rngstate");
         next.currentRng=next.rng; next.currentRngState=next.rngState;
         next.sortRngState=stata.characteristic("hxproject_sortrngstate"); next.currentSortRngState=next.sortRngState;
-        next.save(); project=next; updateTitle();
-        message("项目已创建。此后的工作台运行步骤会记录到项目中；保存项目时同时保存当前数据。\n请将 .hxproj 文件与旁边的 hx-assets 目录一同保留。");
+        next.save();
+        } catch (Exception e) { cleanup(next, next.baseline, e); throw e; }
+        project=next; updateTitle();
+        message("项目已创建。每个完成的步骤会保存恢复点；手动保存时更新项目并保留上一版本。\n项目快照支持单 frame。请将 .hxproj、.recovery、.bak 与 hx-assets 目录一同保留。");
     }
 
     private void open() throws Exception {
         if(!canClose()) return;
         Path file=choose("打开研究项目","hxproj",false);
         if(file==null) return;
-        ResearchProject next=ResearchProject.load(file);
+        ResearchProject next;
+        Path recovery=file.resolveSibling(file.getFileName()+".recovery");
+        Path backup=file.resolveSibling(file.getFileName()+".bak");
+        if(Files.isRegularFile(recovery) && (!Files.exists(file) || Files.getLastModifiedTime(recovery).compareTo(Files.getLastModifiedTime(file))>0)
+                && JOptionPane.showConfirmDialog(owner,"发现较新的自动恢复点，载入这些已完成的步骤和数据？","恢复项目",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION) {
+            next=ResearchProject.loadFrom(file,recovery);
+            next.dirty=true;
+        } else {
+            try { next=ResearchProject.load(file); }
+            catch(IOException failed) {
+                if(!Files.isRegularFile(backup) || JOptionPane.showConfirmDialog(owner,failed.getMessage()+"\n尝试打开上一份备份？","项目恢复",JOptionPane.YES_NO_OPTION)!=JOptionPane.YES_OPTION) throw failed;
+                next=ResearchProject.loadFrom(file,backup); next.dirty=true;
+            }
+        }
         validatedRng(next.currentRng);
         validatedState(next.currentRngState);
         if(!next.currentSortRngState.isBlank()) validatedState(next.currentSortRngState);
         if(JOptionPane.showConfirmDialog(owner,"载入项目保存的数据并恢复随机数状态？\n当前内存数据将被替换，请先保存需要保留的修改。","恢复项目",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
         // Read the project first; loading never automatically runs recorded commands.
-        check(stata.execute("use "+ResearchProject.stataQuote(next.asset(next.current).toString())+", clear"));
-        if(!next.currentRng.isBlank()) check(stata.execute("set rng "+validatedRng(next.currentRng)));
-        if(!next.currentRngState.isBlank()) check(stata.execute("set rngstate "+validatedState(next.currentRngState)));
-        if(!next.currentSortRngState.isBlank()) check(stata.execute("set sortrngstate "+validatedState(next.currentSortRngState)));
-        check(stata.execute("ereturn clear"));
+        check(stata.execute(restoreCommand(next)));
         project=next; refresh.run(); updateTitle();
         if(!project.runs.isEmpty()) restoreSettings.accept(project.runs.get(project.runs.size()-1).settings);
     }
@@ -117,16 +129,39 @@ final class ProjectController {
         if(!state.matches("[a-zA-Z0-9]+")) throw new IOException("项目随机数状态无效。"); return state;
     }
 
+    static String restoreCommand(ResearchProject next) throws IOException {
+        return "hxproject restore using "+ResearchProject.stataQuote(next.asset(next.current).toString())
+                +", rng("+validatedRng(next.currentRng)+") rngstate("+validatedState(next.currentRngState)+")"
+                +(next.currentSortRngState.isBlank()?"":" sortrngstate("+validatedState(next.currentSortRngState)+")");
+    }
+
     private void save() throws Exception {
+        saveSnapshot(false);
+    }
+
+    private void saveSnapshot(boolean recovery) throws Exception {
         requireProject();
+        Set<String> previousSnapshots;
+        try { previousSnapshots=project.savedSnapshots(); }
+        catch(IOException e) { previousSnapshots=Collections.emptySet(); }
         String previous=project.current, previousRng=project.currentRng, previousState=project.currentRngState, previousSort=project.currentSortRngState;
         String snapshot=project.newAsset(".dta");
+        try {
         check(stata.execute("hxproject snapshot using "+ResearchProject.stataQuote(project.asset(snapshot).toString())));
         project.current=snapshot; project.currentRng=stata.characteristic("hxproject_rng"); project.currentRngState=stata.characteristic("hxproject_rngstate");
         project.currentSortRngState=stata.characteristic("hxproject_sortrngstate");
-        try { project.save(); }
-        catch(IOException e) { project.current=previous; project.currentRng=previousRng; project.currentRngState=previousState; project.currentSortRngState=previousSort; throw e; }
+        if(recovery) project.checkpoint(); else project.save();
+        } catch(Exception e) {
+            project.current=previous; project.currentRng=previousRng; project.currentRngState=previousState; project.currentSortRngState=previousSort;
+            cleanup(project,snapshot,e); throw e;
+        }
+        try { project.pruneSnapshots(previousSnapshots); }
+        catch(IOException e) { button.setToolTipText("保存成功；旧快照清理未完成："+e.getMessage()); }
         updateTitle();
+    }
+
+    private static void cleanup(ResearchProject p,String resource,Exception failure) {
+        try { p.discardNewAsset(resource); } catch(IOException e) { failure.addSuppressed(e); }
     }
 
     void beginRun() { pendingSettings=project==null?"":captureSettings.get(); }
@@ -135,12 +170,17 @@ final class ProjectController {
         if(project==null) return;
         ResearchProject.Run run=project.add(command,pendingSettings,output,rc,n,r2);
         if(rc==0 && !Double.isNaN(n)) {
+            String prefix=project.newAsset("-model");
             try {
-                String prefix=project.newAsset("-model");
                 check(stata.execute("hxproject model using "+ResearchProject.stataQuote(project.asset(prefix).toString())));
                 run.model=prefix; run.signature=stata.characteristic("hxproject_signature"); run.vce=stata.characteristic("hxproject_vce");
-            } catch(Exception e) { run.output+="\n[模型快照未保存："+e.getMessage()+"]"; error(e); }
+            } catch(Exception e) {
+                for(String suffix:Arrays.asList(".ster",".tsv",".sample")) cleanup(project,prefix+suffix,e);
+                run.output+="\n[模型快照未保存："+e.getMessage()+"]"; error(e);
+            }
         }
+        try { saveSnapshot(true); }
+        catch(Exception e) { run.output+="\n[自动恢复点未保存："+e.getMessage()+"]"; error(e); }
         updateTitle();
     }
 

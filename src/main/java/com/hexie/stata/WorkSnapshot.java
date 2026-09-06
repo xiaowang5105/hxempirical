@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 final class WorkSnapshot {
          String command = "";
          String nativeCommand = "";
+         String endog = "", instruments = "", absorb = "", panel = "", time = "";
+         String model = "", expression = "", newvar = "", usingFile = "";
          String category = "";
          String method = "";
          String label = "";
@@ -86,7 +88,9 @@ final class WorkSnapshot {
                e(this.didEventCode),
                e(this.didPolicyTime),
                e(this.didBase),
-               e(this.nativeCommand)
+               e(this.nativeCommand),
+               e(this.endog), e(this.instruments), e(this.absorb), e(this.panel), e(this.time),
+               e(this.model), e(this.expression), e(this.newvar), e(this.usingFile)
             );
          }
 
@@ -132,6 +136,15 @@ final class WorkSnapshot {
                   var2.didPolicyTime = d(var1[var3++]);
                   var2.didBase = d(var1[var3++]);
                   if (var1.length > 33) var2.nativeCommand = d(var1[33]);
+                  if (var1.length > 34) var2.endog = d(var1[34]);
+                  if (var1.length > 35) var2.instruments = d(var1[35]);
+                  if (var1.length > 36) var2.absorb = d(var1[36]);
+                  if (var1.length > 37) var2.panel = d(var1[37]);
+                  if (var1.length > 38) var2.time = d(var1[38]);
+                  if (var1.length > 39) var2.model = d(var1[39]);
+                  if (var1.length > 40) var2.expression = d(var1[40]);
+                  if (var1.length > 41) var2.newvar = d(var1[41]);
+                  if (var1.length > 42) var2.usingFile = d(var1[42]);
                   return var2;
                }
             } else {

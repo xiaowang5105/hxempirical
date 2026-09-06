@@ -41,6 +41,19 @@ $failures = [System.Collections.Generic.List[string]]::new()
 $completedCleanly = $false
 
 try {
+    if ($testFiles.Name -contains 'workflow_regression_smoke.do') {
+        $stataDirectory = Split-Path -Parent $StataExe
+        $javac = Get-ChildItem -LiteralPath (Join-Path $stataDirectory 'utilities') -Filter javac.exe -File -Recurse | Select-Object -First 1
+        if (-not $javac) { throw 'Workflow regression tests require a JDK beside the licensed Stata installation.' }
+        $testClasses = Join-Path $runDirectory 'test-classes'
+        New-Item -ItemType Directory -Path $testClasses | Out-Null
+        $testSource = Join-Path $testsPath 'java/com/hexie/stata/WorkflowRegressionTest.java'
+        $testClasspath = (Join-Path $repositoryPath 'hxworkbench.jar') + ';' + (Join-Path $stataDirectory 'utilities/jar/sfi-api.jar')
+        & $javac.FullName --release 11 -cp $testClasspath -d $testClasses $testSource
+        if ($LASTEXITCODE) { throw 'Workflow test compilation failed.' }
+        & (Join-Path $javac.DirectoryName 'jar.exe') --create --file (Join-Path $runDirectory 'hx-tests.jar') -C $testClasses .
+        if ($LASTEXITCODE) { throw 'Workflow test packaging failed.' }
+    }
     foreach ($testFile in $testFiles) {
         $source = [System.IO.File]::ReadAllText($testFile.FullName)
         $markerMatch = [regex]::Match($source, 'display\s+as\s+result\s+"(?<marker>[A-Z0-9_]+_OK)"')

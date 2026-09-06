@@ -63,4 +63,12 @@ hxcontext, command("quietly hxresolve regress")
 hxcontext, command("quietly hxrefresh")
 assert e(sample) == 1
 quietly margins, at(x=(5 10))
+* Sparse preview must not scan indefinitely or mislabel its limited range.
+set obs 6000
+replace x = _n
+hxmonitor, action(refresh) command(summarize) monitorvar(x) ifcond("x > 5500")
+local rows : char _dta[hxtoolbox_monitor_rows]
+assert strpos(`"`rows'"', "5000") > 0
+local sample : char _dta[hxtoolbox_monitor_sample]
+assert strpos(`"`sample'"', "500") > 0
 display as result "HX_EXECUTION_STATE_SMOKE_OK"
