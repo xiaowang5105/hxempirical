@@ -1,82 +1,48 @@
-from __future__ import annotations
-
+"""Bind every Java source and the shipped binary to one build manifest."""
+from pathlib import Path
 import hashlib
+import json
 import struct
 import sys
 import zipfile
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src/main/java/com/hexie/stata/HxWorkbench.java"
-MARKER = ROOT / "src/main/java/com/hexie/stata/HxWorkbench.jar-source"
-JAR = ROOT / "hxworkbench.jar"
+SOURCES = ROOT / 'src/main/java/com/hexie/stata'
+MARKER = SOURCES / 'HxWorkbench.jar-source'
+JAR = ROOT / 'hxworkbench.jar'
 
+def source_hash(path):
+    raw = path.read_bytes().replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+    return hashlib.sha256(raw).hexdigest()
 
-def fail(message: str) -> None:
-    print(f"HX_JAR_SYNC_FAIL: {message}", file=sys.stderr)
-    raise SystemExit(1)
+def manifest():
+    return {'format': 2, 'jar_sha256': hashlib.sha256(JAR.read_bytes()).hexdigest(),
+            'sources': {p.name: source_hash(p) for p in sorted(SOURCES.glob('*.java'))}}
 
+def verify_binary():
+    with zipfile.ZipFile(JAR) as z:
+        classes = [p for p in z.namelist() if p.endswith('.class')]
+        assert classes and 'com/hexie/stata/HxWorkbench.class' in classes
+        assert not any(p.startswith('com/stata/sfi/') for p in classes), 'SFI stubs bundled'
+        levels = set()
+        for p in classes:
+            magic, minor, major = struct.unpack('>IHH', z.read(p)[:8])
+            assert magic == 0xCAFEBABE and major <= 55, p
+            levels.add(major)
+        return levels
 
-def git_blob_sha1(path: Path) -> str:
-    data = path.read_bytes()
-    # The Java source is a tracked text file.  Match Git's canonical LF blob
-    # even when a Windows checkout materializes CRLF in the working tree.
-    data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
-    header = f"blob {len(data)}\0".encode("ascii")
-    return hashlib.sha1(header + data).hexdigest()
+def main():
+    try:
+        levels = verify_binary()
+        actual = manifest()
+        if '--write-marker' in sys.argv:
+            MARKER.write_text(json.dumps(actual, indent=2, sort_keys=True)+'\n', encoding='utf-8')
+        expected = json.loads(MARKER.read_text(encoding='utf-8'))
+        assert expected == actual, 'Java source or JAR changed; rebuild against the real Stata SFI API'
+        print(f'HX_JAR_SYNC_OK sources={len(actual["sources"])} java_major={sorted(levels)} jar_sha256={actual["jar_sha256"]}')
+    except (AssertionError, OSError, ValueError, zipfile.BadZipFile) as e:
+        print('HX_JAR_SYNC_FAIL:', e, file=sys.stderr)
+        raise SystemExit(1)
 
-
-def expected_source_sha() -> str:
-    if not MARKER.is_file():
-        fail(f"missing JAR provenance marker: {MARKER.relative_to(ROOT)}")
-    values = [
-        line.strip()
-        for line in MARKER.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-    if len(values) != 1 or len(values[0]) != 40 or any(c not in "0123456789abcdef" for c in values[0].lower()):
-        fail("JAR provenance marker must contain exactly one 40-character Git blob SHA-1")
-    return values[0].lower()
-
-
-def verify_jar() -> set[int]:
-    if not JAR.is_file():
-        fail("hxworkbench.jar is missing")
-    majors: set[int] = set()
-    with zipfile.ZipFile(JAR) as archive:
-        names = archive.namelist()
-        classes = [name for name in names if name.endswith(".class")]
-        if not classes:
-            fail("hxworkbench.jar contains no class files")
-        if any(name.startswith("com/stata/sfi/") for name in names):
-            fail("hxworkbench.jar must not bundle Stata SFI classes")
-        if not any(name == "com/hexie/stata/HxWorkbench.class" for name in names):
-            fail("HxWorkbench.class is missing from hxworkbench.jar")
-        for name in classes:
-            header = archive.read(name)[:8]
-            if len(header) != 8:
-                fail(f"truncated class file: {name}")
-            magic, _minor, major = struct.unpack(">IHH", header)
-            if magic != 0xCAFEBABE:
-                fail(f"invalid class header: {name}")
-            majors.add(major)
-    if not majors or max(majors) > 55:
-        fail(f"Java class level must be Java 11 or older; found {sorted(majors)}")
-    return majors
-
-
-def main() -> None:
-    expected = expected_source_sha()
-    actual = git_blob_sha1(SOURCE)
-    if actual != expected:
-        fail(
-            "shipped hxworkbench.jar is stale relative to HxWorkbench.java "
-            f"(jar source={expected}, current source={actual}). "
-            "Rebuild with tools/build_hxworkbench_jar.ps1 using Stata's real sfi-api.jar."
-        )
-    majors = verify_jar()
-    print(f"HX_JAR_SYNC_OK source={actual} java_major={','.join(map(str, sorted(majors)))}")
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -18,11 +18,6 @@ javacall com.hexie.stata.HxWorkbench selfTest, classpath(`"`hxjar'"')
 assert _rc == 0
 javacall com.hexie.stata.HxWorkbench workbenchSmokeTest, classpath(`"`hxjar'"')
 assert _rc == 0
-javacall com.hexie.stata.HxWorkbench launch, classpath(`"`hxjar'"')
-assert _rc == 0
-sleep 1200
-javacall com.hexie.stata.HxWorkbench close, classpath(`"`hxjar'"')
-assert _rc == 0
 
 * OLS, postestimation, estimates, margins and a graph.
 sysuse auto, clear
@@ -107,4 +102,11 @@ assert _N == 4
 quietly collapse (mean) y, by(id)
 assert _N == 2
 
+* Launch is asynchronous. Keep the launch/close cycle after batch estimation;
+* the public hxtoolbox command deliberately rejects interactive GUI use in batch mode.
+javacall com.hexie.stata.HxWorkbench launch, classpath(`"`hxjar'"')
+assert _rc == 0
+sleep 1200
+javacall com.hexie.stata.HxWorkbench close, classpath(`"`hxjar'"')
+assert _rc == 0
 display as result "HX_WORKBENCH_REAL_STATA_FULL_SMOKE_OK"

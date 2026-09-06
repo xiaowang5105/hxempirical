@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.5.14  20aug2026}{...}
+{* *! version 1.6.0  05sep2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -283,7 +283,22 @@ OneClick output is a model-sensitivity and robustness aid. Candidate controls
 should be chosen from theory, prior literature, and the identification design.
 It does not replace a prespecified main model or causal identification strategy.
 
+{title:Research projects}
+{pstd}
+The top {bf:研究项目} menu saves a .hxproj journal together with an hx-assets directory.
+Keep these together. A new project snapshots the current data. Saving records the current data,
+executed commands, model settings, and RNG state. Opening restores saved data after confirmation;
+it never automatically executes the recorded commands.
+{pstd}
+The menu exports do-files, compares stored coefficients and standard errors, and checks
+actual e(sample) membership as well as dataset signatures. Common-sample export supports
+plain regress, areg, xtreg, and reghdfe commands; complex prefixes and macros require manual setup.
+External files and third-party dependencies must remain available. Review exported scripts before running.
+{pstd}
+Internal UI queries preserve native r() results. Variable expressions are evaluated only during
+execution, and monitoring preserves RNG state. Recent models are distinguished by their complete settings.
+
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.5.14.
+HX empirical workbench, package version 1.6.0.

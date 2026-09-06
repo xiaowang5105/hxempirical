@@ -50,21 +50,15 @@ if _rc {
     exit 603
 }
 
-tempname stale_in stale_out
+tempname stale_in
 file open `stale_in' using `"`personal_h'/hxempirical.ado"', read text
-file open `stale_out' using `"`stale_copy'"', write text replace
-local first 1
 file read `stale_in' line
-while r(eof) == 0 {
-    if `first' {
-        file write `stale_out' "*! hxempirical 1.5.12  20aug2026" _n
-        local first 0
-    }
-    else file write `stale_out' `"`line'"' _n
-    file read `stale_in' line
-}
+local current_version : word 3 of `line'
 file close `stale_in'
-file close `stale_out'
+/* Byte filtering preserves literal Stata macros in the executable body. */
+quietly filefilter `"`personal_h'/hxempirical.ado"' `"`stale_copy'"', ///
+    from("hxempirical `current_version'") to("hxempirical 1.5.12") replace
+assert r(occurrences) == 1
 copy `"`stale_copy'"' `"`personal_h'/hxempirical.ado"', replace
 
 discard
@@ -78,7 +72,7 @@ if !`doctor_rc' {
     local personal_version `"`r(personal_version)'"'
     local plus_version `"`r(plus_version)'"'
 }
-if `doctor_rc' | `shadowing' != 1 | `"`personal_version'"' != "1.5.12" | `"`plus_version'"' != "1.5.13" {
+if `doctor_rc' | `shadowing' != 1 | `"`personal_version'"' != "1.5.12" | `"`plus_version'"' != "`current_version'" {
     sysdir set PERSONAL `"`original_personal'"'
     sysdir set PLUS `"`original_plus'"'
     cd `"`original_pwd'"'
@@ -103,11 +97,13 @@ local active_path ""
 if !`active_rc' local active_path `"`r(fn)'"'
 local active_norm : subinstr local active_path "\" "/", all
 local expected_norm `"`personal_h'/hxempirical.ado"'
+local expected_norm : subinstr local expected_norm "\" "/", all
 if lower("`c(os)'") == "windows" {
     local active_norm = lower(`"`active_norm'"')
     local expected_norm = lower(`"`expected_norm'"')
 }
 if `active_rc' | `"`active_norm'"' != `"`expected_norm'"' {
+    display as error `"Effective path: `active_norm'; expected: `expected_norm'"'
     sysdir set PERSONAL `"`original_personal'"'
     sysdir set PLUS `"`original_plus'"'
     cd `"`original_pwd'"'
@@ -119,7 +115,7 @@ capture noisily hxempirical doctor
 local clean_doctor_rc = _rc
 local clean_shadow = .
 if !`clean_doctor_rc' local clean_shadow = r(shadowing_detected)
-if `clean_doctor_rc' | `clean_shadow' != 0 | `"`r(personal_version)'"' != "1.5.13" | `"`r(plus_version)'"' != "1.5.13" {
+if `clean_doctor_rc' | `clean_shadow' != 0 | `"`r(personal_version)'"' != "`current_version'" | `"`r(plus_version)'"' != "`current_version'" {
     sysdir set PERSONAL `"`original_personal'"'
     sysdir set PLUS `"`original_plus'"'
     cd `"`original_pwd'"'

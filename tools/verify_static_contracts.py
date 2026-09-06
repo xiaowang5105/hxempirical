@@ -29,7 +29,7 @@ help_text = read("hxempirical.sthlp")
 install_doc = read("INSTALL.md")
 launcher = read("hxinstall.do")
 pkg = read("hxempirical.pkg")
-java = read("src/main/java/com/hexie/stata/HxWorkbench.java")
+java = "\n".join(path.read_text(encoding="utf-8") for path in sorted((root / "src/main/java/com/hexie/stata").glob("*.java")))
 semantics_entry = read("hxsemantics.ado")
 semantics_rules = read("hxsemantics_rules.do")
 semantics = semantics_entry + "\n" + semantics_rules

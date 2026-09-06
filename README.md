@@ -2,7 +2,8 @@
 
 ## 当前版本
 
-**当前发布版本：1.5.14**  
+**当前发布版本：1.6.0**
+
 **支持：Stata 17 及以上版本**  
 **平台：Windows / macOS**
 
@@ -35,7 +36,7 @@ hxempirical doctor
 成功标准：
 
 - `hxempirical about` 显示当前正式发布版本；
-- `doctor` 显示 `[核心组件：正常] 11/11`；
+- `doctor` 显示 `[核心组件：正常] 13/13`；
 - `doctor` 显示 `[安装路径：正常]`；
 - `PERSONAL/h` 与 `PLUS/h` 不存在版本冲突；
 - Stata 当前实际解析的文件与安装目标一致。
@@ -86,6 +87,12 @@ hxempirical
 ```stata
 regress price mpg weight
 ```
+
+## 研究项目与模型比较
+
+工作台顶部的“研究项目”菜单支持保存数据快照和完整运行步骤、重新打开项目、恢复模型设置、导出 do-file、比较系数和实际估计样本，并导出共同样本重估脚本。项目文件使用 `.hxproj`，与旁边的 `hx-assets-*` 目录一起保留。
+
+详细使用方法和适用范围见 [研究项目说明](docs/PROJECTS.md)，本版变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 第三方命令
 

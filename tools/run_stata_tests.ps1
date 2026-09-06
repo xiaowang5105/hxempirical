@@ -1,7 +1,10 @@
 param(
     [string]$StataExe = 'D:\Stata\StataMP-64.exe',
     [string]$Repository = (Split-Path -Parent $PSScriptRoot),
-    [ValidateRange(10, 3600)][int]$TimeoutSeconds = 180
+    [ValidateRange(10, 3600)][int]$TimeoutSeconds = 180,
+    [switch]$KeepLogs,
+    [string]$LogDirectory,
+    [string[]]$TestName = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +27,10 @@ function Convert-ToStataPath {
 }
 
 $testFiles = @(Get-ChildItem -LiteralPath $testsPath -Filter '*.do' -File | Sort-Object Name)
+if ($TestName.Count) {
+    $testFiles = @($testFiles | Where-Object { $TestName -contains $_.Name })
+    if ($testFiles.Count -ne $TestName.Count) { throw 'One or more requested test names were not found.' }
+}
 if ($testFiles.Count -eq 0) {
     throw "No Stata smoke tests found in $testsPath"
 }
@@ -103,10 +110,19 @@ try {
     $completedCleanly = $true
 }
 finally {
-    if ($completedCleanly -and (Test-Path -LiteralPath $runDirectory)) {
+    if ($LogDirectory -and (Test-Path -LiteralPath $runDirectory)) {
+        [System.IO.Directory]::CreateDirectory($LogDirectory) | Out-Null
+        Get-ChildItem -LiteralPath $runDirectory -File | Copy-Item -Destination $LogDirectory -Force
+    }
+    $resolvedRun = [System.IO.Path]::GetFullPath($runDirectory)
+    $expectedParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\') + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedRun.StartsWith($expectedParent) -or [System.IO.Path]::GetFileName($resolvedRun) -notlike 'hxempirical-stata-tests-*') {
+        throw 'Refusing cleanup outside the test-owned temporary directory.'
+    }
+    if ($completedCleanly -and -not $KeepLogs -and (Test-Path -LiteralPath $runDirectory)) {
         Remove-Item -LiteralPath $runDirectory -Recurse -Force
     }
     elseif (Test-Path -LiteralPath $runDirectory) {
-        Write-Host "Failed-test logs retained at: $runDirectory"
+        Write-Host "Test logs retained at: $runDirectory"
     }
 }

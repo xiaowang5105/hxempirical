@@ -110,7 +110,7 @@ jobs:
           EOF
 
       - name: Compile Java 11
-        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/HxWorkbench.java
+        run: javac --release 11 -Xmaxerrs 200 -d /tmp/hxclasses /tmp/sfi/com/stata/sfi/*.java src/main/java/com/hexie/stata/*.java
 
       - name: Check shipped JAR Java level
         run: |
@@ -130,3 +130,8 @@ jobs:
 
       - name: Verify shipped JAR matches Java source
         run: python tools/verify_hxworkbench_jar_sync.py
+
+      - name: Verify research project behavior
+        run: |
+          javac --release 11 -cp /tmp/hxclasses -d /tmp/hxclasses tests/java/com/hexie/stata/ResearchProjectTest.java
+          java -Djava.awt.headless=true -cp /tmp/hxclasses com.hexie.stata.ResearchProjectTest

@@ -18,7 +18,10 @@ program define hxexecute, rclass
         exit 198
     }
 
-    quietly hxmonitor, action(snapshot)
+    /* Monitoring must not consume results referenced by the next command. */
+    tempname hx_input_results hx_native_results
+    _return hold `hx_input_results'
+    capture quietly hxmonitor, action(snapshot)
     local semantic_command : char _dta[hxtoolbox_monitor_command]
     local semantic_command = lower(trim(`"`semantic_command'"'))
     if "`semantic_command'" == "" {
@@ -42,13 +45,15 @@ program define hxexecute, rclass
         char _dta[hxtoolbox_history_status] "已写入"
     }
     /* Mirror the command's visible Stata Results into a text log that Java can read. */
-    local hx_result_file `"`c(tmpdir)'/hxempirical_last_results.txt"'
-    capture erase `"`hx_result_file'"'
+    tempfile hx_results
+    local hx_result_file `"`hx_results'.txt"'
     capture log close HXEMPIRICAL_RESULT
     capture log using `"`hx_result_file'"', text replace name(HXEMPIRICAL_RESULT)
     local hx_log_rc = _rc
+    _return restore `hx_input_results'
     capture noisily `native'
     local rc = _rc
+    _return hold `hx_native_results'
     if !`hx_log_rc' capture log close HXEMPIRICAL_RESULT
     /* use/clear may replace dataset characteristics; restore audit fields. */
     char _dta[hxtoolbox_last_results_file] `"`hx_result_file'"'
@@ -66,6 +71,8 @@ program define hxexecute, rclass
         display as error "命令执行失败，返回码为 `rc'。数据观察区仍已刷新，可检查 History 中的最终命令。"
     }
 
+    _return restore `hx_native_results'
+    return add
     return scalar rc = `rc'
     return scalar history_rc = `history_rc'
     return local command `"`native'"'

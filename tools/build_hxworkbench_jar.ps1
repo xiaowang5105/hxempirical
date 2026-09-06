@@ -104,13 +104,19 @@ if ($LASTEXITCODE -ne 0 -or -not ($sfiListing -contains 'com/stata/sfi/SFIToolki
     throw "The selected file is not a usable Stata sfi-api.jar: $SfiJar"
 }
 
+$resolvedBuild = [System.IO.Path]::GetFullPath($buildRoot)
+$intendedBuild = [System.IO.Path]::GetFullPath((Join-Path $repository '.build/hxworkbench'))
+if ($resolvedBuild -ne $intendedBuild -or -not $resolvedBuild.StartsWith($repository.TrimEnd('\') + [System.IO.Path]::DirectorySeparatorChar)) {
+    throw 'Build cleanup path is outside the intended repository.'
+}
 if (Test-Path -LiteralPath $buildRoot) {
     Remove-Item -LiteralPath $buildRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path $classes -Force | Out-Null
 
 Write-Host "Compiling HxWorkbench.java with real Stata SFI: $SfiJar"
-& $javac --release 11 -Xmaxerrs 200 -classpath $SfiJar -d $classes $source
+$sources = @(Get-ChildItem -LiteralPath (Split-Path -Parent $source) -Filter "*.java" -File | Sort-Object Name | ForEach-Object { $_.FullName })
+& $javac --release 11 -Xmaxerrs 200 -classpath $SfiJar -d $classes @sources
 if ($LASTEXITCODE -ne 0) {
     throw "javac failed with exit code $LASTEXITCODE"
 }
@@ -123,37 +129,14 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $outputJar -PathType Le
     throw "jar packaging failed with exit code $LASTEXITCODE"
 }
 
-# Record the canonical Git blob for the Java source.  Git normalizes this
-# tracked text file to LF, so normalize the Windows working-tree copy before
-# calculating the blob ID.  This makes the provenance marker identical on
-# Windows, macOS, and Linux CI.
-$sourceText = [System.IO.File]::ReadAllText($source, [System.Text.Encoding]::UTF8)
-$sourceText = $sourceText.Replace("`r`n", "`n").Replace("`r", "`n")
-$sourceBytes = [System.Text.Encoding]::UTF8.GetBytes($sourceText)
-$prefixBytes = [System.Text.Encoding]::ASCII.GetBytes("blob $($sourceBytes.Length)`0")
-$blobBytes = New-Object byte[] ($prefixBytes.Length + $sourceBytes.Length)
-[System.Buffer]::BlockCopy($prefixBytes, 0, $blobBytes, 0, $prefixBytes.Length)
-[System.Buffer]::BlockCopy($sourceBytes, 0, $blobBytes, $prefixBytes.Length, $sourceBytes.Length)
-$sha1 = [System.Security.Cryptography.SHA1]::Create()
-try {
-    $sourceBlob = ([System.BitConverter]::ToString($sha1.ComputeHash($blobBytes))).Replace('-', '').ToLowerInvariant()
-}
-finally {
-    $sha1.Dispose()
-}
-$markerText = @(
-    '# Git blob SHA-1 of src/main/java/com/hexie/stata/HxWorkbench.java used to build the shipped hxworkbench.jar.'
-    '# This file is updated only by tools/build_hxworkbench_jar.ps1 after a successful build against Stata''s real sfi-api.jar.'
-    $sourceBlob
-) -join [Environment]::NewLine
-[System.IO.File]::WriteAllText($marker, $markerText + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
-
 $python = Get-Command python -ErrorAction SilentlyContinue
 if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
 if (-not $python) {
     throw 'Python 3 is required for the repository verification scripts.'
 }
 
+& $python.Source (Join-Path $repository 'tools/verify_hxworkbench_jar_sync.py') --write-marker
+if ($LASTEXITCODE -ne 0) { throw 'JAR provenance generation failed.' }
 & $python.Source (Join-Path $repository 'tools/verify_hxworkbench_jar_sync.py')
 if ($LASTEXITCODE -ne 0) { throw 'JAR/source verification failed.' }
 
@@ -167,5 +150,5 @@ if (-not $SkipReleaseBundle) {
 Write-Host "HX_WORKBENCH_PRODUCTION_BUILD_OK"
 Write-Host "Stata root: $StataRoot"
 Write-Host "JAR: $outputJar"
-Write-Host "Source Git blob: $sourceBlob"
+Write-Host "Source and JAR SHA-256 manifest: $marker"
 Write-Host "Next: run the real-Stata smoke test documented in src/main/java/com/hexie/stata/BUILD.md before committing the JAR and release bundle."

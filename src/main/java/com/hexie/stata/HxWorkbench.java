@@ -128,8 +128,9 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.5.14";
+   public static final String VERSION = "1.6.0";
    private static HxWorkbench.WorkbenchFrame frame;
+   private static volatile boolean closeRequested;
 
    private HxWorkbench() {
    }
@@ -374,12 +375,16 @@ public final class HxWorkbench {
    }
 
    public static int launch(String[] var0) {
+      closeRequested = false;
       SwingUtilities.invokeLater(() -> {
          try {
+            if (closeRequested) return;
             setNativeLookAndFeel();
             if (frame == null || !frame.isDisplayable()) {
                frame = new HxWorkbench.WorkbenchFrame();
             }
+
+            if (closeRequested) { frame.dispose(); frame = null; return; }
 
             frame.setVisible(true);
             frame.setExtendedState(frame.getExtendedState() | 6);
@@ -400,13 +405,16 @@ public final class HxWorkbench {
 
    public static int close(String[] var0) {
       try {
-         SwingUtilities.invokeAndWait(() -> {
+         closeRequested = true;
+         /* Never block Stata waiting for an EDT that may itself be waiting on SFI. */
+         SwingUtilities.invokeLater(() -> {
             if (frame != null) {
+               if (!frame.researchProject.canClose()) { closeRequested = false; return; }
                frame.dispose();
                frame = null;
             }
          });
-         SFIToolkit.displayln("HX_JAVA_CLOSE_OK");
+         SFIToolkit.displayln("HX_JAVA_CLOSE_QUEUED");
          return 0;
       } catch (Throwable var1) {
          SFIToolkit.errorln("HX_JAVA_CLOSE_EXCEPTION " + var1.getMessage());
@@ -479,6 +487,47 @@ public final class HxWorkbench {
    public static int version(String[] var0) {
       SFIToolkit.displayln("HxWorkbench " + VERSION);
       return 0;
+   }
+
+   public static int projectSelfTest(String[] args) {
+      try {
+         Path directory = Paths.get(args[0]);
+         ResearchProject project = new ResearchProject(directory.resolve("roundtrip.hxproj"));
+         Files.createDirectories(directory.resolve(project.assets));
+         project.baseline = project.newAsset(".dta");
+         project.current = project.baseline;
+         checkProjectTestCommand("hxproject snapshot using " + ResearchProject.stataQuote(project.asset(project.baseline).toString()));
+         project.rng = StataBridge.characteristic("hxproject_rng");
+         project.rngState = StataBridge.characteristic("hxproject_rngstate");
+         project.currentRng = project.rng; project.currentRngState = project.rngState;
+         project.sortRngState = StataBridge.characteristic("hxproject_sortrngstate");
+         project.currentSortRngState = project.sortRngState;
+         project.workingDirectory = StataBridge.characteristic("hxproject_pwd");
+         for (String command : Arrays.asList("regress y x, vce(robust)", "regress y x z, vce(robust)")) {
+            checkProjectTestCommand("hxexecute, command(" + StataBridge.quote(command) + ")");
+            ResearchProject.Run run = project.add(command, "", "test output", 0, Scalar.getValue("e(N)"), Scalar.getValue("e(r2)"));
+            run.model = project.newAsset("-model");
+            checkProjectTestCommand("hxproject model using " + ResearchProject.stataQuote(project.asset(run.model).toString()));
+            run.signature = StataBridge.characteristic("hxproject_signature");
+            run.vce = StataBridge.characteristic("hxproject_vce");
+         }
+         project.save();
+         ResearchProject reopened = ResearchProject.load(project.file);
+         if (reopened.sameSamples(reopened.models()) || reopened.coefficients(reopened.models().get(0)).isEmpty())
+            throw new IllegalStateException("model sample or coefficient snapshot failed");
+         ResearchProject.atomicWrite(directory.resolve("replay.do"), reopened.exportDo());
+         ResearchProject.atomicWrite(directory.resolve("common.do"), reopened.commonSampleDo(reopened.models()));
+         SFIToolkit.displayln("HX_PROJECT_JAVA_ROUNDTRIP_OK");
+         return 0;
+      } catch (Exception e) {
+         SFIToolkit.errorln("HX_PROJECT_JAVA_ROUNDTRIP_FAIL " + e.getMessage());
+         return 459;
+      }
+   }
+
+   private static void checkProjectTestCommand(String command) {
+      int rc = SFIToolkit.executeCommand(command, false);
+      if (rc != 0) throw new IllegalStateException("r(" + rc + "): " + command);
    }
 
    public static int missingSelfTest(String[] var0) {
@@ -2039,95 +2088,7 @@ public final class HxWorkbench {
       }
    }
 
-   private static final class RunResult {
-      private static final Set<String> ESTIMATION_COMMANDS = new HashSet<>(
-         Arrays.asList(
-            "regress",
-            "areg",
-            "reghdfe",
-            "qreg",
-            "xtreg",
-            "xtlogit",
-            "xtprobit",
-            "logit",
-            "logistic",
-            "probit",
-            "poisson",
-            "nbreg",
-            "ivregress",
-            "ivreg2",
-            "ivreghdfe",
-            "didregress",
-            "xtdidregress",
-            "ppmlhdfe",
-            "glm",
-            "tobit",
-            "heckman",
-            "sem",
-            "gsem"
-         )
-      );
-      final String command;
-      final int rc;
-      final String historyStatus;
-      final String error;
-      final double estimationN;
-      final double r2;
-      final double r2Adjusted;
 
-      private RunResult(String var1, int var2, String var3, String var4, double var5, double var7, double var9) {
-         this.command = var1;
-         this.rc = var2;
-         this.historyStatus = var3;
-         this.error = var4;
-         this.estimationN = var5;
-         this.r2 = var7;
-         this.r2Adjusted = var9;
-      }
-
-      static HxWorkbench.RunResult capture(String var0, int var1, String var2) {
-         double var3 = Double.NaN;
-         double var5 = Double.NaN;
-         double var7 = Double.NaN;
-         if (var1 == 0 && isEstimationCommand(var0)) {
-            var3 = scalar("e(N)");
-            var5 = scalar("e(r2)");
-            var7 = scalar("e(r2_a)");
-         }
-
-         return new HxWorkbench.RunResult(var0, var1, var2, var1 == 0 ? "" : errorText(var1), var3, var5, var7);
-      }
-
-      static HxWorkbench.RunResult failure(String var0, int var1, String var2) {
-         return new HxWorkbench.RunResult(var0, var1, "写入状态未知", var2, Double.NaN, Double.NaN, Double.NaN);
-      }
-
-      private static boolean isEstimationCommand(String var0) {
-         String var1 = var0 == null ? "" : var0.trim().toLowerCase(Locale.ROOT);
-
-         while (var1.startsWith("quietly ") || var1.startsWith("capture ") || var1.startsWith("noisily ")) {
-            var1 = var1.substring(var1.indexOf(32) + 1).trim();
-         }
-
-         String var2 = var1.split("[\\s,:]", 2)[0];
-         return ESTIMATION_COMMANDS.contains(var2);
-      }
-
-      private static double scalar(String var0) {
-         double var1 = HxWorkbench.safe(() -> Scalar.getValue(var0), Double.NaN);
-         return Missing.isMissing(var1) ? Double.NaN : var1;
-      }
-
-      private static String errorText(int var0) {
-         if (var0 == 111) {
-            return "变量或对象未找到。";
-         } else if (var0 == 198) {
-            return "命令语法或必填设置不完整。";
-         } else {
-            return var0 == 459 ? "当前数据状态不满足该命令的要求。" : "Stata 返回 r(" + var0 + ")。";
-         }
-      }
-   }
 
    private static final class RunShape {
       final long n;
@@ -2180,7 +2141,8 @@ public final class HxWorkbench {
    private static final class StataBridge {
       static int execute(String var0, boolean var1) {
          try {
-            return SFIToolkit.executeCommand(var0, var1);
+            String submitted = var1 ? var0 : "hxcontext, command(" + quote(var0) + ")";
+            return SFIToolkit.executeCommand(submitted, var1);
          } catch (Throwable var3) {
             SFIToolkit.errorln("工作台调用 Stata 失败：" + var0 + "\n" + var3.getMessage());
             return 459;
@@ -2545,6 +2507,17 @@ public final class HxWorkbench {
    }
 
    private static final class WorkbenchFrame extends JFrame {
+      private final ProjectController researchProject = new ProjectController(
+         this,
+         new ProjectController.Gateway() {
+            public int execute(String command) { return StataBridge.execute(command, false); }
+            public String characteristic(String name) { return StataBridge.characteristic(name); }
+         },
+         () -> captureWorkSnapshot().encode(),
+         encoded -> { WorkSnapshot saved = WorkSnapshot.decode(encoded); if (saved != null) restoreWorkSnapshot(saved); },
+         () -> { StataBridge.execute("quietly hxrefresh", false); refreshDataset(false); },
+         () -> this.runInProgress
+      );
       private enum WorkspaceReturnTarget {
          HOME,
          CHOOSER,
@@ -3078,7 +3051,12 @@ public final class HxWorkbench {
       WorkbenchFrame(boolean var1) {
          super("我的实证工具箱");
          this.previewMode = var1;
-         this.setDefaultCloseOperation(1);
+         this.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+         this.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent event) {
+               if (!runInProgress && researchProject.canClose()) setVisible(false);
+            }
+         });
          this.applyAdaptiveWindowBounds();
          this.setLocationRelativeTo(null);
          this.setLayout(new BorderLayout());
@@ -3933,7 +3911,11 @@ public final class HxWorkbench {
          history.setForeground(MUTED);
          history.setFont(history.getFont().deriveFont(9.5F));
          history.setBorder(new EmptyBorder(0, 0, 0, 14));
-         bar.add(history, BorderLayout.EAST);
+         JPanel projectActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+         projectActions.setOpaque(false);
+         projectActions.add(researchProject.button());
+         projectActions.add(history);
+         bar.add(projectActions, BorderLayout.EAST);
          return bar;
       }
 
@@ -4878,11 +4860,11 @@ public final class HxWorkbench {
 
       private void rebuildHomeRecentPanel() {
          this.homeRecentPanel.removeAll();
-         List<HxWorkbench.WorkbenchFrame.WorkSnapshot> var1 = this.loadRecentSnapshots();
+         List<WorkSnapshot> var1 = this.loadRecentSnapshots();
          if (this.previewMode && var1.isEmpty()) {
-            HxWorkbench.WorkbenchFrame.WorkSnapshot a = new HxWorkbench.WorkbenchFrame.WorkSnapshot();
+            WorkSnapshot a = new WorkSnapshot();
             a.command = "reghdfe"; a.label = "固定效应回归分析"; a.depvar = "ROA"; a.x = "TPU"; a.method = "基准回归";
-            HxWorkbench.WorkbenchFrame.WorkSnapshot b = new HxWorkbench.WorkbenchFrame.WorkSnapshot();
+            WorkSnapshot b = new WorkSnapshot();
             b.command = "xtdidregress"; b.label = "双重差分分析"; b.depvar = "y"; b.x = "treat"; b.method = "双重差分";
             var1 = Arrays.asList(a, b);
          }
@@ -4891,9 +4873,10 @@ public final class HxWorkbench {
             empty.setAlignmentX(0.0F);
             this.homeRecentPanel.add(empty);
          } else {
-            for (HxWorkbench.WorkbenchFrame.WorkSnapshot item : var1) {
+            for (WorkSnapshot item : var1) {
                String title = item.label.isBlank() ? item.command : item.label;
                String detail = item.depvar.isBlank() && item.x.isBlank() ? item.command : (item.depvar.isBlank() ? "" : "Y=" + item.depvar) + (item.x.isBlank() ? "" : " · X=" + item.x);
+               detail += " · " + item.summary();
                JButton button = new JButton("<html><div style='text-align:left'><b>" + html(title) + "</b><br><span style='font-size:9px;color:#637083'>" + html(detail) + "</span></div></html>");
                button.setUI(new HxWorkbench.WorkbenchFrame.FlatButtonUI(SURFACE, new Color(248, 250, 253), new Color(239, 244, 250), TEXT, new Color(229, 233, 239)));
                button.setBorder(new EmptyBorder(8, 10, 8, 10));
@@ -4904,6 +4887,7 @@ public final class HxWorkbench {
                button.setContentAreaFilled(false);
                button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                button.addActionListener(e -> this.restoreWorkSnapshot(item));
+               button.setToolTipText(item.nativeCommand);
                this.homeRecentPanel.add(button);
                this.homeRecentPanel.add(Box.createVerticalStrut(5));
             }
@@ -4914,13 +4898,13 @@ public final class HxWorkbench {
 
       private void rememberCurrentWork() {
          if (!this.previewMode && this.currentCommand != null && !this.currentCommand.isBlank()) {
-            HxWorkbench.WorkbenchFrame.WorkSnapshot var1 = this.captureWorkSnapshot();
+            WorkSnapshot var1 = this.captureWorkSnapshot();
             if (var1 != null) {
-               List<HxWorkbench.WorkbenchFrame.WorkSnapshot> var2 = this.loadRecentSnapshots();
-               ArrayList<HxWorkbench.WorkbenchFrame.WorkSnapshot> var3 = new ArrayList<>();
+               List<WorkSnapshot> var2 = this.loadRecentSnapshots();
+               ArrayList<WorkSnapshot> var3 = new ArrayList<>();
                var3.add(var1);
 
-               for (HxWorkbench.WorkbenchFrame.WorkSnapshot var5 : var2) {
+               for (WorkSnapshot var5 : var2) {
                   if (var3.size() >= 3) {
                      break;
                   }
@@ -4936,9 +4920,10 @@ public final class HxWorkbench {
          }
       }
 
-      private HxWorkbench.WorkbenchFrame.WorkSnapshot captureWorkSnapshot() {
-         HxWorkbench.WorkbenchFrame.WorkSnapshot var1 = new HxWorkbench.WorkbenchFrame.WorkSnapshot();
+      private WorkSnapshot captureWorkSnapshot() {
+         WorkSnapshot var1 = new WorkSnapshot();
          var1.command = this.currentCommand;
+         var1.nativeCommand = this.previewArea.getText().trim();
          var1.category = this.activeCategoryCode;
          var1.method = this.activeMethodName;
          HxWorkbench.WorkbenchFrame.CommandGuide var2 = COMMAND_GUIDES.get(this.currentCommand);
@@ -5009,7 +4994,7 @@ public final class HxWorkbench {
          return var1;
       }
 
-      private void restoreWorkSnapshot(HxWorkbench.WorkbenchFrame.WorkSnapshot var1) {
+      private void restoreWorkSnapshot(WorkSnapshot var1) {
          if (var1 != null && !var1.command.isBlank()) {
             if ("基准回归".equals(var1.method) || var1.flags.contains("baseline=1")) {
                this.openBaselineRegressionWorkspace();
@@ -5131,14 +5116,14 @@ public final class HxWorkbench {
          }
       }
 
-      private List<HxWorkbench.WorkbenchFrame.WorkSnapshot> loadRecentSnapshots() {
+      private List<WorkSnapshot> loadRecentSnapshots() {
          ArrayList var1 = new ArrayList();
 
          try {
             int var2 = Math.min(3, PREFS.getInt("recent.count", 0));
 
             for (int var3 = 0; var3 < var2; var3++) {
-               HxWorkbench.WorkbenchFrame.WorkSnapshot var4 = HxWorkbench.WorkbenchFrame.WorkSnapshot.decode(PREFS.get("recent." + var3, ""));
+               WorkSnapshot var4 = WorkSnapshot.decode(PREFS.get("recent." + var3, ""));
                if (var4 != null && !var4.command.isBlank()) {
                   var1.add(var4);
                }
@@ -5149,13 +5134,13 @@ public final class HxWorkbench {
          return var1;
       }
 
-      private void saveRecentSnapshots(List<HxWorkbench.WorkbenchFrame.WorkSnapshot> var1) {
+      private void saveRecentSnapshots(List<WorkSnapshot> var1) {
          try {
             int var2 = Math.min(3, var1.size());
             PREFS.putInt("recent.count", var2);
 
             for (int var3 = 0; var3 < var2; var3++) {
-               PREFS.put("recent." + var3, ((HxWorkbench.WorkbenchFrame.WorkSnapshot)var1.get(var3)).encode());
+               PREFS.put("recent." + var3, ((WorkSnapshot)var1.get(var3)).encode());
             }
 
             for (int var5 = var2; var5 < 3; var5++) {
@@ -5167,8 +5152,8 @@ public final class HxWorkbench {
          }
       }
 
-      private static String snapshotSignature(HxWorkbench.WorkbenchFrame.WorkSnapshot var0) {
-         return var0.command + "|" + var0.depvar + "|" + var0.x + "|" + var0.controls + "|" + var0.extraTerms + "|" + var0.oneCandidates + "|" + var0.didAction;
+      private static String snapshotSignature(WorkSnapshot var0) {
+         return var0.signature();
       }
 
       private static List<String> splitWords(String var0) {
@@ -7708,7 +7693,9 @@ public final class HxWorkbench {
       private boolean runSpreadsheetCommand(String command, boolean structureChanged) {
          if (this.previewMode || command == null || command.isBlank()) return false;
          HxWorkbench.DatasetSnapshot snapshot = structureChanged ? HxWorkbench.DatasetSnapshot.capture() : null;
-         int rc = HxWorkbench.StataBridge.execute(command, true);
+         this.researchProject.beginRun();
+         int rc = HxWorkbench.StataBridge.execute("hxexecute, command(" + StataBridge.quote(command) + ")", true);
+         this.researchProject.record(command, rc, Double.NaN, Double.NaN, StataBridge.lastNativeOutput());
          if (rc != 0) {
             JOptionPane.showMessageDialog(this, "Stata 未能完成数据运算，return code = " + rc + "。\n\n" + command, "数据运算失败", JOptionPane.ERROR_MESSAGE);
             this.statusLabel.setText("数据运算失败 | Return code " + rc);
@@ -7738,7 +7725,9 @@ public final class HxWorkbench {
          if (expression == null) return false;
          long observation = this.dataModel.observationAt(row);
          String command = "replace " + variable + " = " + expression + " in " + observation;
-         int rc = HxWorkbench.StataBridge.execute(command, true);
+         this.researchProject.beginRun();
+         int rc = HxWorkbench.StataBridge.execute("hxexecute, command(" + StataBridge.quote(command) + ")", true);
+         this.researchProject.record(command, rc, Double.NaN, Double.NaN, StataBridge.lastNativeOutput());
          if (rc != 0) {
             JOptionPane.showMessageDialog(this, "Stata 未能写入该单元格，return code = " + rc + "。\n\n" + command, "单元格写入失败", JOptionPane.ERROR_MESSAGE);
             this.statusLabel.setText("单元格写入失败 | Return code " + rc);
@@ -15455,9 +15444,9 @@ public final class HxWorkbench {
                            var2x = "请在 History 核对导入与保存命令";
                         }
 
-                        HxWorkbench.RunResult var3x = var1x.success
-                           ? HxWorkbench.RunResult.capture(WorkbenchFrame.this.previewArea.getText().trim(), 0, var2x)
-                           : HxWorkbench.RunResult.failure(WorkbenchFrame.this.previewArea.getText().trim(), var1x.rc, var1x.message);
+                        RunResult var3x = var1x.success
+                           ? RunResult.capture(WorkbenchFrame.this.previewArea.getText().trim(), 0, var2x)
+                           : RunResult.failure(WorkbenchFrame.this.previewArea.getText().trim(), var1x.rc, var1x.message);
                         HxWorkbench.StataBridge.execute("quietly hxrefresh", false);
                         WorkbenchFrame.this.refreshDataset(false);
                         WorkbenchFrame.this.finishMonitoredRun(var3x, HxWorkbench.RunShape.capture());
@@ -15746,9 +15735,9 @@ public final class HxWorkbench {
                      }
 
                      int var3x = var1x.failed == 0 ? 0 : (var1x.firstRc == 0 ? 459 : var1x.firstRc);
-                     HxWorkbench.RunResult var4 = var3x == 0
-                        ? HxWorkbench.RunResult.capture("批量转换为 DTA（" + var3.size() + " 个文件）", 0, var2x)
-                        : HxWorkbench.RunResult.failure("批量转换为 DTA（" + var3.size() + " 个文件）", var3x, var1x.failed + " 个文件转换失败。");
+                     RunResult var4 = var3x == 0
+                        ? RunResult.capture("批量转换为 DTA（" + var3.size() + " 个文件）", 0, var2x)
+                        : RunResult.failure("批量转换为 DTA（" + var3.size() + " 个文件）", var3x, var1x.failed + " 个文件转换失败。");
                      WorkbenchFrame.this.finishMonitoredRun(var4, HxWorkbench.RunShape.capture());
                      WorkbenchFrame.this.monitorOutcome
                         .setText(
@@ -16043,9 +16032,9 @@ public final class HxWorkbench {
                      var2x = "请在 History 核对";
                   }
 
-                  HxWorkbench.RunResult var3x = var1x.rc == 0
-                     ? HxWorkbench.RunResult.capture(var4, 0, var2x)
-                     : HxWorkbench.RunResult.failure(var4, var1x.rc, var1x.error);
+                  RunResult var3x = var1x.rc == 0
+                     ? RunResult.capture(var4, 0, var2x)
+                     : RunResult.failure(var4, var1x.rc, var1x.error);
                   WorkbenchFrame.this.finishMonitoredRun(var3x, HxWorkbench.RunShape.capture());
                   if (var1x.rc == 0) {
                      WorkbenchFrame.this.populateMissingResults(var1x.analysis);
@@ -17698,7 +17687,7 @@ public final class HxWorkbench {
          }
       }
 
-      private void loadExternalOneClickResults(HxWorkbench.RunResult var1, boolean var2) {
+      private void loadExternalOneClickResults(RunResult var1, boolean var2) {
          if (var1.rc != 0) {
             this.oneClickOverview.setText("外部命令执行失败。\n\nReturn code：" + var1.rc + "\n请查看右侧‘日志’和 Stata Results 中的原始错误信息。");
             this.oneClickResultTabs.setSelectedIndex(0);
@@ -17832,7 +17821,7 @@ public final class HxWorkbench {
          var0.setSelectedIndices(var5);
       }
 
-      private void executeMonitoredCommand(final String var1, final String var2, final boolean var3, final Consumer<HxWorkbench.RunResult> var4) {
+      private void executeMonitoredCommand(final String var1, final String var2, final boolean var3, final Consumer<RunResult> var4) {
          if (this.runInProgress) {
             JOptionPane.showMessageDialog(this, "当前仍有命令在运行，请等待本次执行结束。", "正在运行", 1);
          } else {
@@ -17841,8 +17830,8 @@ public final class HxWorkbench {
             this.lastExecutedCommand = var1;
             HxWorkbench.StataBridge.clearRunAudit();
             this.beginMonitoredRun(var1, false, 0);
-            SwingWorker var5 = new SwingWorker<HxWorkbench.RunResult, Void>() {
-               protected HxWorkbench.RunResult doInBackground() {
+            SwingWorker var5 = new SwingWorker<RunResult, Void>() {
+               protected RunResult doInBackground() {
                   int var1x = HxWorkbench.StataBridge.execute(var2, true);
                   String var2x = HxWorkbench.StataBridge.characteristic("hxtoolbox_last_native_command");
                   if (var2x.isBlank()) {
@@ -17854,16 +17843,16 @@ public final class HxWorkbench {
                      var3x = "由命令自身记录；请在 History 核对";
                   }
 
-                  return HxWorkbench.RunResult.capture(var2x, var1x, var3x);
+                  return RunResult.capture(var2x, var1x, var3x);
                }
 
                @Override
                protected void done() {
-                  HxWorkbench.RunResult var1x;
+                  RunResult var1x;
                   try {
                      var1x = this.get();
                   } catch (Throwable var3x) {
-                     var1x = HxWorkbench.RunResult.failure(var1, 459, "无法取得执行结果：" + HxWorkbench.WorkbenchFrame.rootMessage(var3x));
+                     var1x = RunResult.failure(var1, 459, "无法取得执行结果：" + HxWorkbench.WorkbenchFrame.rootMessage(var3x));
                   }
 
                   HxWorkbench.StataBridge.execute("quietly hxrefresh", false);
@@ -17880,6 +17869,7 @@ public final class HxWorkbench {
       }
 
       private void beginMonitoredRun(String var1, boolean var2, int var3) {
+         this.researchProject.beginRun();
          this.runInProgress = true;
          this.runStartedAt = LocalDateTime.now();
          this.runStartedNanos = System.nanoTime();
@@ -17936,7 +17926,7 @@ public final class HxWorkbench {
          }
       }
 
-      private void finishMonitoredRun(HxWorkbench.RunResult var1, HxWorkbench.RunShape var2) {
+      private void finishMonitoredRun(RunResult var1, HxWorkbench.RunShape var2) {
          long var3 = System.nanoTime() - this.runStartedNanos;
          this.runElapsedTimer.stop();
          this.runInProgress = false;
@@ -17960,6 +17950,7 @@ public final class HxWorkbench {
          this.monitorOutcome.setText(var7);
          this.monitorOutcome.setCaretPosition(0);
          String nativeOutput = HxWorkbench.StataBridge.lastNativeOutput();
+         this.researchProject.record(var1.command, var1.rc, var1.estimationN, var1.r2, nativeOutput);
          if (nativeOutput.isBlank()) {
             this.resultSummaryArea.setText(var7);
          } else {
@@ -18026,7 +18017,7 @@ public final class HxWorkbench {
          this.activeRunBefore = null;
       }
 
-      private String buildRunOutcome(HxWorkbench.RunResult var1, HxWorkbench.RunShape var2, HxWorkbench.RunShape var3) {
+      private String buildRunOutcome(RunResult var1, HxWorkbench.RunShape var2, HxWorkbench.RunShape var3) {
          StringBuilder var4 = new StringBuilder();
          if (var1.rc != 0) {
             var4.append("执行失败  r(")
@@ -19444,145 +19435,7 @@ public final class HxWorkbench {
          }
       }
 
-      private static final class WorkSnapshot {
-         String command = "";
-         String category = "";
-         String method = "";
-         String label = "";
-         String depvar = "";
-         String x = "";
-         String controls = "";
-         String extraTerms = "";
-         String vce = "";
-         String cluster = "";
-         String ifcond = "";
-         String incond = "";
-         String options = "";
-         String weightType = "";
-         String weightVar = "";
-         String flags = "";
-         String oneY = "";
-         String oneX = "";
-         String oneRequired = "";
-         String oneCandidates = "";
-         String oneEstimator = "";
-         String oneAbsorb = "";
-         String oneVce = "";
-         String oneCluster = "";
-         String didAction = "";
-         String didUnit = "";
-         String didTime = "";
-         String didTreat = "";
-         String didPost = "";
-         String didEvent = "";
-         String didEventCode = "";
-         String didPolicyTime = "";
-         String didBase = "";
 
-         String encode() {
-            return String.join(
-               "|",
-               e(this.command),
-               e(this.category),
-               e(this.method),
-               e(this.label),
-               e(this.depvar),
-               e(this.x),
-               e(this.controls),
-               e(this.extraTerms),
-               e(this.vce),
-               e(this.cluster),
-               e(this.ifcond),
-               e(this.incond),
-               e(this.options),
-               e(this.weightType),
-               e(this.weightVar),
-               e(this.flags),
-               e(this.oneY),
-               e(this.oneX),
-               e(this.oneRequired),
-               e(this.oneCandidates),
-               e(this.oneEstimator),
-               e(this.oneAbsorb),
-               e(this.oneVce),
-               e(this.oneCluster),
-               e(this.didAction),
-               e(this.didUnit),
-               e(this.didTime),
-               e(this.didTreat),
-               e(this.didPost),
-               e(this.didEvent),
-               e(this.didEventCode),
-               e(this.didPolicyTime),
-               e(this.didBase)
-            );
-         }
-
-         static HxWorkbench.WorkbenchFrame.WorkSnapshot decode(String var0) {
-            if (var0 != null && !var0.isBlank()) {
-               String[] var1 = var0.split("\\|", -1);
-               if (var1.length < 33) {
-                  return null;
-               } else {
-                  HxWorkbench.WorkbenchFrame.WorkSnapshot var2 = new HxWorkbench.WorkbenchFrame.WorkSnapshot();
-                  int var3 = 0;
-                  var2.command = d(var1[var3++]);
-                  var2.category = d(var1[var3++]);
-                  var2.method = d(var1[var3++]);
-                  var2.label = d(var1[var3++]);
-                  var2.depvar = d(var1[var3++]);
-                  var2.x = d(var1[var3++]);
-                  var2.controls = d(var1[var3++]);
-                  var2.extraTerms = d(var1[var3++]);
-                  var2.vce = d(var1[var3++]);
-                  var2.cluster = d(var1[var3++]);
-                  var2.ifcond = d(var1[var3++]);
-                  var2.incond = d(var1[var3++]);
-                  var2.options = d(var1[var3++]);
-                  var2.weightType = d(var1[var3++]);
-                  var2.weightVar = d(var1[var3++]);
-                  var2.flags = d(var1[var3++]);
-                  var2.oneY = d(var1[var3++]);
-                  var2.oneX = d(var1[var3++]);
-                  var2.oneRequired = d(var1[var3++]);
-                  var2.oneCandidates = d(var1[var3++]);
-                  var2.oneEstimator = d(var1[var3++]);
-                  var2.oneAbsorb = d(var1[var3++]);
-                  var2.oneVce = d(var1[var3++]);
-                  var2.oneCluster = d(var1[var3++]);
-                  var2.didAction = d(var1[var3++]);
-                  var2.didUnit = d(var1[var3++]);
-                  var2.didTime = d(var1[var3++]);
-                  var2.didTreat = d(var1[var3++]);
-                  var2.didPost = d(var1[var3++]);
-                  var2.didEvent = d(var1[var3++]);
-                  var2.didEventCode = d(var1[var3++]);
-                  var2.didPolicyTime = d(var1[var3++]);
-                  var2.didBase = d(var1[var3++]);
-                  return var2;
-               }
-            } else {
-               return null;
-            }
-         }
-
-         private static String e(String var0) {
-            String var1 = var0 == null ? "" : var0;
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(var1.getBytes(StandardCharsets.UTF_8));
-         }
-
-         private static String d(String var0) {
-            if (var0 != null && !var0.isBlank()) {
-               try {
-                  return new String(Base64.getUrlDecoder().decode(var0), StandardCharsets.UTF_8);
-               } catch (IllegalArgumentException var2) {
-                  return "";
-               }
-            } else {
-               return "";
-            }
-         }
-      }
    }
 
    private static final class XlsxInspector {

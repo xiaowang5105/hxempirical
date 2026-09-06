@@ -295,6 +295,11 @@ try {
     }
 }
 finally {
+    $resolvedStage = [System.IO.Path]::GetFullPath($buildRoot)
+    $stageParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\') + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $resolvedStage.StartsWith($stageParent) -or [System.IO.Path]::GetFileName($resolvedStage) -notlike 'hxempirical-release-build-*') {
+        throw 'Refusing cleanup outside the release-owned staging directory.'
+    }
     if (Test-Path -LiteralPath $buildRoot -PathType Container) {
         Remove-Item -LiteralPath $buildRoot -Recurse -Force
     }
