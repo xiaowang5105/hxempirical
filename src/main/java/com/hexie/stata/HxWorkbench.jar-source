@@ -1,12 +1,14 @@
 {
   "format": 2,
-  "jar_sha256": "c6e2d9cedb86d8d0ee5cf5797b48f089a74406e398f1d56f7648ea901ec7cdc6",
+  "jar_sha256": "795beb7dbd598154f4b81eaa5140d24c5208dbc9f3b7d395e180801ec7006f8c",
   "sources": {
     "DataWorkflow.java": "c6035f004870c2b6efc8406cd1263775b60a4f2fd274454ca3792c7d277926c2",
-    "HxWorkbench.java": "ee6c3f48407c0a59dc014ad2e152c604dbc3349d1cf71279aa6e4df8faab4297",
-    "ProjectController.java": "aeec98fbe45484a66c9853812d8bf9dce7ace037fe3ebdbf329bbc1f63f9d345",
-    "ResearchProject.java": "140c544be958ac8e2672a79f435c1218f6687d8b693c7b1f33d474bccb60b0fa",
-    "RunResult.java": "828fa7b0a97561ed44bdc6c8352ac6d6a97a413fe50c6171e898e8ccc956e11f",
+    "DelimitedData.java": "20986b4f3ca1e5c3751b238e8f8c21a5d80d7eb0678ba27f23c06d8981e4a963",
+    "HxWorkbench.java": "646befe53ce53d0ff2ead15cac670407742c8c6ffa5d26e75d9f5f2390ca2d36",
+    "ProjectBundle.java": "b3f8eece5b7b17733236d5fd6a33c1f0ecb7290dec0f1e43880700c0d24bd992",
+    "ProjectController.java": "5e44aeef10d21345c286b1913e7876a64d644be96c364da7f0ee98dbdec5d1e3",
+    "ResearchProject.java": "e7d97f06f8a6972db10b21ba50f6aceb01d996943687bfa7b849eadac06c413d",
+    "RunResult.java": "bb8c352c0431f61c15b77ddb5fe6a8b85653014abf5fb028eed5096c2ca8a604",
     "WorkSnapshot.java": "481caf4ad32b82f6c9d5a52287753337ae102bef098934dc3b0dade4bacd4ea2"
   }
 }

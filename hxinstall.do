@@ -1,4 +1,4 @@
-*! hxinstall 1.6.1  07sep2026
+*! hxinstall 1.6.2  07sep2026
 *! Short public launcher for hxempirical
 version 17.0
 set more off

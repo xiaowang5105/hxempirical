@@ -19,8 +19,11 @@ final class ResearchProject {
     String sortRngState = "", currentSortRngState = "";
     final List<Run> runs = new ArrayList<>();
     boolean dirty;
+    String environment = "";
+    int checkpointInterval = 1;
 
     static final class Run {
+        String name = "";
         String command = "", settings = "", output = "", time = "", model = "", signature = "", vce = "";
         int rc;
         double n = Double.NaN, r2 = Double.NaN;
@@ -89,6 +92,8 @@ final class ResearchProject {
         validateResources();
         Properties p = new Properties();
         p.setProperty("format", "HXPROJECT-1");
+        p.setProperty("environment", environment);
+        p.setProperty("checkpointInterval", Integer.toString(checkpointInterval));
         p.setProperty("assets", assets);
         p.setProperty("baseline", baseline); p.setProperty("current", current);
         p.setProperty("workingDirectory", workingDirectory);
@@ -99,6 +104,7 @@ final class ResearchProject {
         for (int i = 0; i < runs.size(); i++) {
             Run r = runs.get(i); String key = "run." + i + ".";
             p.setProperty(key + "command", r.command); p.setProperty(key + "settings", r.settings);
+            p.setProperty(key + "name", r.name);
             p.setProperty(key + "output", r.output); p.setProperty(key + "time", r.time);
             p.setProperty(key + "model", r.model); p.setProperty(key + "signature", r.signature);
             p.setProperty(key + "vce", r.vce); p.setProperty(key + "rc", Integer.toString(r.rc));
@@ -147,6 +153,7 @@ final class ResearchProject {
         catch (IllegalArgumentException e) { throw new IOException("项目记录格式无效。", e); }
         if (!"HXPROJECT-1".equals(p.getProperty("format"))) throw new IOException("无法识别项目格式。");
         ResearchProject project = new ResearchProject(file);
+        project.environment = p.getProperty("environment", "Environment not recorded in this project version.");
         project.assets = p.getProperty("assets", "");
         if (!project.assets.matches("hx-assets-[0-9a-f-]{36}")) throw new IOException("项目资源目录无效。");
         project.baseline = p.getProperty("baseline", ""); project.current = p.getProperty("current", "");
@@ -159,11 +166,14 @@ final class ResearchProject {
         if (!Files.isRegularFile(project.asset(project.baseline)) || !Files.isRegularFile(project.asset(project.current)))
             throw new IOException("项目数据快照缺失；请将 .hxproj 与 hx-assets 目录一同移动。");
         try {
+            project.checkpointInterval=Integer.parseInt(p.getProperty("checkpointInterval","1"));
+            if(!Arrays.asList(0,1,5,10).contains(project.checkpointInterval)) throw new IOException("恢复点频率无效。");
             int count = Integer.parseInt(p.getProperty("count", "0"));
             if (count < 0 || count > MAX_RUNS) throw new IOException("项目步骤数量无效。");
             for (int i = 0; i < count; i++) {
                 Run r = new Run(); String k = "run." + i + ".";
                 r.command = p.getProperty(k + "command", ""); r.settings = p.getProperty(k + "settings", "");
+                r.name = p.getProperty(k + "name", "");
                 r.output = p.getProperty(k + "output", ""); r.time = p.getProperty(k + "time", "");
                 r.model = p.getProperty(k + "model", ""); r.signature = p.getProperty(k + "signature", "");
                 r.vce = p.getProperty(k + "vce", ""); r.rc = Integer.parseInt(p.getProperty(k + "rc", "0"));
@@ -217,6 +227,37 @@ final class ResearchProject {
                 values.put(columns[0], columns[1].trim() + " (" + columns[2].trim() + ")");
         }
         return values;
+    }
+
+    String modelTable(List<Run> models) throws IOException {
+        if(models.isEmpty()) throw new IOException("请选择至少一个模型。");
+        StringBuilder out=new StringBuilder("指标");
+        List<Map<String,String>> values=new ArrayList<>(); Set<String> terms=new LinkedHashSet<>();
+        for(int i=0;i<models.size();i++) {
+            Run run=models.get(i); out.append('\t').append(tsv(run.name.isBlank()?"M"+(i+1):run.name));
+            Map<String,String> coefficients=coefficients(run); values.add(coefficients); terms.addAll(coefficients.keySet());
+        }
+        out.append('\n');
+        for(String term:terms) {
+            out.append(tsv(term));
+            for(Map<String,String> column:values) out.append('\t').append(tsv(column.getOrDefault(term,"")));
+            out.append('\n');
+        }
+        for(String key:Arrays.asList("N","R2","标准误类型","命令")) {
+            out.append(key);
+            for(Run r:models) out.append('\t').append(tsv(key.equals("N")?Double.toString(r.n):key.equals("R2")?
+                    (Double.isNaN(r.r2)?"":Double.toString(r.r2)):key.equals("命令")?r.command:r.vce));
+            out.append('\n');
+        }
+        out.append("样本说明\t").append(sameSamples(models)?"数据版本及实际样本一致":"数据版本或实际样本不同").append('\n');
+        out.append("注：系数后括号内为标准误；不支持的统计量留空。\n");
+        return out.toString();
+    }
+
+    private static String tsv(String value) {
+        String cell=value.replace('\t',' ').replace('\r',' ').replace('\n',' ');
+        if(cell.matches("^[=+@-].*")) cell="'"+cell;
+        return cell;
     }
 
     boolean sameSamples(List<Run> models) throws IOException {

@@ -192,6 +192,51 @@ public final class WorkflowRegressionTest {
                     try (java.util.stream.Stream<Path> files=Files.list(directory)) {
                         check(files.noneMatch(path->path.getFileName().toString().startsWith(".hx-convert-")),"staged DTA leaked");
                     }
+                    // Test the production importer, including a late code and multiline value.
+                    Path complex=directory.resolve("complex.csv"), complexDta=directory.resolve("complex.dta");
+                    Files.writeString(complex,"code,note\n"+"123456,abc\n".repeat(310)+"001234,\"first\nsecond\"\n");
+                    Class<?> profileType=Class.forName("com.hexie.stata.HxWorkbench$ExternalFileProfile");
+                    Method inspect=profileType.getDeclaredMethod("inspectRaw",Path.class,String.class,boolean.class,String.class); inspect.setAccessible(true);
+                    Object profile=inspect.invoke(null,complex,"自动识别",true,"UTF-8");
+                    ((JCheckBox)field(ui,"convertDelimitedFirstRow")).setSelected(true);
+                    String complexImport=(String)call(ui,"buildImportCommand",new Class<?>[]{Path.class,profileType,boolean.class},complex,profile,false);
+                    outcome=call(ui,"convertOne",conversionTypes,complex,complexDta,new DataWorkflow.OutputTarget(complexDta,false),complexImport);
+                    check((Boolean)field(outcome,"success"),"multiline production conversion: "+field(outcome,"message"));
+                    execute("use "+ResearchProject.stataQuote(complexDta.toString())+", clear");
+                    check(Data.getObsTotal()==311 && Data.getStr(Data.getVarIndex("code"),311).equals("001234"),"late code changed in Stata");
+                    check(Data.getStr(Data.getVarIndex("note"),311).contains("second"),"multiline value lost");
+                    // A bundle replays from its extracted directory with copied external files.
+                    p.save(); Path bundle=directory.resolve("project.zip"); ProjectBundle.write(p,bundle);
+                    Path extracted=directory.resolve("moved"); Files.createDirectories(extracted);
+                    try(java.util.zip.ZipInputStream zip=new java.util.zip.ZipInputStream(Files.newInputStream(bundle))) {
+                        java.util.zip.ZipEntry entry;
+                        while((entry=zip.getNextEntry())!=null) {
+                            Path file=extracted.resolve(entry.getName()).normalize(); check(file.startsWith(extracted),"unsafe ZIP path");
+                            Files.createDirectories(file.getParent()); Files.copy(zip,file); zip.closeEntry();
+                        }
+                    }
+                    String originalCwd=System.getProperty("user.dir");
+                    execute("cd "+ResearchProject.stataQuote(extracted.toString()));
+                    execute("do replay.do");
+                    check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),2).equals("0034"),"relocated bundle replay differs");
+                    execute("cd "+ResearchProject.stataQuote(originalCwd));
+                    execute("clear"); execute("set obs 40"); execute("generate id=_n");
+                    execute("generate x=sin(_n)"); execute("generate y=2*x+cos(_n)");
+                    for(String command:Arrays.asList("bootstrap, reps(10) seed(7): regress y x", "svy: regress y x")) {
+                        if(command.startsWith("svy")) execute("svyset id");
+                        execute(command);
+                        RunResult result=RunResult.capture(command,0,"test");
+                        check(result.estimationN==40,"real prefixed result capture");
+                        execute("hxproject model using "+ResearchProject.stataQuote(directory.resolve("prefix-"+UUID.randomUUID()).toString()));
+                    }
+                    p.checkpointInterval=5;
+                    Field steps=controller.getClass().getDeclaredField("stepsSinceCheckpoint"); steps.setAccessible(true); steps.setInt(controller,0);
+                    String beforeCheckpoint=p.current;
+                    for(int i=0;i<4;i++) ((ProjectController)controller).record("display 1",0,Double.NaN,Double.NaN,"");
+                    check(p.current.equals(beforeCheckpoint),"checkpoint interval ignored");
+                    ((ProjectController)controller).record("display 1",0,Double.NaN,Double.NaN,"");
+                    check(!p.current.equals(beforeCheckpoint),"fifth step did not save data");
+                    check(ResearchProject.loadFrom(p.file,p.recoveryFile()).checkpointInterval==5,"checkpoint policy not persisted");
                 } catch(Exception e) { throw new RuntimeException(e); }
                 finally {
                     if(ui!=null) {

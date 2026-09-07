@@ -1,4 +1,4 @@
-*! hxexecute 1.6.1  13aug2026
+*! hxexecute 1.6.2  07sep2026
 *! Execute one native command with monitor snapshots while preserving History.
 program define hxexecute, rclass
     version 16.0
@@ -51,8 +51,19 @@ program define hxexecute, rclass
     capture log using `"`hx_result_file'"', text replace name(HXEMPIRICAL_RESULT)
     local hx_log_rc = _rc
     _return restore `hx_input_results'
-    capture noisily `native'
-    local rc = _rc
+    local rc = 0
+    gettoken hx_first hx_rest : native
+    if "`hx_first'" == "merge" {
+        tempname hx_check_results
+        _return hold `hx_check_results'
+        capture noisily _hxexecute_mergecheck `hx_rest'
+        local rc = _rc
+        _return restore `hx_check_results'
+    }
+    if !`rc' {
+        capture noisily `native'
+        local rc = _rc
+    }
     _return hold `hx_native_results'
     if !`hx_log_rc' capture log close HXEMPIRICAL_RESULT
     /* use/clear may replace dataset characteristics; restore audit fields. */
@@ -76,5 +87,50 @@ program define hxexecute, rclass
     return scalar rc = `rc'
     return scalar history_rc = `history_rc'
     return local command `"`native'"'
+    if `rc' exit `rc'
+end
+
+program define _hxexecute_mergecheck
+    version 17.0
+    gettoken relation 0 : 0
+    syntax varlist using/ [, *]
+    if !inlist("`relation'", "1:1", "1:m", "m:1") {
+        display as error "工作台合并支持 1:1、1:m、m:1；请先明确键关系。"
+        exit 198
+    }
+    tempname masterkeys usingkeys
+    capture noisily {
+        frame put `varlist', into(`masterkeys')
+        frame create `usingkeys'
+        frame `usingkeys': use `varlist' using `"`using'"', clear
+        foreach key of local varlist {
+            frame `masterkeys': local mt : type `key'
+            frame `usingkeys': local ut : type `key'
+            if (substr("`mt'",1,3)=="str") != (substr("`ut'",1,3)=="str") {
+                display as error "合并键 `key' 的字符串/数值类型不一致。"
+                error 106
+            }
+            frame `masterkeys': quietly count if missing(`key')
+            if r(N) {
+                display as error "主表合并键 `key' 有 " r(N) " 个缺失值。"
+                error 459
+            }
+            frame `usingkeys': quietly count if missing(`key')
+            if r(N) {
+                display as error "副表合并键 `key' 有 " r(N) " 个缺失值。"
+                error 459
+            }
+        }
+        if inlist("`relation'", "1:1", "1:m") {
+            frame `masterkeys': isid `varlist'
+        }
+        if inlist("`relation'", "1:1", "m:1") {
+            frame `usingkeys': isid `varlist'
+        }
+        display as text "合并预检通过：键类型一致、无缺失，唯一性符合 `relation'。"
+    }
+    local rc = _rc
+    capture frame drop `masterkeys'
+    capture frame drop `usingkeys'
     if `rc' exit `rc'
 end

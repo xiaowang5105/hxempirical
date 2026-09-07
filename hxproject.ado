@@ -83,6 +83,7 @@ program define _hxproject_snapshot
     char _dta[hxproject_sortrngstate] `"`c(sortrngstate)'"'
     char _dta[hxproject_rng] `"`c(rng)'"'
     char _dta[hxproject_pwd] `"`c(pwd)'"'
+    char _dta[hxproject_environment] `"Stata `c(stata_version)' | `c(os)' | `c(machine_type)'"'
 end
 
 program define _hxproject_model

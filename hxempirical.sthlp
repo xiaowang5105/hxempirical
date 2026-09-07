@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.6.1  07sep2026}{...}
+{* *! version 1.6.2  07sep2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -21,7 +21,17 @@
 {title:Description}
 
 {pstd}
-Version 1.6.1 stages converted DTA files before publishing them. Batch conversion checks duplicate
+Version 1.6.2 scans complete CSV logical records with strict decoding and protects late leading zeros
+and long integers. Research projects support model selection, names, TSV coefficient tables and ZIP
+export with copied local data dependencies and relative replay paths. Check README.txt inside the ZIP
+for unresolved paths and install third-party commands separately. Ordinary merge commands executed
+through hxexecute check key types, missing values and required uniqueness before merging.
+Checkpoint frequency defaults to every step and can be changed to every 5/10 steps or manual saving.
+Less frequent checkpoints leave more work unsaved after a crash. Each checkpoint writes full data;
+background saving and cross-platform UI acceptance remain to be completed.
+
+{pstd}
+Version 1.6.2 stages converted DTA files before publishing them. Batch conversion checks duplicate
 output names and asks for confirmation before replacing existing files. Loading a converted file
 asks before replacing current data; a failed load restores the original data and estimation results.
 Project replay includes conversion frame setup and cleanup, followed by a separate load step.
@@ -324,4 +334,4 @@ execution, and monitoring preserves RNG state. Recent models are distinguished b
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.6.1.
+HX empirical workbench, package version 1.6.2.
