@@ -1,9 +1,9 @@
-*! hxproject 1.0.1 07sep2026
+*! hxproject 1.0.2 07sep2026
 *! Project snapshots, model artifacts, and transactional data loading/restoration.
 program define hxproject
     version 17.0
     gettoken action 0 : 0
-    syntax using/ [, RNG(string) RNGSTATE(string) SORTRNGSTATE(string)]
+    syntax using/ [, RNG(string) RNGSTATE(string) SORTRNGSTATE(string) DIRECTORY(string)]
     if !inlist("`action'", "snapshot", "model", "restore", "load") exit 198
     tempname saved_r
     _return hold `saved_r'
@@ -11,6 +11,7 @@ program define hxproject
     if "`action'" == "restore" {
         local restoreopts `", rng(`rng') rngstate(`rngstate')"'
         if "`sortrngstate'" != "" local restoreopts `"`restoreopts' sortrngstate(`sortrngstate')"'
+        if `"`directory'"' != "" local restoreopts `"`restoreopts' directory("`directory'")"'
     }
     capture noisily _hxproject_`action' using `"`using'"' `restoreopts'
     local rc = _rc
@@ -45,17 +46,19 @@ end
 
 program define _hxproject_restore
     version 17.0
-    syntax using/ , RNG(string) RNGSTATE(string) [SORTRNGSTATE(string)]
+    syntax using/ , RNG(string) RNGSTATE(string) [SORTRNGSTATE(string) DIRECTORY(string)]
     _hxproject_singleframe
     local oldrng `"`c(rng)'"'
     local oldstate `"`c(rngstate)'"'
     local oldsort `"`c(sortrngstate)'"'
+    local oldpwd `"`c(pwd)'"'
     preserve
     capture noisily {
         set rng `rng'
         set rngstate `rngstate'
         if "`sortrngstate'" != "" set sortrngstate `sortrngstate'
         use `"`using'"', clear
+        if `"`directory'"' != "" quietly cd `"`directory'"'
     }
     local rc = _rc
     if `rc' {
@@ -63,6 +66,7 @@ program define _hxproject_restore
         quietly set rng `oldrng'
         quietly set rngstate `oldstate'
         quietly set sortrngstate `oldsort'
+        quietly cd `"`oldpwd'"'
         exit `rc'
     }
     restore, not
@@ -81,7 +85,7 @@ program define _hxproject_snapshot
     if `rc' exit `rc'
     char _dta[hxproject_rngstate] `"`c(rngstate)'"'
     char _dta[hxproject_sortrngstate] `"`c(sortrngstate)'"'
-    char _dta[hxproject_rng] `"`c(rng)'"'
+    char _dta[hxproject_rng] `"`c(rng_current)'"'
     char _dta[hxproject_pwd] `"`c(pwd)'"'
     char _dta[hxproject_environment] `"Stata `c(stata_version)' | `c(os)' | `c(machine_type)'"'
 end

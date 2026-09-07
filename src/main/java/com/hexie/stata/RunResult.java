@@ -2,6 +2,7 @@ package com.hexie.stata;
 import java.util.*;
 import com.stata.sfi.Scalar;
 import com.stata.sfi.Missing;
+import com.stata.sfi.Characteristic;
 
 final class RunResult {
       private static final Set<String> ESTIMATION_COMMANDS = new HashSet<>(
@@ -54,7 +55,7 @@ final class RunResult {
          double var3 = Double.NaN;
          double var5 = Double.NaN;
          double var7 = Double.NaN;
-         if (var1 == 0 && isEstimationCommand(var0)) {
+         if (var1 == 0 && isEstimationCommand(var0) && verifiedCapture(var0)) {
             var3 = scalar("e(N)");
             var5 = scalar("e(r2)");
             var7 = scalar("e(r2_a)");
@@ -65,6 +66,16 @@ final class RunResult {
 
       static RunResult failure(String var0, int var1, String var2) {
          return new RunResult(var0, var1, "写入状态未知", var2, Double.NaN, Double.NaN, Double.NaN);
+      }
+
+      private static boolean verifiedCapture(String command) {
+         // capture suppresses an error at the Stata prompt. Require this run's
+         // native audit before treating its e() results as a new model.
+         if(!command.matches("(?is)^\\s*(?:(?:quietly|qui|noisily|noi)\\s*:?\\s+)*cap(?:ture)?(?:\\s|:).*")) return true;
+         try {
+            return command.trim().equals(Characteristic.getDtaChar("hxtoolbox_last_native_command"))
+               && "0".equals(Characteristic.getDtaChar("hxtoolbox_last_native_rc"));
+         } catch(Exception e) { return false; }
       }
 
       static boolean isEstimationCommand(String var0) {

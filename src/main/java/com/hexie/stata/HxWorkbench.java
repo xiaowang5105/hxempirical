@@ -128,7 +128,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.6.2";
+   public static final String VERSION = "1.6.3";
    private static HxWorkbench.WorkbenchFrame frame;
    private static volatile boolean closeRequested;
 
@@ -2117,6 +2117,7 @@ public final class HxWorkbench {
       }
 
       static void clearRunAudit() {
+         execute("quietly char _dta[hxtoolbox_last_native_rc] \"\"", false);
          execute("quietly char _dta[hxtoolbox_last_native_command] \"\"", false);
          execute("quietly char _dta[hxtoolbox_history_status] \"\"", false);
          execute("quietly char _dta[hxtoolbox_last_results_file] \"\"", false);
@@ -2957,7 +2958,11 @@ public final class HxWorkbench {
          this.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
          this.addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent event) {
-               if (!runInProgress && researchProject.canClose()) setVisible(false);
+               if (!runInProgress && researchProject.canClose()) {
+                  inspectionGeneration++;
+                  if(fileInspection!=null) fileInspection.cancel(true);
+                  setVisible(false);
+               }
             }
          });
          this.applyAdaptiveWindowBounds();
@@ -15198,61 +15203,89 @@ public final class HxWorkbench {
          return false;
       }
 
-      private void previewSelectedExternalFile() {
-         if (this.runInProgress) return;
-         Path var1;
-         try {
-            var1 = Paths.get(this.convertInputFile.getText().trim()).toAbsolutePath();
-         } catch (Exception var17) {
-            return;
+      private static final class ExternalPreview {
+         final ExternalFileProfile profile;
+         final String[] columns;
+         final List<Object[]> rows;
+         ExternalPreview(ExternalFileProfile profile,String[] columns,List<Object[]> rows) {
+            this.profile=profile; this.columns=columns; this.rows=rows;
          }
+      }
 
-         if (!Files.isRegularFile(var1)) {
-            JOptionPane.showMessageDialog(this, "请选择存在的原始数据文件。", "文件不存在", 1);
-         } else {
-            String var2 = externalType(var1);
-            if ("unknown".equals(var2)) {
-               JOptionPane.showMessageDialog(this, "第一版支持 .xlsx、.xls、.csv、.txt 和 .tsv。", "暂不支持该格式", 1);
-            } else {
-               if(!ensureExternalProfile(var1, () -> previewSelectedExternalFile())) return;
-               this.setBusy(true, "正在只读预览 " + var1.getFileName() + "…");
-               String var3 = this.nextImportFrameName();
-               Frame var4 = null;
+      private static ExternalPreview readExternalPreview(String name, ExternalFileProfile profile, String command) throws Exception {
+         if(SwingUtilities.isEventDispatchThread()) throw new IllegalStateException("文件导入必须在后台执行。");
+         Frame source=null;
+         try {
+            source=Frame.create(name);
+            int rc=StataBridge.execute("quietly frame "+name+": "+command,false);
+            if(rc!=0) throw new IOException("Stata 读取文件失败，返回码 "+rc);
+            source=Frame.connect(name); profile.enrichFromFrame(source);
+            int n=(int)Math.min(source.getObsTotal(),200L), k=Math.min(source.getVarCount(),60);
+            String[] columns=new String[k]; List<Object[]> rows=new ArrayList<>();
+            for(int j=0;j<k;j++) columns[j]=source.getVarName(j+1);
+            for(int i=0;i<n;i++) {
+               Object[] row=new Object[k];
+               for(int j=0;j<k;j++) row[j]=source.getFormattedValue(j+1,i+1L,true);
+               rows.add(row);
+            }
+            return new ExternalPreview(profile,columns,rows);
+         } finally { if(source!=null) source.drop(); }
+      }
 
+      private void previewSelectedExternalFile() {
+         if(this.runInProgress) return;
+         final Path input;
+         final String key,command;
+         final ExternalFileProfile profile;
+         try {
+            input=Paths.get(this.convertInputFile.getText().trim()).toAbsolutePath();
+            if(!Files.isRegularFile(input)) throw new IOException("请选择存在的原始数据文件。");
+            if(!ensureExternalProfile(input, () -> previewSelectedExternalFile())) return;
+            key=inspectionKey(input); profile=this.currentExternalProfile;
+            command=buildImportCommand(input,profile,false);
+         } catch(Exception e) { JOptionPane.showMessageDialog(this,rootMessage(e),"预览失败",0); return; }
+         final String name=nextImportFrameName();
+         final boolean[] discard={false};
+         final javax.swing.JDialog progress=new javax.swing.JDialog(this,"正在预览文件",false);
+         JLabel label=new JLabel("正在后台导入 "+input.getFileName()+"，当前数据保持不变。");
+         JButton cancel=new JButton("取消预览");
+         Runnable cancelPreview=()->{
+            discard[0]=true; cancel.setEnabled(false);
+            label.setText("预览已取消；等待当前读取结束并清理临时数据。");
+         };
+         cancel.addActionListener(e->cancelPreview.run());
+         progress.setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+         progress.addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent e) { cancelPreview.run(); }
+         });
+         JPanel body=new JPanel(new BorderLayout(12,12)); body.setBorder(new EmptyBorder(16,16,16,16));
+         body.add(label,BorderLayout.CENTER); body.add(cancel,BorderLayout.SOUTH);
+         progress.setContentPane(body); progress.pack(); progress.setLocationRelativeTo(this);
+         this.runInProgress=true; this.previewTimer.stop();
+         this.setBusy(true,"正在后台预览文件…"); progress.setVisible(true);
+         new SwingWorker<ExternalPreview,Void>() {
+            protected ExternalPreview doInBackground() throws Exception { return readExternalPreview(name,profile,command); }
+            protected void done() {
                try {
-                  var4 = Frame.create(var3);
-                  String var5 = this.buildImportCommand(var1, this.currentExternalProfile, false);
-                  int var6 = HxWorkbench.StataBridge.execute("quietly frame " + var3 + ": " + var5, false);
-                  if (var6 != 0) {
-                     throw new IllegalStateException("Stata 读取文件失败，返回码 " + var6);
+                  ExternalPreview result=get();
+                  if(discard[0] || !key.equals(inspectionKey(input))
+                        || !input.equals(Paths.get(convertInputFile.getText().trim()).toAbsolutePath())) {
+                     statusLabel.setText("预览已取消或输入已改变；未应用旧结果。"); return;
                   }
-
-                  var4 = Frame.connect(var3);
-                  this.currentExternalProfile.enrichFromFrame(var4);
-                  this.importPreviewModel.load(var4, 200, 60);
-                  this.configureImportPreviewWidths();
-                  this.importPreviewLabel.setText(this.currentExternalProfile.previewSummary());
-                  this.importIssues.setText(this.currentExternalProfile.issueSummary());
-                  this.importIssues.setCaretPosition(0);
-                  this.convertDetected.setText(this.currentExternalProfile.detectedSummary());
-                  this.selectResultView("convert", true);
-                  this.updateConversionPreview();
-                  this.setBusy(false, "预览完成；当前 Stata 数据没有改变。");
-               } catch (Throwable var16) {
-                  this.importPreviewModel.clear();
-                  this.importIssues.setText("预览失败：\n" + var16.getMessage());
-                  this.setBusy(false, "预览失败：" + var16.getMessage());
-                  JOptionPane.showMessageDialog(this, "无法预览该文件：\n" + var16.getMessage(), "预览失败", 0);
+                  currentExternalProfile=result.profile;
+                  importPreviewModel.loadRows(result.columns,result.rows); configureImportPreviewWidths();
+                  importPreviewLabel.setText(result.profile.previewSummary());
+                  importIssues.setText(result.profile.issueSummary()); importIssues.setCaretPosition(0);
+                  convertDetected.setText(result.profile.detectedSummary()); selectResultView("convert",true);
+                  statusLabel.setText("预览完成；当前 Stata 数据没有改变。");
+               } catch(Exception e) {
+                  if(!discard[0]) { importPreviewModel.clear(); importIssues.setText("预览失败："+rootMessage(e)); }
+                  statusLabel.setText(discard[0]?"预览已取消。":"预览失败："+rootMessage(e));
                } finally {
-                  if (var4 != null) {
-                     try {
-                        var4.drop();
-                     } catch (Throwable var15) {
-                     }
-                  }
+                  runInProgress=false; progress.dispose(); setBusy(false,statusLabel.getText()); updateConversionPreview();
                }
             }
-         }
+         }.execute();
       }
 
       private String buildImportCommand(Path var1, HxWorkbench.ExternalFileProfile var2, boolean var3) {
@@ -15339,7 +15372,7 @@ public final class HxWorkbench {
       }
 
       private void updateConversionPreview() {
-         if (!this.rebuilding && "__convert_dta__".equals(this.currentCommand)) {
+         if (!this.runInProgress && !this.rebuilding && "__convert_dta__".equals(this.currentCommand)) {
             if (this.convertBatchMode.isSelected()) {
                this.previewArea.setText("批量转换：逐个执行 import excel/import delimited，再 save 为同名 .dta");
                this.runButton.setText("开始批量转换");

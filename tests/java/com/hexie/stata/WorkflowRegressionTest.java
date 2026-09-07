@@ -212,6 +212,7 @@ public final class WorkflowRegressionTest {
                         java.util.zip.ZipEntry entry;
                         while((entry=zip.getNextEntry())!=null) {
                             Path file=extracted.resolve(entry.getName()).normalize(); check(file.startsWith(extracted),"unsafe ZIP path");
+                            if(entry.isDirectory()) { Files.createDirectories(file);zip.closeEntry();continue; }
                             Files.createDirectories(file.getParent()); Files.copy(zip,file); zip.closeEntry();
                         }
                     }
@@ -219,6 +220,11 @@ public final class WorkflowRegressionTest {
                     execute("cd "+ResearchProject.stataQuote(extracted.toString()));
                     execute("do replay.do");
                     check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),2).equals("0034"),"relocated bundle replay differs");
+                    ResearchProject portable=ResearchProject.load(extracted.resolve("panel.hxproj"));
+                    execute(ProjectController.restoreCommand(portable));
+                    Path reexport=extracted.resolve("again.do"); ResearchProject.atomicWrite(reexport,portable.exportDo());
+                    execute("do "+ResearchProject.stataQuote(reexport.toString()));
+                    check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),2).equals("0034"),"portable project reexport differs");
                     execute("cd "+ResearchProject.stataQuote(originalCwd));
                     execute("clear"); execute("set obs 40"); execute("generate id=_n");
                     execute("generate x=sin(_n)"); execute("generate y=2*x+cos(_n)");
@@ -237,6 +243,28 @@ public final class WorkflowRegressionTest {
                     ((ProjectController)controller).record("display 1",0,Double.NaN,Double.NaN,"");
                     check(!p.current.equals(beforeCheckpoint),"fifth step did not save data");
                     check(ResearchProject.loadFrom(p.file,p.recoveryFile()).checkpointInterval==5,"checkpoint policy not persisted");
+                    int modelCount=p.models().size();
+                    String captured="capture regress y missing_variable";
+                    int failedRc=SFIToolkit.executeCommand("hxexecute, command(`\""+captured+"\"')",false);
+                    check(failedRc==111,"capture hid inner regression failure");
+                    RunResult rejected=RunResult.capture(captured,failedRc,"test");
+                    ((ProjectController)controller).record(captured,failedRc,rejected.estimationN,rejected.r2,"");
+                    check(Double.isNaN(rejected.estimationN) && p.models().size()==modelCount,"failed captured regression saved stale model");
+                    captured="capture regress y x";
+                    execute("hxexecute, command(`\""+captured+"\"')");
+                    check(RunResult.capture(captured,0,"test").estimationN==40,"successful capture result lost");
+                    // Run the production preview reader on the Stata execution thread,
+                    // and assert it refuses accidental dispatch on the UI thread.
+                    Method previewReader=type.getDeclaredMethod("readExternalPreview",String.class,profileType,String.class); previewReader.setAccessible(true);
+                    Object previewData=previewReader.invoke(null,"hx_audit_preview",profile,complexImport);
+                    check(((List<?>)field(previewData,"rows")).size()==200,"background preview row cap");
+                    check(Data.getObsTotal()==40,"preview changed active data");
+                    final boolean[] rejectedEdt={false};
+                    SwingUtilities.invokeAndWait(()->{
+                        try { previewReader.invoke(null,"hx_bad_preview",profile,complexImport); }
+                        catch(Exception expected) { rejectedEdt[0]=expected.getCause() instanceof IllegalStateException; }
+                    });
+                    check(rejectedEdt[0],"preview allowed Stata IO on EDT");
                 } catch(Exception e) { throw new RuntimeException(e); }
                 finally {
                     if(ui!=null) {
