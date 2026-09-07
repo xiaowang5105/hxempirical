@@ -21,6 +21,7 @@ final class ResearchProject {
     boolean dirty;
     String environment = "";
     int checkpointInterval = 1;
+    boolean portable;
 
     static final class Run {
         String name = "";
@@ -90,6 +91,16 @@ final class ResearchProject {
     private void writeProject(Path destination) throws IOException {
         if (runs.size() > MAX_RUNS) throw new IOException("项目超过 10,000 步；请新建项目后继续。");
         validateResources();
+        String text = serialize(properties());
+        if (destination.equals(file) && Files.isRegularFile(file)) {
+            boolean readable;
+            try { load(file); readable = true; } catch (IOException e) { readable = false; }
+            if (readable) atomicWrite(backupFile(), Files.readString(file, StandardCharsets.UTF_8));
+        }
+        atomicWrite(destination, text);
+    }
+
+    Properties properties() {
         Properties p = new Properties();
         p.setProperty("format", "HXPROJECT-1");
         p.setProperty("environment", environment);
@@ -97,6 +108,7 @@ final class ResearchProject {
         p.setProperty("assets", assets);
         p.setProperty("baseline", baseline); p.setProperty("current", current);
         p.setProperty("workingDirectory", workingDirectory);
+        p.setProperty("portable", Boolean.toString(portable));
         p.setProperty("rng", rng); p.setProperty("rngState", rngState);
         p.setProperty("currentRng", currentRng); p.setProperty("currentRngState", currentRngState);
         p.setProperty("sortRngState", sortRngState); p.setProperty("currentSortRngState", currentSortRngState);
@@ -110,18 +122,16 @@ final class ResearchProject {
             p.setProperty(key + "vce", r.vce); p.setProperty(key + "rc", Integer.toString(r.rc));
             p.setProperty(key + "n", Double.toString(r.n)); p.setProperty(key + "r2", Double.toString(r.r2));
         }
+        return p;
+    }
+
+    static String serialize(Properties p) throws IOException {
         StringWriter writer = new StringWriter();
         p.store(writer, "HX Empirical research project");
         String text = writer.toString();
         if (text.getBytes(StandardCharsets.UTF_8).length > MAX_BYTES)
             throw new IOException("项目超过 64 MB，保存已取消；上一版本仍可打开。");
-        if (destination.equals(file) && Files.isRegularFile(file)) {
-            // Never replace the last good backup with an unreadable primary file.
-            boolean readable;
-            try { load(file); readable = true; } catch (IOException e) { readable = false; }
-            if (readable) atomicWrite(backupFile(), Files.readString(file, StandardCharsets.UTF_8));
-        }
-        atomicWrite(destination, text);
+        return text;
     }
 
     private void validateResources() throws IOException {
@@ -158,6 +168,8 @@ final class ResearchProject {
         if (!project.assets.matches("hx-assets-[0-9a-f-]{36}")) throw new IOException("项目资源目录无效。");
         project.baseline = p.getProperty("baseline", ""); project.current = p.getProperty("current", "");
         project.workingDirectory = p.getProperty("workingDirectory", "");
+        project.portable = Boolean.parseBoolean(p.getProperty("portable", "false"));
+        if(project.portable) project.workingDirectory=project.file.getParent().toString();
         project.rng = p.getProperty("rng", ""); project.rngState = p.getProperty("rngState", "");
         project.currentRng = p.getProperty("currentRng", project.rng);
         project.currentRngState = p.getProperty("currentRngState", project.rngState);

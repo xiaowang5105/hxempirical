@@ -1,4 +1,4 @@
-*! hxexecute 1.6.2  07sep2026
+*! hxexecute 1.6.3  07sep2026
 *! Execute one native command with monitor snapshots while preserving History.
 program define hxexecute, rclass
     version 16.0
@@ -61,14 +61,29 @@ program define hxexecute, rclass
         _return restore `hx_check_results'
     }
     if !`rc' {
-        capture noisily `native'
-        local rc = _rc
+        /* Successful ado commands may leave an internal _rc. Read it only
+           when the user explicitly requested a capture prefix. */
+        local hx_has_capture = ustrregexm(lower(`"`native'"'), "^((quietly|qui|noisily|noi)\s*:?\s+)*(capture|cap)(\s|:|$)")
+        if `hx_has_capture' {
+            local hx_inner_rc = 0
+            capture noisily {
+                `native'
+                local hx_inner_rc = _rc
+            }
+            local rc = _rc
+            if !`rc' local rc = `hx_inner_rc'
+        }
+        else {
+            capture noisily `native'
+            local rc = _rc
+        }
     }
     _return hold `hx_native_results'
     if !`hx_log_rc' capture log close HXEMPIRICAL_RESULT
     /* use/clear may replace dataset characteristics; restore audit fields. */
     char _dta[hxtoolbox_last_results_file] `"`hx_result_file'"'
     char _dta[hxtoolbox_last_native_command] `"`native'"'
+    char _dta[hxtoolbox_last_native_rc] "`rc'"
     if `history_rc' {
         char _dta[hxtoolbox_history_status] "写入失败"
     }

@@ -129,7 +129,7 @@ final class ProjectController {
     }
 
     private static String validatedRng(String rng) throws IOException {
-        if(!Arrays.asList("mt64", "mt64s", "kiss32").contains(rng)) throw new IOException("项目随机数生成器名称无效。"); return rng;
+        if(!Arrays.asList("default", "mt64", "mt64s", "kiss32").contains(rng)) throw new IOException("项目随机数生成器名称无效。"); return rng;
     }
     private static String validatedState(String state) throws IOException {
         if(!state.matches("[a-zA-Z0-9]+")) throw new IOException("项目随机数状态无效。"); return state;
@@ -138,7 +138,8 @@ final class ProjectController {
     static String restoreCommand(ResearchProject next) throws IOException {
         return "hxproject restore using "+ResearchProject.stataQuote(next.asset(next.current).toString())
                 +", rng("+validatedRng(next.currentRng)+") rngstate("+validatedState(next.currentRngState)+")"
-                +(next.currentSortRngState.isBlank()?"":" sortrngstate("+validatedState(next.currentSortRngState)+")");
+                +(next.currentSortRngState.isBlank()?"":" sortrngstate("+validatedState(next.currentSortRngState)+")")
+                +(next.portable?" directory("+ResearchProject.stataQuote(next.file.getParent().toString())+")":"");
     }
 
     private void save() throws Exception {

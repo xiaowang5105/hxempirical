@@ -42,12 +42,40 @@ public final class ResearchWorkflowTest {
             String table=p.modelTable(Arrays.asList(a));
             check(table.contains("基准模型") && table.contains("2 (0.1)") && !table.contains("Excluded"),"selected TSV export");
             Files.writeString(csv,"id\n001\n");
-            p.add("import delimited using "+ResearchProject.stataQuote(csv.toString())+", clear","","",0,Double.NaN,Double.NaN);p.save();
+            WorkSnapshot settings=new WorkSnapshot(); settings.usingFile=csv.toString();
+            settings.nativeCommand="import delimited using "+ResearchProject.stataQuote(csv.toString())+", clear";
+            p.add(settings.nativeCommand,settings.encode(),"",0,Double.NaN,Double.NaN);
+            p.add("generate str40 note = \"input.csv\"","","",0,Double.NaN,Double.NaN);
+            p.add("save \"generated.dta\", replace\nuse \"generated.dta\", clear","","",0,Double.NaN,Double.NaN);p.save();
             Path bundle=dir.resolve("bundle.zip"); ProjectBundle.write(p,bundle);
             try(ZipFile zip=new ZipFile(bundle.toFile())) {
                 String replay=new String(zip.getInputStream(zip.getEntry("replay.do")).readAllBytes(),StandardCharsets.UTF_8);
                 check(!replay.contains(dir.toString().replace('\\','/')) && replay.contains("external/file-1.csv"),"bundle uses copied relative files");
                 check(zip.getEntry(p.baseline)!=null && zip.getEntry("SHA256.tsv")!=null,"bundle resources and manifest");
+                check(replay.contains("generate str40 note = \"input.csv\""),"ordinary filename string was rewritten");
+                Path moved=dir.resolve("moved"); Files.createDirectories(moved);
+                for(Enumeration<? extends ZipEntry> entries=zip.entries();entries.hasMoreElements();) {
+                    ZipEntry entry=entries.nextElement(); Path target=moved.resolve(entry.getName()).normalize();
+                    check(target.startsWith(moved),"unexpected archive path");
+                    if(entry.isDirectory()) { Files.createDirectories(target);continue; }
+                    Files.createDirectories(target.getParent());
+                    try(java.io.InputStream in=zip.getInputStream(entry)) { Files.copy(in,target); }
+                }
+                ResearchProject reopened=ResearchProject.load(moved.resolve("project.hxproj"));
+                check(reopened.portable && Path.of(reopened.workingDirectory).equals(moved),"portable project working directory");
+                String again=reopened.exportDo();
+                check(!again.contains("cd "+ResearchProject.stataQuote(dir.toString())),"reexport returned to source directory");
+                check(WorkSnapshot.decode(reopened.runs.get(2).settings).usingFile.equals("external/file-1.csv"),"file setting not migrated");
+                Files.delete(csv);
+                ProjectBundle.write(reopened,moved.resolve("second.zip"));
+            }
+            final int[] calls={0};
+            String literals="generate note = \"input.csv\"\nlabel variable x \"input.csv\"\n* use \"input.csv\"\ndisplay \"input.csv\"";
+            check(StataFilePaths.rewrite(literals,(path,write)->{calls[0]++;return "changed";}).equals(literals) && calls[0]==0,"file parser touched literals");
+            check(StataFilePaths.rewrite("frame f: import delimited using \"input.csv\", clear",(path,write)->"copied.csv").contains("using \"copied.csv\""),"frame file argument not migrated");
+            for(String ambiguous:Arrays.asList("append using a.dta b.dta", "use \"$data/input.dta\", clear", "cd old")) {
+                try { StataFilePaths.rewrite(ambiguous,(path,write)->"copied.dta"); throw new AssertionError("ambiguous path accepted: "+ambiguous); }
+                catch(java.io.IOException expected) {}
             }
             System.out.println("HX_RESEARCH_WORKFLOW_TEST_OK");
         } finally {
