@@ -5,9 +5,9 @@ d version 1.6.1
 d pkg_bytes 1006
 d pkg_checksum 897034389
 d pkg_sha256 b568e1986b5cea315b46eb2115857148f2a9e819cc26b90e2c861e27e6a9b08d
-d bytes 611617
-d checksum 211908052
-d sha256 03ec1e7b5ca77f7f83e7825d81852f5e02b83b9435b37ead8f799f49ee66b72f
+d bytes 612253
+d checksum 3392698090
+d sha256 a6e12d6881915448179e41c6f7470bb004c749c87c162fb0a833609d69ec7747
 d parts 17
 d offline_index hxempirical-offline.index
 f release/hxempirical-release.b64.001

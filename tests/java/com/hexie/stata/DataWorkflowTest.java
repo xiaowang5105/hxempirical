@@ -19,6 +19,11 @@ public final class DataWorkflowTest {
             check(DataWorkflow.batchOutputs(Arrays.asList(dir.resolve("a.csv"),dir.resolve("b.xlsx")),dir).size()==2);
             Path target=dir.resolve("data.dta"), staged=dir.resolve("staged.dta");
             Files.writeString(target,"original");
+            rejects(()->new DataWorkflow.OutputTarget(dir.resolve("original.csv"),true));
+            rejects(()->new DataWorkflow.OutputTarget(target,true).validateSource(target));
+            Path hardlink=dir.resolve("linked.dta");
+            Files.createLink(hardlink,target);
+            rejects(()->new DataWorkflow.OutputTarget(hardlink,true).validateSource(target));
             rejects(()->new DataWorkflow.OutputTarget(target,false));
             DataWorkflow.OutputTarget approved=new DataWorkflow.OutputTarget(target,true);
             // A failed save must never remove the approved existing file.
@@ -40,7 +45,7 @@ public final class DataWorkflowTest {
             check(Files.readString(later).equals("created by someone else"));
             new DataWorkflow.OutputTarget(dir.resolve("fresh.dta"),false).publish(staged);
             check(Files.readString(dir.resolve("fresh.dta")).equals("converted"));
-            rejects(()->new DataWorkflow.OutputTarget(dir,true));
+            rejects(()->new DataWorkflow.OutputTarget(Files.createDirectory(dir.resolve("folder.dta")),true));
             System.out.println("HX_DATA_WORKFLOW_TEST_OK");
         } finally {
             Path tempRoot=Paths.get(System.getProperty("java.io.tmpdir")).toRealPath();

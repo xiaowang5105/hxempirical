@@ -29,11 +29,19 @@ final class DataWorkflow {
 
         OutputTarget(Path target, boolean overwriteApproved) throws IOException {
             path = target.toAbsolutePath().normalize();
+            if (!path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".dta"))
+                throw new IOException("输出文件必须以 .dta 结尾："+path);
             before = attributes(path);
             if (before != null && !overwriteApproved) throw new FileAlreadyExistsException(path.toString());
         }
 
         boolean replacesExisting() { return before != null; }
+
+        void validateSource(Path input) throws IOException {
+            if (input.toAbsolutePath().normalize().equals(path)
+                    || (Files.exists(path) && Files.isSameFile(input,path)))
+                throw new IOException("输出与原文件是同一个文件，请选择其他 DTA 位置。");
+        }
 
         private static BasicFileAttributes attributes(Path path) throws IOException {
             try {
@@ -67,5 +75,10 @@ final class DataWorkflow {
             + "\n    frame `hx_conversion_frame': save " + ResearchProject.stataQuote(output.toString()) + ", replace\n}\n"
             + "local hx_conversion_rc = _rc\nframe drop `hx_conversion_frame'\n"
             + "if `hx_conversion_rc' error `hx_conversion_rc'";
+    }
+
+    static String failedConversionScript(String command) {
+        return "* Failed conversion: retained for audit; no output was published.\n* "
+            + command.replace("\n","\n* ");
     }
 }

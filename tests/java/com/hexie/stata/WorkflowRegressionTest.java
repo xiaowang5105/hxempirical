@@ -176,7 +176,9 @@ public final class WorkflowRegressionTest {
                     check(!(Boolean)field(failed,"success"),"invalid import unexpectedly succeeded");
                     check(Arrays.equals(previous,Files.readAllBytes(dta)),"failed conversion overwrote old DTA");
                     check(Data.getObsTotal()==40,"failed conversion changed active data");
+                    check(((String)field(failed,"replayCommand")).lines().allMatch(line->line.startsWith("*")),"failed conversion remains executable");
                     p.add((String)field(failed,"replayCommand"),"","",(Integer)field(failed,"rc"),Double.NaN,Double.NaN);
+                    p.add("display as text \"expected failure\"\nerror 198","","",198,Double.NaN,Double.NaN);
                     String load="hxproject load using "+ResearchProject.stataQuote(dta.toString());
                     check((Integer)call(ui,"runRecorded",new Class<?>[]{String.class},load)==0,"converted data load failed");
                     check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),1).equals("0012"),"loaded data differ");

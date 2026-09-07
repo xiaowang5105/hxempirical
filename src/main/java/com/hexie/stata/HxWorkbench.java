@@ -15560,6 +15560,7 @@ public final class HxWorkbench {
          boolean created = false;
          HxWorkbench.ConversionOutcome outcome;
          try {
+            target.validateSource(input);
             staged = Files.createTempFile(target.path.getParent(), ".hx-convert-", ".dta");
             int rc = this.runRecorded("frame create " + frame);
             if (rc != 0) throw new IOException("无法创建临时 frame，返回码 " + rc);
@@ -15581,7 +15582,7 @@ public final class HxWorkbench {
             if (created) HxWorkbench.StataBridge.execute("capture frame drop " + frame, false);
             if (staged != null) try { Files.deleteIfExists(staged); } catch (IOException ignored) {}
          }
-         outcome.replayCommand = replay;
+         outcome.replayCommand = outcome.success ? replay : DataWorkflow.failedConversionScript(replay);
          return outcome;
       }
 
