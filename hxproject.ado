@@ -1,10 +1,10 @@
-*! hxproject 1.0.0 05sep2026
-*! Internal project snapshots and model artifacts; never changes active data/results.
+*! hxproject 1.0.1 07sep2026
+*! Project snapshots, model artifacts, and transactional data loading/restoration.
 program define hxproject
     version 17.0
     gettoken action 0 : 0
     syntax using/ [, RNG(string) RNGSTATE(string) SORTRNGSTATE(string)]
-    if !inlist("`action'", "snapshot", "model", "restore") exit 198
+    if !inlist("`action'", "snapshot", "model", "restore", "load") exit 198
     tempname saved_r
     _return hold `saved_r'
     local restoreopts ""
@@ -16,6 +16,20 @@ program define hxproject
     local rc = _rc
     _return restore `saved_r'
     if `rc' exit `rc'
+end
+
+program define _hxproject_load
+    version 17.0
+    syntax using/
+    preserve
+    capture noisily use `"`using'"', clear
+    local rc = _rc
+    if `rc' {
+        restore
+        exit `rc'
+    }
+    restore, not
+    ereturn clear
 end
 
 program define _hxproject_singleframe

@@ -1,4 +1,4 @@
-*! hxsemantics_rules 1.6.0  06sep2026
+*! hxsemantics_rules 1.6.1  07sep2026
 *! Included by hxsemantics.ado in the same local-macro scope.
     if "`cmd'" == "use" {
         local template "command_body"
@@ -3698,4 +3698,3 @@
             local purpose2 "先明确真实二元结局和预测评分；比较与图形设置按当前命令语法填写。"
         }
     }
-

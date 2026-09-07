@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1.6.0  06sep2026}{...}
+{* *! version 1.6.1  07sep2026}{...}
 {vieweralsosee "hxtoolbox" "help hxtoolbox"}{...}
 {title:Title}
 
@@ -19,6 +19,13 @@
 {p 8 16 2}{cmd:hxempirical uninstall}
 
 {title:Description}
+
+{pstd}
+Version 1.6.1 stages converted DTA files before publishing them. Batch conversion checks duplicate
+output names and asks for confirmation before replacing existing files. Loading a converted file
+asks before replacing current data; a failed load restores the original data and estimation results.
+Project replay includes conversion frame setup and cleanup, followed by a separate load step.
+Replay uses {cmd:save, replace} for converted outputs: inspect the source and output paths before running it.
 
 {pstd}
 {cmd:hxempirical} opens one desktop-style workbench with a collapsible left sidebar,
@@ -317,4 +324,4 @@ execution, and monitoring preserves RNG state. Recent models are distinguished b
 {title:Author}
 
 {pstd}
-HX empirical workbench, package version 1.6.0.
+HX empirical workbench, package version 1.6.1.
