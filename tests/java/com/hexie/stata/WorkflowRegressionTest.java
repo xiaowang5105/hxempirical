@@ -15,6 +15,16 @@ public final class WorkflowRegressionTest {
         Method m=target.getClass().getDeclaredMethod(name,types); m.setAccessible(true); return m.invoke(target,args);
     }
     private static void check(boolean ok,String message) { if(!ok) throw new AssertionError(message); }
+    private static JOptionPane optionPane(java.awt.Container container) {
+        for (java.awt.Component child : container.getComponents()) {
+            if (child instanceof JOptionPane) return (JOptionPane)child;
+            if (child instanceof java.awt.Container) {
+                JOptionPane nested=optionPane((java.awt.Container)child);
+                if (nested!=null) return nested;
+            }
+        }
+        return null;
+    }
     private static void execute(String command) {
         int rc=SFIToolkit.executeCommand(command,false);
         check(rc==0,command+" returned r("+rc+")");
@@ -131,6 +141,57 @@ public final class WorkflowRegressionTest {
                     execute("xtset, clear");
                     execute("do "+ResearchProject.stataQuote(replay.toString()));
                     execute("assert abs(_b[x] - scalar(hx_expected_coef)) < 1e-12");
+
+                    // Exercise the real replacement dialog: Cancel leaves the dataset untouched.
+                    javax.swing.Timer cancelDialog=new javax.swing.Timer(50,null);
+                    cancelDialog.addActionListener(event->{
+                        for (java.awt.Window window : java.awt.Window.getWindows()) {
+                            if (window instanceof JDialog && window.isVisible()
+                                  && ((JDialog)window).getTitle().equals("确认替换当前数据")) {
+                                JOptionPane pane=optionPane((JDialog)window);
+                                if(pane!=null) { pane.setValue(JOptionPane.CANCEL_OPTION); cancelDialog.stop(); }
+                            }
+                        }
+                    });
+                    cancelDialog.start();
+                    try {
+                        call(ui,"loadConvertedData",new Class<?>[]{Path.class,int.class},directory.resolve("absent.dta"),0);
+                        check(Data.getObsTotal()==40,"cancelled load changed observations");
+                    } finally { cancelDialog.stop(); }
+
+                    Path csv=directory.resolve("企业 数据.csv"), dta=directory.resolve("企业 数据.dta");
+                    Files.writeString(csv,"code,amount\n0012,2\n0034,4\n");
+                    String importCommand="import delimited using "+ResearchProject.stataQuote(csv.toString())+", clear varnames(1) stringcols(1)";
+                    Class<?>[] conversionTypes={Path.class,Path.class,DataWorkflow.OutputTarget.class,String.class};
+                    Object outcome=call(ui,"convertOne",conversionTypes,csv,dta,new DataWorkflow.OutputTarget(dta,false),importCommand);
+                    check((Boolean)field(outcome,"success"),"conversion failed: "+field(outcome,"message"));
+                    check(Data.getObsTotal()==40,"file conversion replaced active data");
+                    execute("assert abs(_b[x] - scalar(hx_expected_coef)) < 1e-12");
+                    String conversion=(String)field(outcome,"replayCommand");
+                    p.add(conversion,"","",0,Double.NaN,Double.NaN);
+                    // Failure during conversion leaves an already approved output intact.
+                    byte[] previous=Files.readAllBytes(dta);
+                    Object failed=call(ui,"convertOne",conversionTypes,csv,dta,new DataWorkflow.OutputTarget(dta,true),
+                        "import delimited using "+ResearchProject.stataQuote(csv+".absent")+", clear");
+                    check(!(Boolean)field(failed,"success"),"invalid import unexpectedly succeeded");
+                    check(Arrays.equals(previous,Files.readAllBytes(dta)),"failed conversion overwrote old DTA");
+                    check(Data.getObsTotal()==40,"failed conversion changed active data");
+                    check(((String)field(failed,"replayCommand")).lines().allMatch(line->line.startsWith("*")),"failed conversion remains executable");
+                    p.add((String)field(failed,"replayCommand"),"","",(Integer)field(failed,"rc"),Double.NaN,Double.NaN);
+                    p.add("display as text \"expected failure\"\nerror 198","","",198,Double.NaN,Double.NaN);
+                    String load="hxproject load using "+ResearchProject.stataQuote(dta.toString());
+                    check((Integer)call(ui,"runRecorded",new Class<?>[]{String.class},load)==0,"converted data load failed");
+                    check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),1).equals("0012"),"loaded data differ");
+                    p.add(load,"","",0,Double.NaN,Double.NaN);
+                    Path conversionReplay=directory.resolve("conversion-replay.do");
+                    ResearchProject.atomicWrite(conversionReplay,p.exportDo());
+                    execute("do "+ResearchProject.stataQuote(conversionReplay.toString()));
+                    check(Data.getObsTotal()==2 && Data.getStr(Data.getVarIndex("code"),2).equals("0034"),"conversion journal did not replay");
+                    execute("frames dir");
+                    execute("assert wordcount(\"`r(frames)'\") == 1");
+                    try (java.util.stream.Stream<Path> files=Files.list(directory)) {
+                        check(files.noneMatch(path->path.getFileName().toString().startsWith(".hx-convert-")),"staged DTA leaked");
+                    }
                 } catch(Exception e) { throw new RuntimeException(e); }
                 finally {
                     if(ui!=null) {

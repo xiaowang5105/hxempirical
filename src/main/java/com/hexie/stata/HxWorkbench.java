@@ -128,7 +128,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.6.0";
+   public static final String VERSION = "1.6.1";
    private static HxWorkbench.WorkbenchFrame frame;
    private static volatile boolean closeRequested;
 
@@ -713,6 +713,7 @@ public final class HxWorkbench {
 
    private static final class BatchSummary {
       final int total;
+      final StringBuilder replay = new StringBuilder();
       final List<Object[]> rows = new ArrayList<>();
       final List<String> failures = new ArrayList<>();
       int success;
@@ -751,6 +752,7 @@ public final class HxWorkbench {
    }
 
    private static final class ConversionOutcome {
+      String replayCommand = "* Conversion did not start.";
       final boolean success;
       final Path input;
       final Path output;
@@ -15263,6 +15265,7 @@ public final class HxWorkbench {
       }
 
       private void previewSelectedExternalFile() {
+         if (this.runInProgress) return;
          Path var1;
          try {
             var1 = Paths.get(this.convertInputFile.getText().trim()).toAbsolutePath();
@@ -15445,6 +15448,7 @@ public final class HxWorkbench {
       }
 
       private void runConvertDta() {
+         if (this.runInProgress) return;
          if (this.convertBatchMode.isSelected()) {
             this.runBatchConversion();
          } else {
@@ -15459,9 +15463,11 @@ public final class HxWorkbench {
             }
 
             if (Files.isRegularFile(var1) && !"unknown".equals(externalType(var1))) {
-               final Path resolvedOutput = this.resolveExistingOutput(var2);
-               if (resolvedOutput != null) {
+               final DataWorkflow.OutputTarget outputTarget = this.resolveExistingOutput(var2);
+               if (outputTarget != null) {
+                  final Path resolvedOutput = outputTarget.path;
                   final HxWorkbench.ExternalFileProfile var3;
+                  final String preparedCommand;
                   try {
                      var3 = HxWorkbench.ExternalFileProfile.inspectRaw(
                         var1,
@@ -15469,7 +15475,8 @@ public final class HxWorkbench {
                         externalType(var1).equals("excel") ? this.convertExcelFirstRow.isSelected() : this.convertDelimitedFirstRow.isSelected(),
                         externalType(var1).equals("delimited") ? selected(this.convertEncoding) : "自动识别"
                      );
-                  } catch (IOException var6) {
+                     preparedCommand = this.buildImportCommand(var1,var3,false);
+                  } catch (Exception var6) {
                      JOptionPane.showMessageDialog(this, "读取原文件失败：\n" + var6.getMessage(), "转换失败", 0);
                      return;
                   }
@@ -15477,9 +15484,10 @@ public final class HxWorkbench {
                   this.activeRunBefore = HxWorkbench.RunShape.capture();
                   HxWorkbench.StataBridge.clearRunAudit();
                   this.beginMonitoredRun("转换为 DTA\n" + this.previewArea.getText().trim(), false, 0);
+                  final boolean loadAfter = this.convertLoadAfter.isSelected();
                   SwingWorker var5 = new SwingWorker<HxWorkbench.ConversionOutcome, Void>() {
                      protected HxWorkbench.ConversionOutcome doInBackground() {
-                        return WorkbenchFrame.this.convertOne(var1, resolvedOutput, var3, Files.exists(resolvedOutput), false);
+                        return WorkbenchFrame.this.convertOne(var1, resolvedOutput, outputTarget, preparedCommand);
                      }
 
                      @Override
@@ -15497,8 +15505,8 @@ public final class HxWorkbench {
                         }
 
                         RunResult var3x = var1x.success
-                           ? RunResult.capture(WorkbenchFrame.this.previewArea.getText().trim(), 0, var2x)
-                           : RunResult.failure(WorkbenchFrame.this.previewArea.getText().trim(), var1x.rc, var1x.message);
+                           ? RunResult.capture(var1x.replayCommand, 0, var2x)
+                           : RunResult.failure(var1x.replayCommand, var1x.rc, var1x.message);
                         HxWorkbench.StataBridge.execute("quietly hxrefresh", false);
                         WorkbenchFrame.this.refreshDataset(false);
                         WorkbenchFrame.this.finishMonitoredRun(var3x, HxWorkbench.RunShape.capture());
@@ -15519,7 +15527,7 @@ public final class HxWorkbench {
                         if (!var1x.success) {
                            JOptionPane.showMessageDialog(WorkbenchFrame.this, var1x.message, "转换失败", 0);
                         } else {
-                           WorkbenchFrame.this.showConversionSummary(var1x);
+                           WorkbenchFrame.this.showConversionSummary(var1x,loadAfter);
                         }
                      }
                   };
@@ -15532,61 +15540,70 @@ public final class HxWorkbench {
       }
 
       private HxWorkbench.ConversionOutcome convertOne(Path var1, Path var2, HxWorkbench.ExternalFileProfile var3, boolean var4, boolean var5) {
-         return this.convertOne(var1, var2, var3, var4, var5, null);
+         try { return this.convertOne(var1, var2, var3, new DataWorkflow.OutputTarget(var2,var4), var5, null); }
+         catch (IOException e) { return HxWorkbench.ConversionOutcome.failure(var1,var2,459,e.getMessage()); }
       }
 
       private HxWorkbench.ConversionOutcome convertOne(
-         Path var1, Path var2, HxWorkbench.ExternalFileProfile var3, boolean var4, boolean var5, HxWorkbench.BatchConversionConfig var6
+         Path input, Path output, HxWorkbench.ExternalFileProfile profile, DataWorkflow.OutputTarget target,
+         boolean batch, HxWorkbench.BatchConversionConfig config
       ) {
-         String var7 = this.nextImportFrameName();
-         int var8 = this.runRecorded("frame create " + var7);
-         if (var8 != 0) {
-            return HxWorkbench.ConversionOutcome.failure(var1, var2, var8, "无法创建临时 frame，返回码 " + var8);
-         } else {
-            long var9 = 0L;
-            int var11 = 0;
+         return this.convertOne(input,output,target,this.buildImportCommand(input,profile,batch,config));
+      }
 
-            HxWorkbench.ConversionOutcome var15;
-            try {
-               String var12 = "frame " + var7 + ": " + this.buildImportCommand(var1, var3, var5, var6);
-               var8 = this.runRecorded(var12);
-               if (var8 != 0) {
-                  return HxWorkbench.ConversionOutcome.failure(var1, var2, var8, "导入失败，返回码 " + var8);
-               }
-
-               Frame var27 = Frame.connect(var7);
-               var9 = var27.getObsTotal();
-               var11 = var27.getVarCount();
-               String var14 = "frame " + var7 + ": save " + commandQuote(var2.toString()) + (var4 ? ", replace" : "");
-               var8 = this.runRecorded(var14);
-               if (var8 == 0) {
-                  long var29 = HxWorkbench.safe(() -> Files.size(var2), 0L);
-                  return HxWorkbench.ConversionOutcome.success(var1, var2, var9, var11, var29);
-               }
-
-               var15 = HxWorkbench.ConversionOutcome.failure(var1, var2, var8, "保存 DTA 失败，返回码 " + var8);
-            } catch (Throwable var21) {
-               return HxWorkbench.ConversionOutcome.failure(var1, var2, 459, var21.getMessage());
-            } finally {
-               HxWorkbench.StataBridge.execute("capture frame drop " + var7, false);
-            }
-
-            return var15;
+      private HxWorkbench.ConversionOutcome convertOne(Path input, Path output, DataWorkflow.OutputTarget target, String importCommand) {
+         String frame = this.nextImportFrameName();
+         final String replay;
+         try { replay = DataWorkflow.conversionScript(importCommand,output); }
+         catch (IOException e) { return HxWorkbench.ConversionOutcome.failure(input,output,459,e.getMessage()); }
+         Path staged = null;
+         boolean created = false;
+         HxWorkbench.ConversionOutcome outcome;
+         try {
+            target.validateSource(input);
+            staged = Files.createTempFile(target.path.getParent(), ".hx-convert-", ".dta");
+            int rc = this.runRecorded("frame create " + frame);
+            if (rc != 0) throw new IOException("无法创建临时 frame，返回码 " + rc);
+            created = true;
+            rc = this.runRecorded("frame " + frame + ": " + importCommand);
+            if (rc == 0) {
+               Frame data = Frame.connect(frame);
+               long n = data.getObsTotal(); int k = data.getVarCount();
+               rc = this.runRecorded("frame " + frame + ": save " + commandQuote(staged.toString()) + ", replace");
+               if (rc == 0) {
+                  long bytes = Files.size(staged);
+                  target.publish(staged);
+                  outcome = HxWorkbench.ConversionOutcome.success(input,output,n,k,bytes);
+               } else outcome = HxWorkbench.ConversionOutcome.failure(input,output,rc,"保存 DTA 失败，原目标文件保持不变。");
+            } else outcome = HxWorkbench.ConversionOutcome.failure(input,output,rc,"导入失败，原目标文件保持不变。");
+         } catch (Exception e) {
+            outcome = HxWorkbench.ConversionOutcome.failure(input,output,459,rootMessage(e));
+         } finally {
+            if (created) HxWorkbench.StataBridge.execute("capture frame drop " + frame, false);
+            if (staged != null) try { Files.deleteIfExists(staged); } catch (IOException ignored) {}
          }
+         outcome.replayCommand = outcome.success ? replay : DataWorkflow.failedConversionScript(replay);
+         return outcome;
       }
 
       private int runRecorded(String var1) {
          return HxWorkbench.StataBridge.execute("hxexecute, command(" + HxWorkbench.StataBridge.quote(var1) + ")", true);
       }
 
-      private Path resolveExistingOutput(Path var1) {
-         if (!Files.exists(var1)) {
-            return var1;
+      private DataWorkflow.OutputTarget resolveExistingOutput(Path var1) {
+         final DataWorkflow.OutputTarget target;
+         try { target = new DataWorkflow.OutputTarget(var1,true); }
+         catch (IOException e) {
+            JOptionPane.showMessageDialog(this,e.getMessage(),"目标文件无效",JOptionPane.ERROR_MESSAGE);
+            return null;
+         }
+         if (!target.replacesExisting()) {
+            return target;
          } else {
             Object[] var2 = new Object[]{"另存为新文件", "覆盖已有 DTA", "取消"};
             int var3 = JOptionPane.showOptionDialog(this, var1 + " 已存在。请选择处理方式。", "目标文件已存在", -1, 2, null, var2, var2[0]);
             if (var3 == 1) {
-               return var1;
+               return target;
             } else if (var3 != 0) {
                return null;
             } else {
@@ -15600,36 +15617,50 @@ public final class HxWorkbench {
                      var5 = Paths.get(var5 + ".dta");
                   }
 
-                  return Files.exists(var5) ? this.resolveExistingOutput(var5) : var5;
+                  return this.resolveExistingOutput(var5);
                }
             }
          }
       }
 
-      private void showConversionSummary(HxWorkbench.ConversionOutcome var1) {
-         if (this.convertLoadAfter.isSelected()) {
-            this.runRecorded("use " + commandQuote(var1.output.toString()) + ", clear");
-            HxWorkbench.StataBridge.execute("quietly hxrefresh", false);
-            this.refreshDataset(false);
+      private boolean confirmDataReplacement(String action) {
+         try {
+            if (Data.getObsTotal() == 0 && Data.getVarCount() == 0) return true;
+         } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,"无法确认当前数据状态：\n"+rootMessage(e),"载入已停止",JOptionPane.ERROR_MESSAGE);
+            return false;
          }
+         return JOptionPane.showConfirmDialog(this,
+            "该操作将替换当前内存数据。请先保存需要保留的修改。\n\n"+action,
+            "确认替换当前数据",JOptionPane.OK_CANCEL_OPTION,JOptionPane.WARNING_MESSAGE)==JOptionPane.OK_OPTION;
+      }
 
-         String var2 = "转换完成\n\n原文件：" + var1.input + "\n输出：" + var1.output + "\n观测数：" + var1.n + "\n变量数：" + var1.k + "\n文件大小：" + humanBytes(var1.bytes);
-         Object[] var3 = new Object[]{"载入这个 DTA", "打开数据表", "查看变量", "关闭"};
-         int var4 = JOptionPane.showOptionDialog(this, var2, "转换完成", -1, 1, null, var3, var3[3]);
-         if (var4 >= 0 && var4 <= 2) {
-            this.runRecorded("use " + commandQuote(var1.output.toString()) + ", clear");
-            HxWorkbench.StataBridge.execute("quietly hxrefresh", false);
-            this.refreshDataset(false);
-            if (var4 == 1) {
-               HxWorkbench.StataBridge.execute("browse", true);
+      private void loadConvertedData(Path output, int view) {
+         if (this.runInProgress || !this.confirmDataReplacement("载入："+output)) return;
+         String command = "hxproject load using " + commandQuote(output.toString());
+         this.executeMonitoredCommand(command,"hxexecute, command("+HxWorkbench.StataBridge.quote(command)+")",true,result -> {
+            if (result.rc != 0) {
+               JOptionPane.showMessageDialog(this,"DTA 转换文件已保存，但载入失败（r("+result.rc+")）。\n当前内存数据已保留。\n"+output,
+                  "文件已转换，载入未完成",JOptionPane.ERROR_MESSAGE);
+               return;
             }
-
-            if (var4 == 2) {
-               HxWorkbench.StataBridge.execute("describe", true);
-            }
-
             this.selectDataView();
+            if (view==1) HxWorkbench.StataBridge.execute("browse",true);
+            if (view==2) HxWorkbench.StataBridge.execute("describe",true);
+         });
+      }
+
+      private void showConversionSummary(HxWorkbench.ConversionOutcome result, boolean loadAfter) {
+         if (loadAfter) {
+            this.loadConvertedData(result.output,0);
+            return;
          }
+         String summary = "转换完成\n\n原文件："+result.input+"\n输出："+result.output
+            +"\n观测数："+result.n+"\n变量数："+result.k+"\n文件大小："+humanBytes(result.bytes);
+         Object[] actions = {"载入这个 DTA","打开数据表","查看变量","关闭"};
+         int selected = JOptionPane.showOptionDialog(this,summary,"转换完成",JOptionPane.DEFAULT_OPTION,
+            JOptionPane.INFORMATION_MESSAGE,null,actions,actions[3]);
+         if (selected>=0 && selected<=2) this.loadConvertedData(result.output,selected);
       }
 
       private void setBatchControlsEnabled(boolean var1) {
@@ -15647,7 +15678,36 @@ public final class HxWorkbench {
          this.batchSkipExisting.setEnabled(var1);
       }
 
+      private Map<Path,DataWorkflow.OutputTarget> prepareBatchOutputs(List<Path> inputs, Path directory, boolean skipExisting) {
+         try {
+            Map<Path,Path> paths = DataWorkflow.batchOutputs(inputs,directory);
+            Map<Path,DataWorkflow.OutputTarget> targets = new LinkedHashMap<>();
+            List<String> conflicts = new ArrayList<>();
+            for (Map.Entry<Path,Path> item : paths.entrySet()) {
+               DataWorkflow.OutputTarget target = new DataWorkflow.OutputTarget(item.getValue(),true);
+               if (target.replacesExisting() && skipExisting) targets.put(item.getKey(),null);
+               else {
+                  targets.put(item.getKey(),target);
+                  if (target.replacesExisting()) conflicts.add(item.getKey()+"\n  → "+target.path);
+               }
+            }
+            if (!conflicts.isEmpty()) {
+               JTextArea text = new JTextArea("以下 "+conflicts.size()+" 个 DTA 将在转换成功后替换：\n\n"+String.join("\n\n",conflicts));
+               text.setEditable(false); text.setCaretPosition(0);
+               JScrollPane scroll = new JScrollPane(text); scroll.setPreferredSize(new Dimension(720,340));
+               Object[] actions = {"确认覆盖并开始","取消"};
+               if (JOptionPane.showOptionDialog(this,scroll,"确认批量覆盖",JOptionPane.DEFAULT_OPTION,
+                     JOptionPane.WARNING_MESSAGE,null,actions,actions[1])!=0) return null;
+            }
+            return targets;
+         } catch (IOException e) {
+            JOptionPane.showMessageDialog(this,e.getMessage(),"批量转换尚未开始",JOptionPane.ERROR_MESSAGE);
+            return null;
+         }
+      }
+
       private void runBatchConversion() {
+         if (this.runInProgress) return;
          Path var1;
          final Path var2;
          try {
@@ -15689,6 +15749,8 @@ public final class HxWorkbench {
                   this.batchProtectLeadingZeros.isSelected(),
                   this.batchSkipExisting.isSelected()
                );
+               final Map<Path,DataWorkflow.OutputTarget> outputs = this.prepareBatchOutputs(var3,var2,var5.skipExisting);
+               if (outputs == null) return;
                this.batchStopRequested = false;
                this.setBatchControlsEnabled(false);
                this.batchStopButton.setEnabled(true);
@@ -15707,7 +15769,7 @@ public final class HxWorkbench {
                         }
 
                         Path var5x = var2.resolve(HxWorkbench.WorkbenchFrame.stripExtension(var4.getFileName().toString()) + ".dta");
-                        if (Files.exists(var5x) && var5.skipExisting) {
+                        if (outputs.get(var4) == null) {
                            var1x.skipped++;
                            var1x.rows.add(new Object[]{var4.getFileName().toString(), var5x.getFileName().toString(), "跳过", "目标已存在"});
                            this.publish(
@@ -15724,11 +15786,12 @@ public final class HxWorkbench {
                                  HxWorkbench.WorkbenchFrame.externalType(var4).equals("excel") ? var5.excelFirstRow : var5.delimitedFirstRow,
                                  HxWorkbench.WorkbenchFrame.externalType(var4).equals("delimited") ? var5.encoding : "自动识别"
                               );
-                              var6x = WorkbenchFrame.this.convertOne(var4, var5x, var7, Files.exists(var5x), true, var5);
+                              var6x = WorkbenchFrame.this.convertOne(var4, var5x, var7, outputs.get(var4), true, var5);
                            } catch (Throwable var8) {
                               var6x = HxWorkbench.ConversionOutcome.failure(var4, var5x, 459, HxWorkbench.WorkbenchFrame.rootMessage(var8));
                            }
 
+                           var1x.replay.append("capture noisily {\n").append(var6x.replayCommand).append("\n}\n");
                            if (var6x.success) {
                               var1x.success++;
                               var1x.rows
@@ -15787,9 +15850,10 @@ public final class HxWorkbench {
                      }
 
                      int var3x = var1x.failed == 0 ? 0 : (var1x.firstRc == 0 ? 459 : var1x.firstRc);
+                     String replay = var1x.replay.length()==0 ? "* Batch conversion: no file operations recorded." : var1x.replay.toString();
                      RunResult var4 = var3x == 0
-                        ? RunResult.capture("批量转换为 DTA（" + var3.size() + " 个文件）", 0, var2x)
-                        : RunResult.failure("批量转换为 DTA（" + var3.size() + " 个文件）", var3x, var1x.failed + " 个文件转换失败。");
+                        ? RunResult.capture(replay, 0, var2x)
+                        : RunResult.failure(replay, var3x, var1x.failed + " 个文件转换失败。");
                      WorkbenchFrame.this.finishMonitoredRun(var4, HxWorkbench.RunShape.capture());
                      WorkbenchFrame.this.monitorOutcome
                         .setText(
@@ -16204,12 +16268,7 @@ public final class HxWorkbench {
          if (this.runInProgress) {
             JOptionPane.showMessageDialog(this, "当前仍有命令在运行，请等待本次执行结束。", "正在运行", 1);
          } else {
-            if (var2 && Data.getObsTotal() > 0L) {
-               int var3 = JOptionPane.showConfirmDialog(this, "该操作可能清除当前内存数据。请确认正式数据已经保存。\n\n继续执行：" + var1 + "？", "确认载入测试数据", 2, 2);
-               if (var3 != 0) {
-                  return;
-               }
-            }
+            if (var2 && !this.confirmDataReplacement(var1)) return;
 
             String var6 = var1.trim().toLowerCase(Locale.ROOT);
             boolean var4 = var6.startsWith("hxthreads ") || var6.startsWith("hxtestdata ");

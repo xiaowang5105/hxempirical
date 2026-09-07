@@ -1,10 +1,11 @@
 {
   "format": 2,
-  "jar_sha256": "84ba7f207919f7d5d6e313e6c8c14e26bcdd915347136751a44d659a4f3f2ffd",
+  "jar_sha256": "c6e2d9cedb86d8d0ee5cf5797b48f089a74406e398f1d56f7648ea901ec7cdc6",
   "sources": {
-    "HxWorkbench.java": "c7458ad8b95db1eb15d58cb72ba7334deb024f0c8b72747c6b43cc79185819b6",
+    "DataWorkflow.java": "c6035f004870c2b6efc8406cd1263775b60a4f2fd274454ca3792c7d277926c2",
+    "HxWorkbench.java": "ee6c3f48407c0a59dc014ad2e152c604dbc3349d1cf71279aa6e4df8faab4297",
     "ProjectController.java": "aeec98fbe45484a66c9853812d8bf9dce7ace037fe3ebdbf329bbc1f63f9d345",
-    "ResearchProject.java": "2811cbae157d1df1b5f7517ae58fe6fc281218c8cdb84c8b0bba7b9d71b17ca6",
+    "ResearchProject.java": "140c544be958ac8e2672a79f435c1218f6687d8b693c7b1f33d474bccb60b0fa",
     "RunResult.java": "828fa7b0a97561ed44bdc6c8352ac6d6a97a413fe50c6171e898e8ccc956e11f",
     "WorkSnapshot.java": "481caf4ad32b82f6c9d5a52287753337ae102bef098934dc3b0dade4bacd4ea2"
   }

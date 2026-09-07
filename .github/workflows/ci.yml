@@ -133,5 +133,6 @@ jobs:
 
       - name: Verify research project behavior
         run: |
-          javac --release 11 -cp /tmp/hxclasses -d /tmp/hxclasses tests/java/com/hexie/stata/ResearchProjectTest.java
+          javac --release 11 -cp /tmp/hxclasses -d /tmp/hxclasses tests/java/com/hexie/stata/ResearchProjectTest.java tests/java/com/hexie/stata/DataWorkflowTest.java
           java -Djava.awt.headless=true -cp /tmp/hxclasses com.hexie.stata.ResearchProjectTest
+          java -Djava.awt.headless=true -cp /tmp/hxclasses com.hexie.stata.DataWorkflowTest

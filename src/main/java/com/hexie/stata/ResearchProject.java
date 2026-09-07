@@ -199,8 +199,12 @@ final class ResearchProject {
         s.append("\n* Recorded steps start from the saved project baseline.\n");
         for (Run r : runs) {
             s.append("\n* ").append(r.time).append("; observed return code ").append(r.rc).append('\n');
-            if (r.rc != 0) s.append("capture noisily ");
-            s.append(r.command).append('\n');
+            if (r.rc != 0 && r.command.contains("\n")) {
+                s.append("capture noisily {\n").append(r.command).append("\n}\n");
+            } else {
+                if (r.rc != 0) s.append("capture noisily ");
+                s.append(r.command).append('\n');
+            }
         }
         return s.toString();
     }
