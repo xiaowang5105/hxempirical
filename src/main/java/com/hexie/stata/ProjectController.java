@@ -24,6 +24,7 @@ final class ProjectController {
     private final JButton button = new JButton("研究项目");
     private ResearchProject project;
     private String pendingSettings = "";
+    private int stepsSinceCheckpoint;
 
     ProjectController(JFrame owner, Gateway stata, Supplier<String> captureSettings,
                       Consumer<String> restoreSettings, Runnable refresh, BooleanSupplier busy) {
@@ -33,9 +34,13 @@ final class ProjectController {
         action(menu,"新建项目…",this::create);
         action(menu,"打开项目…",this::open);
         action(menu,"保存项目和当前数据",this::save);
+        action(menu,"设置自动恢复点频率…",this::checkpointFrequency);
         action(menu,"查看步骤 / 恢复模型设置",this::showRuns);
         action(menu,"导出完整 do-file…",()->export(false));
         action(menu,"比较已保存模型",this::compare);
+        action(menu,"命名模型…",this::renameModel);
+        action(menu,"导出所选模型表格（TSV）…",this::exportTable);
+        action(menu,"导出项目 ZIP（含数据与文件依赖）…",this::exportBundle);
         action(menu,"导出共同样本重估 do-file…",()->export(true));
         button.addActionListener(e->menu.show(button,0,button.getHeight()));
     }
@@ -85,12 +90,13 @@ final class ProjectController {
         try {
         check(stata.execute("hxproject snapshot using "+ResearchProject.stataQuote(next.asset(next.baseline).toString())));
         next.workingDirectory=stata.characteristic("hxproject_pwd");
+        next.environment=stata.characteristic("hxproject_environment");
         next.rng=stata.characteristic("hxproject_rng"); next.rngState=stata.characteristic("hxproject_rngstate");
         next.currentRng=next.rng; next.currentRngState=next.rngState;
         next.sortRngState=stata.characteristic("hxproject_sortrngstate"); next.currentSortRngState=next.sortRngState;
         next.save();
         } catch (Exception e) { cleanup(next, next.baseline, e); throw e; }
-        project=next; updateTitle();
+        project=next; stepsSinceCheckpoint=0; updateTitle();
         message("项目已创建。每个完成的步骤会保存恢复点；手动保存时更新项目并保留上一版本。\n项目快照支持单 frame。请将 .hxproj、.recovery、.bak 与 hx-assets 目录一同保留。");
     }
 
@@ -118,7 +124,7 @@ final class ProjectController {
         if(JOptionPane.showConfirmDialog(owner,"载入项目保存的数据并恢复随机数状态？\n当前内存数据将被替换，请先保存需要保留的修改。","恢复项目",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION) return;
         // Read the project first; loading never automatically runs recorded commands.
         check(stata.execute(restoreCommand(next)));
-        project=next; refresh.run(); updateTitle();
+        project=next; stepsSinceCheckpoint=0; refresh.run(); updateTitle();
         if(!project.runs.isEmpty()) restoreSettings.accept(project.runs.get(project.runs.size()-1).settings);
     }
 
@@ -151,6 +157,7 @@ final class ProjectController {
         project.current=snapshot; project.currentRng=stata.characteristic("hxproject_rng"); project.currentRngState=stata.characteristic("hxproject_rngstate");
         project.currentSortRngState=stata.characteristic("hxproject_sortrngstate");
         if(recovery) project.checkpoint(); else project.save();
+        stepsSinceCheckpoint=0;
         } catch(Exception e) {
             project.current=previous; project.currentRng=previousRng; project.currentRngState=previousState; project.currentSortRngState=previousSort;
             cleanup(project,snapshot,e); throw e;
@@ -179,8 +186,11 @@ final class ProjectController {
                 run.output+="\n[模型快照未保存："+e.getMessage()+"]"; error(e);
             }
         }
-        try { saveSnapshot(true); }
-        catch(Exception e) { run.output+="\n[自动恢复点未保存："+e.getMessage()+"]"; error(e); }
+        stepsSinceCheckpoint++;
+        if(project.checkpointInterval>0 && stepsSinceCheckpoint>=project.checkpointInterval) {
+            try { saveSnapshot(true); }
+            catch(Exception e) { run.output+="\n[自动恢复点未保存："+e.getMessage()+"]"; error(e); }
+        } else button.setToolTipText("距上次数据恢复点有 "+stepsSinceCheckpoint+" 个步骤；异常退出时这些步骤可能丢失。手动保存会立即更新。");
         updateTitle();
     }
 
@@ -199,8 +209,10 @@ final class ProjectController {
 
     private void export(boolean common) throws Exception {
         requireProject();
+        List<ResearchProject.Run> selected=common?selectModels():Collections.emptyList();
+        if(common && selected.isEmpty()) return;
         if(common) save();
-        String text=common?project.commonSampleDo(project.models()):project.exportDo();
+        String text=common?project.commonSampleDo(selected):project.exportDo();
         Path path=choose(common?"导出共同样本重估（检查后在 Stata 运行）":"导出项目完整 do-file","do",true);
         if(path==null) return;
         ResearchProject.atomicWrite(path,text);
@@ -208,10 +220,10 @@ final class ProjectController {
     }
 
     private void compare() throws Exception {
-        requireProject(); List<ResearchProject.Run> models=project.models();
+        requireProject(); List<ResearchProject.Run> models=selectModels();
         if(models.isEmpty()) { message("在项目中运行回归后，这里会保存系数、标准误和样本信息。"); return; }
         String[] columns=new String[models.size()+1]; columns[0]="指标 / 系数（标准误）";
-        for(int i=0;i<models.size();i++) columns[i+1]="M"+(i+1);
+        for(int i=0;i<models.size();i++) columns[i+1]=models.get(i).name.isBlank()?"M"+(i+1):models.get(i).name;
         DefaultTableModel table=readOnlyTable(columns);
         Object[] commands=new Object[columns.length], n=new Object[columns.length], r2=new Object[columns.length], vce=new Object[columns.length];
         commands[0]="完整命令（含样本条件、固定效应）"; n[0]="N"; r2[0]="R²"; vce[0]="标准误";
@@ -227,12 +239,72 @@ final class ProjectController {
         }; view.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         for(int i=0;i<columns.length;i++) view.getColumnModel().getColumn(i).setPreferredWidth(i==0?240:240);
         JPanel panel=new JPanel(new BorderLayout(0,10));
-        panel.add(new JLabel(project.sameSamples(models)?"所有模型的数据版本与实际估计样本一致。":"模型的数据版本或实际样本不同；可导出共同样本重估脚本进一步比较。"),BorderLayout.NORTH);
+        panel.add(new JLabel(project.sameSamples(models)?"所选模型的数据版本与实际估计样本一致。":"数据版本或实际样本不同；共同样本重估要求数据版本一致且命令受支持。"),BorderLayout.NORTH);
         panel.add(new JScrollPane(view),BorderLayout.CENTER); panel.setPreferredSize(new Dimension(950,550));
         JOptionPane.showMessageDialog(owner,panel,"模型比较",JOptionPane.PLAIN_MESSAGE);
     }
 
     private static DefaultTableModel readOnlyTable(String[] columns) {
         return new DefaultTableModel(columns,0) { public boolean isCellEditable(int row,int col) { return false; } };
+    }
+
+    private List<ResearchProject.Run> selectModels() throws IOException {
+        requireProject(); List<ResearchProject.Run> models=project.models();
+        if(models.isEmpty()) return Collections.emptyList();
+        DefaultListModel<String> choices=new DefaultListModel<>();
+        for(int i=0;i<models.size();i++) {
+            ResearchProject.Run r=models.get(i);
+            choices.addElement((r.name.isBlank()?"M"+(i+1):r.name)+" | N="+r.n+" | "+r.command);
+        }
+        JList<String> list=new JList<>(choices); list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        list.setSelectionInterval(0,models.size()-1);
+        JScrollPane scroll=new JScrollPane(list); scroll.setPreferredSize(new Dimension(800,320));
+        if(JOptionPane.showConfirmDialog(owner,scroll,"选择模型（Ctrl / Shift 多选）",JOptionPane.OK_CANCEL_OPTION)!=JOptionPane.OK_OPTION)
+            return Collections.emptyList();
+        List<ResearchProject.Run> selected=new ArrayList<>();
+        for(int i:list.getSelectedIndices()) selected.add(models.get(i));
+        return selected;
+    }
+
+    private void renameModel() throws Exception {
+        List<ResearchProject.Run> selected=selectModels();
+        if(selected.isEmpty()) return;
+        if(selected.size()!=1) { message("请只选择一个需要命名的模型。"); return; }
+        ResearchProject.Run run=selected.get(0);
+        String name=JOptionPane.showInputDialog(owner,"模型名称（如：基准回归 / 加入固定效应）",run.name);
+        if(name==null) return;
+        name=name.trim();
+        if(name.isEmpty() || name.length()>120) throw new IOException("名称需为 1–120 个字符。");
+        run.name=name; project.dirty=true; save(); updateTitle();
+    }
+
+    private void exportTable() throws Exception {
+        List<ResearchProject.Run> selected=selectModels(); if(selected.isEmpty()) return;
+        String table=project.modelTable(selected);
+        Path path=choose("导出模型表格（Excel 可打开）","tsv",true); if(path==null) return;
+        ResearchProject.atomicWrite(path,"\ufeff"+table);
+        message("已导出所选模型的系数、标准误、N、R²、命令及样本说明：\n"+path);
+    }
+
+    private void exportBundle() throws Exception {
+        requireProject(); Path path=choose("导出项目及本地数据依赖","zip",true); if(path==null) return;
+        save(); ProjectBundle.write(project,path);
+        message("项目 ZIP 已导出：\n"+path+"\n解压后在 Stata 切换到解压目录，再运行 replay.do。\nREADME.txt 列出文件依赖与未解析路径；第三方命令仍需安装。\n压缩包包含研究数据，分享前请核对内容。");
+    }
+
+    private void checkpointFrequency() throws Exception {
+        requireProject();
+        String[] labels={"每步保存（默认）","每 5 步保存","每 10 步保存","仅手动保存"};
+        int[] intervals={1,5,10,0}; int current=0;
+        for(int i=0;i<intervals.length;i++) if(intervals[i]==project.checkpointInterval) current=i;
+        Object selected=JOptionPane.showInputDialog(owner,
+            "完整数据快照的写入时间随数据量增加。\n降低频率可减少磁盘写入；异常退出会丢失上次恢复点之后的步骤。\n手动保存始终立即保存当前数据与全部步骤。",
+            "自动恢复点频率",JOptionPane.QUESTION_MESSAGE,null,labels,labels[current]);
+        if(selected==null) return;
+        int previous=project.checkpointInterval;
+        for(int i=0;i<labels.length;i++) if(labels[i].equals(selected)) project.checkpointInterval=intervals[i];
+        try { save(); }
+        catch(Exception e) { project.checkpointInterval=previous; throw e; }
+        message("已保存当前数据；恢复点频率："+selected);
     }
 }

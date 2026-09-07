@@ -29,6 +29,7 @@ final class RunResult {
             "heckman",
             "sem",
             "gsem"
+            , "arima", "arch", "streg", "stcox", "xtpoisson", "xtnbreg", "intreg", "mlogit", "ologit", "oprobit"
          )
       );
       final String command;
@@ -66,15 +67,34 @@ final class RunResult {
          return new RunResult(var0, var1, "写入状态未知", var2, Double.NaN, Double.NaN, Double.NaN);
       }
 
-      private static boolean isEstimationCommand(String var0) {
+      static boolean isEstimationCommand(String var0) {
          String var1 = var0 == null ? "" : var0.trim().toLowerCase(Locale.ROOT);
 
-         while (var1.startsWith("quietly ") || var1.startsWith("capture ") || var1.startsWith("noisily ")) {
-            var1 = var1.substring(var1.indexOf(32) + 1).trim();
+         if (var1.contains("\n") || var1.contains(";")) return false;
+         for (int depth=0;depth<8;depth++) {
+            String token=var1.split("[\\s,:]",2)[0];
+            if (Arrays.asList("quietly","qui","capture","cap","noisily","noi").contains(token)) {
+               var1=var1.substring(token.length()).trim();
+               if(var1.startsWith(":")) var1=var1.substring(1).trim();
+               continue;
+            }
+            if (Arrays.asList("bootstrap","bs","jackknife","jknife","svy","mi").contains(token)) {
+               if(token.equals("mi") && !var1.matches("mi\\s+estimate(?:[\\s,:].*)?")) return false;
+               boolean quoted=false; int parens=0, colon=-1;
+               for(int i=0;i<var1.length();i++) {
+                  char c=var1.charAt(i);
+                  if(c=='"') quoted=!quoted;
+                  if(!quoted) {
+                     if(c=='(') parens++; if(c==')') parens--;
+                     if(c==':' && parens==0) { colon=i; break; }
+                  }
+               }
+               if(colon<0) return false;
+               var1=var1.substring(colon+1).trim(); continue;
+            }
+            return ESTIMATION_COMMANDS.contains(token);
          }
-
-         String var2 = var1.split("[\\s,:]", 2)[0];
-         return ESTIMATION_COMMANDS.contains(var2);
+         return false;
       }
 
       private static double scalar(String var0) {

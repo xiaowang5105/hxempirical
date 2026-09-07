@@ -2,12 +2,23 @@
 
 ## 当前版本
 
-**当前发布版本：1.6.1**
+**当前发布版本：1.6.2**
 
 **支持：Stata 17 及以上版本**  
 **平台：Windows / macOS**
 
 本页版本号对应当前分支的源码和发布包。在线安装获取 GitHub Pages 已部署的正式版本；开发分支的新功能随代码合并和部署一并上线。
+
+## 1.6.2 更新要点
+
+- **完整 CSV 检查**：流式解码避免中文字符边界误判；按逻辑记录检查整个文件，支持引号内换行，保护后部出现的前导零和长整数。列数或引号异常会停止导入。文件检查在后台执行，更改输入会取消旧检查。
+- **模型选择与表格**：比较与共同样本导出前可多选模型；支持命名，导出所选模型的 TSV 系数表（含标准误、N、R²、命令与样本说明）。扩展 bootstrap、jackknife、svy、mi estimate 前缀和常见估计量识别；共同样本重估仍限普通线性模型。
+- **合并预检**：经 hxexecute 运行的普通 merge 先在临时 frame 检查键类型、缺失和所需唯一性。预检失败保留原数据；成功后由 Stata 输出匹配报告。
+- **项目 ZIP**：打包项目、模型和可识别的本地数据依赖，提供相对路径 replay.do、文件校验清单和创建项目时的 Stata 环境信息。解压后切换到解压目录运行；宏、未加引号路径、工作目录切换与第三方命令版本仍需核对。
+
+完整测试范围见 [1.6.2 验证记录](docs/VALIDATION-1.6.2.md)。
+
+大数据项目可设置自动恢复点频率（默认每步，也支持每 5／10 步或仅手动）。降低频率会增加异常退出时未保存的步骤数；手动保存始终立即保存完整数据。
 
 ## 1.6.1 更新要点
 
@@ -221,4 +232,4 @@ hxempirical, classic
 - Stata 自带 Java / SFI；
 - 不依赖 Windows COM 或平台专属原生插件。
 
-1.6.1 已在 Windows / StataNow 19.5 MP 上通过全部 13 项真实 Stata 测试、Java 项目与文件保护测试，以及 6 项仓库／发布检查。具体范围见[验证记录](docs/VALIDATION-1.6.1.md)，1.6.0 的测试记录[另行保留](docs/VALIDATION-1.6.0.md)。当前分支的远端检查及网页部署状态见 [GitHub Actions](https://github.com/xiaowang5105/hxempirical/actions)。Stata 17/18 与 macOS 尚未在本次环境中实测。
+1.6.2 的验证环境为 Windows / StataNow 19.5 MP。真实 Stata、Java 与发布检查的具体结果见[验证记录](docs/VALIDATION-1.6.2.md)，1.6.0 的测试记录[另行保留](docs/VALIDATION-1.6.0.md)。当前分支的远端检查及网页部署状态见 [GitHub Actions](https://github.com/xiaowang5105/hxempirical/actions)。Stata 17/18 与 macOS 尚未在本次环境中实测。

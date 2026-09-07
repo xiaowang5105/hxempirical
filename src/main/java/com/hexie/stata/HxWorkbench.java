@@ -128,7 +128,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
 public final class HxWorkbench {
-   public static final String VERSION = "1.6.1";
+   public static final String VERSION = "1.6.2";
    private static HxWorkbench.WorkbenchFrame frame;
    private static volatile boolean closeRequested;
 
@@ -679,6 +679,7 @@ public final class HxWorkbench {
       final boolean delimitedFirstRow;
       final String delimiter;
       final String encoding;
+      char detectedDelimiter = ',';
       final boolean protectLeadingZeros;
       final boolean skipExisting;
 
@@ -993,6 +994,7 @@ public final class HxWorkbench {
       final Path input;
       final String type;
       final String encoding;
+      char detectedDelimiter = ',';
       final List<String> sheetNames = new ArrayList<>();
       final List<Integer> leadingZeroColumns = new ArrayList<>();
       final LinkedHashSet<String> warnings = new LinkedHashSet<>();
@@ -1034,131 +1036,17 @@ public final class HxWorkbench {
          }
       }
 
-      private static String resolveEncoding(Path var0, String var1) throws IOException {
-         String var2 = var1 == null ? "自动识别" : var1.trim();
-         if (!var2.isBlank() && !"自动识别".equals(var2)) {
-            Charset.forName(var2);
-            return var2;
-         } else {
-            byte[] var3;
-            try (InputStream var4 = Files.newInputStream(var0)) {
-               ByteArrayOutputStream var5 = new ByteArrayOutputStream();
-               byte[] var6 = new byte[8192];
-               int var8 = 65536;
-
-               int var7;
-               while (var8 > 0 && (var7 = var4.read(var6, 0, Math.min(var6.length, var8))) > 0) {
-                  var5.write(var6, 0, var7);
-                  var8 -= var7;
-               }
-
-               var3 = var5.toByteArray();
-            }
-
-            if (var3.length >= 3 && (var3[0] & 255) == 239 && (var3[1] & 255) == 187 && (var3[2] & 255) == 191) {
-               return "UTF-8";
-            } else if (decodesStrictly(var3, StandardCharsets.UTF_8)) {
-               return "UTF-8";
-            } else {
-               Charset var11 = Charset.forName("GB18030");
-               return decodesStrictly(var3, var11) ? "GB18030" : "Windows-1252";
-            }
-         }
+      private static String resolveEncoding(Path input, String choice) throws IOException {
+         return DelimitedData.encoding(input, choice);
       }
 
-      private static boolean decodesStrictly(byte[] var0, Charset var1) {
-         try {
-            var1.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(var0));
-            return true;
-         } catch (CharacterCodingException var3) {
-            return false;
-         }
-      }
-
-      private static void inspectDelimited(HxWorkbench.ExternalFileProfile var0, String var1, boolean var2, Charset var3) throws IOException {
-         ArrayList<List<String>> var4 = new ArrayList<>();
-
-         try (BufferedReader var5 = Files.newBufferedReader(var0.input, var3)) {
-            String var6 = var5.readLine();
-            if (var6 == null) {
-               return;
-            }
-
-            char var7 = delimiterCharacter(var1, var6);
-            var4.add(parseDelimited(var6, var7));
-
-            String var8;
-            while (var4.size() < 300 && (var8 = var5.readLine()) != null) {
-               var4.add(parseDelimited(var8, var7));
-            }
-         }
-
-         if (!var4.isEmpty()) {
-            int var18 = var4.stream().mapToInt(List::size).max().orElse(0);
-            ArrayList<String> var19 = new ArrayList<>();
-            if (var2) {
-               var19.addAll((Collection)var4.get(0));
-            }
-
-            while (var19.size() < var18) {
-               var19.add("v" + (var19.size() + 1));
-            }
-
-            HashSet<String> var20 = new HashSet<>();
-
-            for (String var9 : var19) {
-               String var10 = var9 == null ? "" : var9.trim();
-               if (!var20.add(var10.toLowerCase(Locale.ROOT))) {
-                  var0.warnings.add("发现重复变量名：" + var10);
-               }
-
-               if (var10.length() > 32) {
-                  var0.warnings.add("变量名超过 32 个字符：" + var10);
-               }
-
-               if (!var10.matches("[A-Za-z_][A-Za-z0-9_]*")) {
-                  var0.warnings.add("部分变量名含中文、空格或特殊字符；Stata 会生成合法变量名。原始文件不会修改。");
-               }
-            }
-
-            int var22 = var2 ? 1 : 0;
-
-            for (int var23 = 0; var23 < var18; var23++) {
-               boolean var24 = false;
-               boolean var11 = false;
-               int var12 = 0;
-               int var13 = 0;
-
-               for (int var14 = var22; var14 < var4.size(); var14++) {
-                  String var15 = var23 < ((List)var4.get(var14)).size() ? ((String)((List)var4.get(var14)).get(var23)).trim() : "";
-                  if (!var15.isEmpty()) {
-                     var11 = true;
-                     if (var15.matches("0[0-9]+")) {
-                        var24 = true;
-                     }
-
-                     if (isNumericText(var15)) {
-                        var12++;
-                     } else {
-                        var13++;
-                     }
-                  }
-               }
-
-               if (var24) {
-                  var0.leadingZeroColumns.add(var23 + 1);
-                  var0.warnings.add("第 " + (var23 + 1) + " 列（" + (String)var19.get(var23) + "）检测到前导零，将按字符串读取。");
-               }
-
-               if (var12 > 0 && var13 > 0) {
-                  var0.warnings.add("第 " + (var23 + 1) + " 列（" + (String)var19.get(var23) + "）同时包含数字和文本，建议作为字符串检查。");
-               }
-
-               if (!var11) {
-                  var0.warnings.add("第 " + (var23 + 1) + " 列（" + (String)var19.get(var23) + "）在预览样本中完全为空。");
-               }
-            }
-         }
+      private static void inspectDelimited(ExternalFileProfile profile, String delimiter, boolean header, Charset charset) throws IOException {
+         DelimitedData.Scan scan = DelimitedData.scan(profile.input, charset.name(), delimiter, header);
+         profile.leadingZeroColumns.addAll(scan.stringColumns);
+         profile.warnings.addAll(scan.warnings);
+         profile.detectedDelimiter = scan.delimiter;
+         profile.n = scan.rows;
+         profile.k = scan.names.size();
       }
 
       void enrichFromFrame(Frame var1) {
@@ -15264,6 +15152,52 @@ public final class HxWorkbench {
          }
       }
 
+      private SwingWorker<ExternalFileProfile,Void> fileInspection;
+      private String inspectedFileKey = "";
+      private long inspectionGeneration;
+
+      private String inspectionKey(Path path) throws IOException {
+         return path+"|"+Files.size(path)+"|"+Files.getLastModifiedTime(path)+"|"+selected(this.convertDelimiter)
+            +"|"+selected(this.convertEncoding)+"|"+this.convertDelimitedFirstRow.isSelected()+"|"+this.convertExcelFirstRow.isSelected();
+      }
+
+      private boolean ensureExternalProfile(Path path, Runnable after) {
+         try {
+            final String key=inspectionKey(path);
+            if(key.equals(this.inspectedFileKey) && this.currentExternalProfile!=null) return true;
+            if(this.fileInspection!=null) this.fileInspection.cancel(true);
+            final long generation=++this.inspectionGeneration;
+            final String delimiter=selected(this.convertDelimiter), encoding=selected(this.convertEncoding);
+            final boolean header=externalType(path).equals("excel")?this.convertExcelFirstRow.isSelected():this.convertDelimitedFirstRow.isSelected();
+            this.currentExternalProfile=null;
+            this.previewArea.setText("正在检查完整文件；检查完成后显示导入命令…");
+            this.convertDetected.setText("正在检查 "+path.getFileName()+"；更改文件或设置会取消旧检查。");
+            this.fileInspection=new SwingWorker<ExternalFileProfile,Void>() {
+               protected ExternalFileProfile doInBackground() throws Exception {
+                  return ExternalFileProfile.inspectRaw(path,delimiter,header,encoding);
+               }
+               protected void done() {
+                  if(generation!=inspectionGeneration || isCancelled()) return;
+                  try {
+                     ExternalFileProfile result=get();
+                     if(!key.equals(inspectionKey(path))) { inspectedFileKey=""; return; }
+                     currentExternalProfile=result; inspectedFileKey=key;
+                     convertDetected.setText("完整文件检查完成："+path.getFileName());
+                     updateConversionPreview();
+                     if(after!=null) after.run();
+                  } catch(Exception e) {
+                     inspectedFileKey=""; currentExternalProfile=null;
+                     importIssues.setText("文件检查失败："+rootMessage(e));
+                     previewArea.setText("文件检查失败："+rootMessage(e));
+                     convertDetected.setText("文件检查失败，请检查编码和 CSV 格式。");
+                  }
+               }
+            };
+            this.fileInspection.execute();
+         } catch(Exception e) { this.previewArea.setText("无法检查文件："+rootMessage(e)); }
+         return false;
+      }
+
       private void previewSelectedExternalFile() {
          if (this.runInProgress) return;
          Path var1;
@@ -15280,17 +15214,12 @@ public final class HxWorkbench {
             if ("unknown".equals(var2)) {
                JOptionPane.showMessageDialog(this, "第一版支持 .xlsx、.xls、.csv、.txt 和 .tsv。", "暂不支持该格式", 1);
             } else {
+               if(!ensureExternalProfile(var1, () -> previewSelectedExternalFile())) return;
                this.setBusy(true, "正在只读预览 " + var1.getFileName() + "…");
                String var3 = this.nextImportFrameName();
                Frame var4 = null;
 
                try {
-                  this.currentExternalProfile = HxWorkbench.ExternalFileProfile.inspectRaw(
-                     var1,
-                     selected(this.convertDelimiter),
-                     var2.equals("excel") ? this.convertExcelFirstRow.isSelected() : this.convertDelimitedFirstRow.isSelected(),
-                     var2.equals("delimited") ? selected(this.convertEncoding) : "自动识别"
-                  );
                   var4 = Frame.create(var3);
                   String var5 = this.buildImportCommand(var1, this.currentExternalProfile, false);
                   int var6 = HxWorkbench.StataBridge.execute("quietly frame " + var3 + ": " + var5, false);
@@ -15365,7 +15294,7 @@ public final class HxWorkbench {
             var13.append(var13.indexOf(",") < 0 ? ", clear" : " clear");
             return var13.toString();
          } else {
-            StringBuilder var6 = new StringBuilder("import delimited using ").append(commandQuote(var1.toString())).append(", clear");
+            StringBuilder var6 = new StringBuilder("import delimited using ").append(commandQuote(var1.toString())).append(", clear bindquote(strict) maxquotedrows(unlimited)");
             boolean var7 = var3 && var4 != null ? var4.delimitedFirstRow : this.convertDelimitedFirstRow.isSelected();
             var6.append(var7 ? " varnames(1)" : " varnames(nonames)");
             String var8 = var3 && var4 != null ? var4.delimiter : selected(this.convertDelimiter);
@@ -15373,7 +15302,7 @@ public final class HxWorkbench {
                var8 = "Tab";
             }
 
-            String var9 = delimiterOption(var8);
+            String var9 = "delimiters(" + commandQuote(String.valueOf(var2.detectedDelimiter)) + ")";
             if (!var9.isBlank()) {
                var6.append(" ").append(var9);
             }
@@ -15425,14 +15354,8 @@ public final class HxWorkbench {
                } else {
                   try {
                      Path var3 = Paths.get(var1).toAbsolutePath();
-                     HxWorkbench.ExternalFileProfile var4 = this.currentExternalProfile == null
-                        ? HxWorkbench.ExternalFileProfile.inspectRaw(
-                           var3,
-                           selected(this.convertDelimiter),
-                           externalType(var3).equals("excel") ? this.convertExcelFirstRow.isSelected() : this.convertDelimitedFirstRow.isSelected(),
-                           externalType(var3).equals("delimited") ? selected(this.convertEncoding) : "自动识别"
-                        )
-                        : this.currentExternalProfile;
+                     if(!ensureExternalProfile(var3,null)) return;
+                     HxWorkbench.ExternalFileProfile var4 = this.currentExternalProfile;
                      String var5 = this.buildImportCommand(var3, var4, false);
                      String var6 = var2.isBlank() ? "save <选择保存位置>" : "save " + commandQuote(Paths.get(var2).toAbsolutePath().toString());
                      this.previewArea.setText(var5 + "\n" + var6);
@@ -15463,18 +15386,14 @@ public final class HxWorkbench {
             }
 
             if (Files.isRegularFile(var1) && !"unknown".equals(externalType(var1))) {
+               if(!ensureExternalProfile(var1, () -> runConvertDta())) return;
                final DataWorkflow.OutputTarget outputTarget = this.resolveExistingOutput(var2);
                if (outputTarget != null) {
                   final Path resolvedOutput = outputTarget.path;
                   final HxWorkbench.ExternalFileProfile var3;
                   final String preparedCommand;
                   try {
-                     var3 = HxWorkbench.ExternalFileProfile.inspectRaw(
-                        var1,
-                        selected(this.convertDelimiter),
-                        externalType(var1).equals("excel") ? this.convertExcelFirstRow.isSelected() : this.convertDelimitedFirstRow.isSelected(),
-                        externalType(var1).equals("delimited") ? selected(this.convertEncoding) : "自动识别"
-                     );
+                     var3 = this.currentExternalProfile;
                      preparedCommand = this.buildImportCommand(var1,var3,false);
                   } catch (Exception var6) {
                      JOptionPane.showMessageDialog(this, "读取原文件失败：\n" + var6.getMessage(), "转换失败", 0);
